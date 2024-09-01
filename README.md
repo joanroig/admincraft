@@ -17,7 +17,7 @@
   <a href="https://github.com/joanroig/admincraft/blob/main/LICENSE.txt">
     <img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="Admincraft is released under the GPLv3 license." />
   </a>
-  <a href="https://github.com/joanroig/admincraft/blob/develop/CONTRIBUTING.md">
+  <a href="https://github.com/joanroig/admincraft/blob/develop/CONTRIBUTE.md">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat" alt="PRs welcome!" />
   </a>
 </p>
@@ -58,7 +58,7 @@ You can view the planned, started, and completed features in [GitHub Projects](h
 
 The community and team are available in [GitHub Discussions](https://github.com/joanroig/admincraft/discussions), where you can ask for support, discuss the roadmap, and share ideas.
 
-Our [Contribution Guide](https://github.com/joanroig/admincraft/blob/develop/CONTRIBUTING.md) describes how to contribute to the codebase and documentation.
+Our [Contribution Guide](https://github.com/joanroig/admincraft/blob/develop/CONTRIBUTE.md) describes how to contribute to the codebase and documentation.
 
 ## Related Projects
 
