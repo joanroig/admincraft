@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/joanroig/admincraft">
     <picture>
-      <img alt="Admincraft logo" src="docs/app_icon_design/Admincraft.png" width="140px">
+      <img alt="Admincraft logo" src="https://github.com/joanroig/admincraft/blob/main/docs/app_icon_design/Admincraft.png" width="140px">
     </picture>
   </a>
 </p>
@@ -37,7 +37,7 @@ You need a Minecraft Bedrock server to use Admincraft. Visit the [server setup g
 
 Once you have your server, download Admincraft for your platform from the [releases](https://github.com/joanroig/admincraft/releases) page, add your server in the app, and you're good to go!
 
-## <span><img alt="Admincraft logo" src="docs/app_icon_design/Admincraft_16x16.png" width="16"></span> Development
+## <span><img alt="Admincraft logo" src="https://github.com/joanroig/admincraft/blob/main/docs/app_icon_design/Admincraft_16x16.png" width="16"></span> Development
 
 - Follow the official [Flutter installation guide](https://docs.flutter.dev/get-started/install).
 - Open the project in the IDE of your choice ([VSCode](https://code.visualstudio.com/) is recommended) and run the app by following [this guide](https://docs.flutter.dev/tools/vs-code).
