@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="admincraft"
+        android:label="Admincraft"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -41,5 +41,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-    </queries>
+    </queries>    
+    <!-- The INTERNET permission is required for opening SSH connections. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Allow interact with other apps to open URLs -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
 </manifest>

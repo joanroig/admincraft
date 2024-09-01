@@ -1,4 +1,4 @@
-package com.example.admincraft
+package com.joanroig.admincraft
 
 import io.flutter.embedding.android.FlutterActivity
 
