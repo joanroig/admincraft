@@ -1,0 +1,45 @@
+# main docker compose configuration, place it in ./docker-compose.yml
+services:
+  bds:
+    container_name: minecraft
+    image: itzg/minecraft-bedrock-server
+    restart: always
+    environment:
+      # Enable SSH
+      ENABLE_SSH: true
+      # Server settings
+      EULA: "TRUE"
+      GAMEMODE: survival
+      SERVER_NAME: Moaicraft
+      LEVEL_NAME: Moaiworld
+      LEVEL_SEED: -2746961253358476370
+      DIFFICULTY: normal
+      ALLOW_CHEATS: true
+      ALLOW_LIST: true
+      CLIENT_SIDE_CHUNK_GENERATION_ENABLED: true
+    # Expose the mc-server-runner's SSH port to just the backup container
+    expose:
+      - 2222
+    ports:
+      - 19132:19132/udp
+      # - 39133:39133/udp
+    volumes:
+      - ./server:/data
+    stdin_open: true
+    tty: true
+    
+  backup:
+    container_name: backups
+    image: kaiede/minecraft-bedrock-backup
+    restart: always
+    depends_on:
+      # Make sure the minecraft service starts before the backup
+      bds:
+        condition: service_healthy
+    volumes:   
+      # Map your backups folder into /backups
+      - ./backups:/backups
+      # Map the data folders for the server
+      - ./server:/data
+      # (Optional) Map a configuration folder separately from the backups.
+      - ./backup-config:/config

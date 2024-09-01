@@ -1,19 +1,61 @@
+import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/services/persistence_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:toastification/toastification.dart';
 
-void main() {
-  runApp(const MainApp());
+import 'models/model.dart';
+import 'views/tabs_view.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  final persistentDataManager = PersistenceService(prefs);
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) => Model(persistentDataManager),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ConnectionController(),
+        ),
+      ],
+      child: const Admincraft(),
+    ),
+  );
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+ThemeData lightTheme = ThemeData.light().copyWith(
+  textTheme: ThemeData.light().textTheme.apply(
+        fontFamily: 'Monocraft',
+      ),
+  primaryTextTheme: ThemeData.light().textTheme.apply(
+        fontFamily: 'Monocraft',
+      ),
+);
+
+class Admincraft extends StatelessWidget {
+  const Admincraft({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
+    final model = Provider.of<Model>(context);
+
+    return ToastificationWrapper(
+      child: MaterialApp(
+        title: "Admincraft",
+        themeMode: model.themeMode,
+        theme: ThemeData.light().copyWith(
+          textTheme: Typography().black.apply(fontFamily: 'Monocraft'),
         ),
+        darkTheme: ThemeData.dark().copyWith(
+          textTheme: Typography().white.apply(fontFamily: 'Monocraft'),
+        ),
+        home: const Tabs(),
       ),
     );
   }
