@@ -68,4 +68,4 @@ Our [Contribution Guide](https://github.com/joanroig/admincraft/blob/develop/CON
 
 ## ![Admincraft logo](docs/logo/variants/cow.png) License
 
-Licensed under the [GPLv3 License](https://github.com/joanroig/admincraft/blob/develop/LICENSE).
+Licensed under the [GPLv3 License](https://github.com/joanroig/admincraft/blob/develop/LICENSE.txt).
