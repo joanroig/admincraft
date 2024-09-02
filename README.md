@@ -48,7 +48,7 @@ Once you have your server, download Admincraft for your platform from the [relea
 ### Build Windows Executable
 
 - Run `flutter build windows`.
-- The .exe file with the required files will be available at [build/windows/x64/runner/Release].(build/windows/x64/runner/Release)
+- The .exe file with the required files will be available at [build/windows/x64/runner/Release](build/windows/x64/runner/Release).
 
 ## ![Admincraft logo](docs/logo/variants/diamond.png) Feature Roadmap
 
