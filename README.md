@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/joanroig/admincraft">
-      <img alt="Admincraft logo" src="docs/logo/variants/dirt.png" width="140px" style="image-rendering: pixelated;">
+      <img alt="Admincraft logo" src="web/icons/Icon-192.png" width="140px">
   </a>
 </p>
 
