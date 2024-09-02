@@ -30,6 +30,7 @@ The [variants](variants) folder the Admincraft logo and its alternative versions
    - Run the script [change_logo.py](change_logo.py) using the following commands:
 
      ```
+     cd docs\logo
      pip install -r requirements.txt
      python change_logo.py
      ```
