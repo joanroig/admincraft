@@ -12,7 +12,7 @@ External contributions are highly appreciated, but please be patient as they are
 - **Have a basic understanding of Flutter, Docker and SSH.**
 - **Have Admincraft set up locally for testing.**
 
-## Issues before PRs
+## Issues Before PRs
 
 1. **Find or Create an Issue**: Check if an issue already exists for what you want to work on. If not, [open a new issue](https://github.com/joanroig/admincraft/issues).
 2. **Fork and Branch**: Fork the repository and create a new branch for your changes.

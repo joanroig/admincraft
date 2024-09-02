@@ -1,4 +1,4 @@
-# Minecraft Bedrock server on Oracle Cloud (Always Free)
+# ![Admincraft logo](../logo/variants/obsidian_glow.png) Minecraft Bedrock Server on Oracle Cloud (Always Free)
 
 ## Setup a VM on Oracle Cloud
 
@@ -49,7 +49,7 @@ iptables-save > /etc/iptables/rules.v4
 
 - Download the [docker-compose.yml](docker-compose.yml) file, edit the settings you like, and upload it to the home directory in the server. Alternatively, customize yours from scratch using [the original file](https://github.com/itzg/docker-minecraft-bedrock-server/blob/master/examples/docker-compose.yml).
 
-## Commands
+## Common Commands
 
 See all available commands [here](https://minecraftbedrock-archive.fandom.com/wiki/Commands/List_of_Commands).
 
@@ -102,7 +102,7 @@ whitelist add moaibeats
 give moaibeats coal 20
 ```
 
-## Automatic upgrade and backups
+## Automatic Upgrade and Backups
 
 To update the server, simply restart the docker container:
 
@@ -110,7 +110,7 @@ To update the server, simply restart the docker container:
 
 The docker compose configuration already has the backups enabled, make sure to download the [config.yml](config.yml) file, edit it as you like (the world name should match the one you have introduced in [docker-compose.yml](docker-compose.yml)!), and finally upload it to a folder named `backup-config` in the home directory of the server.
 
-# Credits
+## Credits and sources
 
 - https://github.com/itzg/docker-minecraft-bedrock-server
 - https://github.com/techtute/minecraft-bedrock-tools/blob/main/install-bedrock-server.sh
