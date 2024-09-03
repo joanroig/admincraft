@@ -45,7 +45,7 @@ Once you have your server, download Admincraft for your platform from the [relea
 ## ![Admincraft logo](docs/logo/variants/obsidian.png) Development
 
 - Follow the official [Flutter installation guide](https://docs.flutter.dev/get-started/install).
-- Open the project in the IDE of your choice ([VSCode](https://code.visualstudio.com/) is recommended) and run the app by following [this guide](https://docs.flutter.dev/tools/vs-code).
+- Open the project in the IDE of your choice ([VSCode](https://code.visualstudio.com/) is recommended) and run the app by following [this guide](https://docs.flutter.dev/tools/vs-code#running-and-debugging).
 
 ### Build Android APK
 
@@ -71,7 +71,7 @@ Our [Contribution Guide](https://github.com/joanroig/admincraft/blob/main/CONTRI
 
 Docker tools
 
-- [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master)
+- [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server)
 - [Bedrockifier](https://github.com/Kaiede/Bedrockifier)
 
 Fonts
