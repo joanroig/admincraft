@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/gestures.dart';
@@ -27,6 +28,9 @@ class _SettingsTabState extends State<SettingsTab> {
   final TextEditingController _commandPrefixController = TextEditingController();
   final TextEditingController _maxOutLinesController = TextEditingController();
   ThemeMode _selectedThemeMode = ThemeMode.system;
+  final TextEditingController _fontSizeController = TextEditingController();
+  String _selectedFont = '';
+  double _currentFontSize = 16.0;
   late Model _model;
   String _version = '';
   String _buildNumber = '';
@@ -35,6 +39,8 @@ class _SettingsTabState extends State<SettingsTab> {
   void initState() {
     super.initState();
     _model = Provider.of<Model>(context, listen: false);
+    _selectedFont = _model.font;
+    _currentFontSize = _model.fontSize;
     _loadSettings();
     _loadAppInfo(); // Load app version and build number
   }
@@ -46,6 +52,7 @@ class _SettingsTabState extends State<SettingsTab> {
     _pemFileController.text = _model.pemKeyContent.isEmpty ? '' : 'Key Loaded';
     _portController.text = _model.port.toString();
     _selectedThemeMode = _model.themeMode;
+    _fontSizeController.text = _model.fontSize.toString();
     _commandPrefixController.text = _model.commandPrefix;
     _maxOutLinesController.text = _model.maxOutLines.toString();
   }
@@ -249,7 +256,59 @@ class _SettingsTabState extends State<SettingsTab> {
               }
             },
           ),
+          const SizedBox(height: 20),
 
+          // Font Dropdown
+          const Text('Font'),
+          DropdownButton<String>(
+            value: _selectedFont,
+            items: const [
+              DropdownMenuItem(
+                value: 'Miracode',
+                child: Text('Miracode'),
+              ),
+              DropdownMenuItem(
+                value: 'Monocraft',
+                child: Text('Monocraft'),
+              ),
+              DropdownMenuItem(
+                value: 'Scientifica',
+                child: Text('Scientifica'),
+              ),
+              DropdownMenuItem(
+                value: 'Roboto',
+                child: Text('Roboto'),
+              ),
+            ],
+            onChanged: (String? font) {
+              if (font != null) {
+                setState(() {
+                  _selectedFont = font;
+                });
+                _model.setFont(font);
+                ThemeService.font = font;
+              }
+            },
+          ),
+          const SizedBox(height: 20),
+
+          // Font Size Slider
+          Text('Font Size: ${_currentFontSize.toStringAsFixed(1)}'),
+          Slider(
+            value: _currentFontSize,
+            min: 12.0,
+            max: 32.0,
+            divisions: 20, // Allows step-by-step increments
+            label: _currentFontSize.toStringAsFixed(1),
+            onChanged: (value) {
+              setState(() {
+                _currentFontSize = value;
+                _fontSizeController.text = value.toStringAsFixed(1);
+                _model.setFontSize(value);
+                ThemeService.fontSize = value;
+              });
+            },
+          ),
           const SizedBox(height: 40),
 
 // At the bottom of your Column widget

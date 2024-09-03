@@ -124,7 +124,7 @@ class DialogUtils {
     );
   }
 
-  static void showHistoryPopup(BuildContext context, TextEditingController commandController, Function resetHistoryIndex) {
+  static void showHistoryPopup(BuildContext context, TextEditingController commandController, Function resetHistoryIndex, Function setCursorToEnd) {
     final model = Provider.of<Model>(context, listen: false);
     showDialog(
       context: context,
@@ -169,6 +169,7 @@ class DialogUtils {
                             onTap: () {
                               resetHistoryIndex();
                               commandController.text = command;
+                              setCursorToEnd();
                               Navigator.of(context).pop();
                             },
                           );

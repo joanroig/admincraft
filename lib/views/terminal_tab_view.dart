@@ -1,7 +1,6 @@
 import 'package:admincraft/controllers/terminal_controller.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,7 +28,7 @@ class _TerminalTabState extends State<TerminalTab> {
     // Initialize controllers with context
     _terminalController = TerminalController(context);
 
-    // Initialize the history indez
+    // Initialize the history index
     _resetHistoryIndex();
   }
 
@@ -50,7 +49,14 @@ class _TerminalTabState extends State<TerminalTab> {
         children: [
           Column(
             children: [
-              _buildOutputArea(),
+              Expanded(
+                child: _model.output.isEmpty
+                    ? _buildLoadingAnimation()
+                    : ListView(
+                        controller: _scrollController,
+                        children: _formatOutput(_model.output, _model.userCommands),
+                      ),
+              ),
               const SizedBox(height: 10),
               _buildCommandControls(),
               const SizedBox(height: 10),
@@ -68,41 +74,51 @@ class _TerminalTabState extends State<TerminalTab> {
     return const Center(child: Text('Connect to enable the Terminal.'));
   }
 
-  Widget _buildOutputArea() {
-    return Expanded(
-      child: SingleChildScrollView(
-        controller: _scrollController,
-        child: RichText(
-          text: TextSpan(
-            children: _formatOutput(_model.output, _model.userCommands),
-          ),
-        ),
-      ),
+  Widget _buildLoadingAnimation() {
+    return const Center(
+      child: CircularProgressIndicator(),
     );
   }
 
-  List<TextSpan> _formatOutput(String output, Set<String> userCommands) {
-    final spans = <TextSpan>[];
+  List<Widget> _formatOutput(String output, Set<String> userCommands) {
+    final widgets = <Widget>[];
     final lines = output.split('\n');
+
     for (var line in lines) {
-      final isUserCommand = userCommands.contains(line);
-      spans.add(
-        TextSpan(
-          text: '$line\n',
-          style: TextStyle(
-            fontWeight: isUserCommand ? FontWeight.bold : FontWeight.normal,
-            color: isUserCommand ? Colors.blue : Theme.of(context).textTheme.bodyMedium?.color,
+      if (line.trim().isNotEmpty) {
+        // Check for non-empty lines
+        final isUserCommand = userCommands.contains(line);
+        widgets.add(
+          MouseRegion(
+            cursor: isUserCommand ? SystemMouseCursors.click : SystemMouseCursors.basic,
+            child: GestureDetector(
+              onTap: isUserCommand
+                  ? () {
+                      _commandController.text = line;
+                      // Move the cursor to the end of the text
+                      _commandController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: _commandController.text.length),
+                      );
+                      _focusNode.requestFocus(); // Ensure the focus is on the text field
+                    }
+                  : null,
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 0.0),
+                child: Text(
+                  line,
+                  style: TextStyle(
+                    fontWeight: isUserCommand ? FontWeight.bold : FontWeight.normal,
+                    color: isUserCommand ? Colors.blue : Theme.of(context).textTheme.bodyMedium?.color,
+                    decoration: isUserCommand ? TextDecoration.underline : TextDecoration.none,
+                  ),
+                ),
+              ),
+            ),
           ),
-          recognizer: isUserCommand
-              ? (TapGestureRecognizer()
-                ..onTap = () {
-                  _commandController.text = line;
-                })
-              : null,
-        ),
-      );
+        );
+      }
     }
-    return spans;
+    return widgets;
   }
 
   Widget _buildCommandControls() {
@@ -135,6 +151,7 @@ class _TerminalTabState extends State<TerminalTab> {
                     context,
                     _commandController,
                     () => _resetHistoryIndex(),
+                    () => _setCursorToEnd(),
                   )
               : null,
           tooltip: 'Show command history',
@@ -193,6 +210,7 @@ class _TerminalTabState extends State<TerminalTab> {
         _historyIndex--;
         if (_historyIndex >= 0 && _historyIndex < _model.commandHistory.length) {
           _commandController.text = _model.commandHistory[_historyIndex];
+          _setCursorToEnd();
         }
       });
     }
@@ -203,13 +221,22 @@ class _TerminalTabState extends State<TerminalTab> {
       setState(() {
         _historyIndex++;
         _commandController.text = _model.commandHistory[_historyIndex];
+        _setCursorToEnd();
       });
     } else {
       setState(() {
         _resetHistoryIndex();
         _commandController.clear();
+        _setCursorToEnd();
       });
     }
+  }
+
+  void _setCursorToEnd() {
+    _commandController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _commandController.text.length),
+    );
+    _focusNode.requestFocus(); // Ensure the focus is on the text field
   }
 
   void _scrollToBottom() {
