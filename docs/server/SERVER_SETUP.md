@@ -1,4 +1,6 @@
-# ![Admincraft logo](../logo/variants/obsidian_glow.png) Minecraft Bedrock Server on Oracle Cloud (Always Free)
+# ![Admincraft logo](../logo/variants/enderman.png) Minecraft Bedrock Server on Oracle Cloud (Always Free)
+
+This guide provides instructions for setting up a Minecraft Bedrock server on Oracle Cloud's Always Free tier. It covers everything from creating a virtual machine (VM) on Oracle Cloud Infrastructure to configuring the server with Docker and managing the server using common commands. After finishing this guide, you'll be able to control your server with Admincraft!
 
 ## Setup a VM on Oracle Cloud
 
@@ -27,6 +29,8 @@ Boot volume
 - Use in-transit encryption
 ```
 
+- Once created, take a note of the server IP, you will need it to connect to your server.
+
 - In `Networking > Virtual cloud networks > your network > Subnet Details`, select `Security List Details` and press `Add Ingress Rules`:
 
 ```
@@ -39,8 +43,8 @@ Minecraft main port
 
 ## Setup
 
-- Use the SSH Keys to login via MobaXterm
-- Open the needed ports:
+- Login via [MobaXterm](https://mobaxterm.mobatek.net/download.html) or the tool of your choice by using the IP, SSH Keys and username (ubuntu if you choose an Ubuntu image).
+- Once connected, execute those commands to open the needed ports:
 
 ```
 iptables -I INPUT -p udp -m udp --dport 19132 -j ACCEPT
@@ -48,6 +52,7 @@ iptables-save > /etc/iptables/rules.v4
 ```
 
 - Download the [docker-compose.yml](docker-compose.yml) file, edit the settings you like, and upload it to the home directory in the server. Alternatively, customize yours from scratch using [the original file](https://github.com/itzg/docker-minecraft-bedrock-server/blob/master/examples/docker-compose.yml).
+- Run `sudo docker compose up -d` to start your server for the first time.
 
 ## Common Commands
 
@@ -109,6 +114,10 @@ To update the server, simply restart the docker container:
 `sudo docker compose restart`
 
 The docker compose configuration already has the backups enabled, make sure to download the [config.yml](config.yml) file, edit it as you like (the world name should match the one you have introduced in [docker-compose.yml](docker-compose.yml)!), and finally upload it to a folder named `backup-config` in the home directory of the server.
+
+## Connect with Admincraft
+
+Open Admincraft and use the server IP and the certificate you used to connect to your machine in the previous steps.
 
 ## Credits and sources
 

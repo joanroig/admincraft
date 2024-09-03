@@ -1,5 +1,6 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/services/persistence_service.dart';
+import 'package:admincraft/services/theme_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,15 +30,6 @@ void main() async {
   );
 }
 
-ThemeData lightTheme = ThemeData.light().copyWith(
-  textTheme: ThemeData.light().textTheme.apply(
-        fontFamily: 'Monocraft',
-      ),
-  primaryTextTheme: ThemeData.light().textTheme.apply(
-        fontFamily: 'Monocraft',
-      ),
-);
-
 class Admincraft extends StatelessWidget {
   const Admincraft({super.key});
 
@@ -50,10 +42,16 @@ class Admincraft extends StatelessWidget {
         title: "Admincraft",
         themeMode: model.themeMode,
         theme: ThemeData.light().copyWith(
-          textTheme: Typography().black.apply(fontFamily: 'Monocraft'),
+          textTheme: ThemeService.textThemeFromStyles(model).apply(
+            bodyColor: Colors.black,
+            displayColor: Colors.black,
+          ),
         ),
         darkTheme: ThemeData.dark().copyWith(
-          textTheme: Typography().white.apply(fontFamily: 'Monocraft'),
+          textTheme: ThemeService.textThemeFromStyles(model).apply(
+            bodyColor: Colors.white,
+            displayColor: Colors.white,
+          ),
         ),
         home: const Tabs(),
       ),

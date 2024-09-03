@@ -17,6 +17,8 @@ class Model with ChangeNotifier {
   String get commandPrefix => _persistenceService.commandPrefix;
   int get maxOutLines => _persistenceService.maxOutLines;
   ThemeMode get themeMode => _persistenceService.themeMode;
+  String get font => _persistenceService.font;
+  double get fontSize => _persistenceService.fontSize;
 
   // Provide read-only access to collections
   Set<String> get userCommands => Set.unmodifiable(_persistenceService.userCommands);
@@ -53,6 +55,14 @@ class Model with ChangeNotifier {
 
   Future<void> setThemeMode(ThemeMode themeMode) async {
     await _updatePersistenceService(() => _persistenceService.saveThemeMode(themeMode));
+  }
+
+  Future<void> setFont(String font) async {
+    await _updatePersistenceService(() => _persistenceService.saveFont(font));
+  }
+
+  Future<void> setFontSize(double fontSize) async {
+    await _updatePersistenceService(() => _persistenceService.saveFontSize(fontSize));
   }
 
   Future<void> setCommandHistory(List<String> history) async {

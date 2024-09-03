@@ -98,3 +98,13 @@ flutter:
     - family: Monocraft
       fonts:
         - asset: fonts/Monocraft.ttc
+    - family: Miracode
+      fonts:
+        - asset: fonts/Miracode.ttf
+    - family: Scientifica
+      fonts:
+        - asset: fonts/scientifica.ttf
+        - asset: fonts/scientificaItalic.ttf
+          style: italic
+        - asset: fonts/scientificaBold.ttf
+          weight: 700
