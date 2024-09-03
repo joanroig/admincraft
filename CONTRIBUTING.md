@@ -1,4 +1,4 @@
-# Contributing to Admincraft
+# ![Admincraft logo](docs/logo/variants/diamond.png) Contributing to Admincraft
 
 Thank you for considering contributing to Admincraft! This guide will help you understand how to contribute to this project. If you have any questions, feel free to [open a new discussion](https://github.com/joanroig/admincraft/discussions).
 
