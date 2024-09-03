@@ -10,6 +10,8 @@ class PersistenceService {
   static const _commandPrefixKey = 'commandPrefix';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
+  static const _fontKey = 'font';
+  static const _fontSizeKey = 'fontSize';
   static const _commandHistoryKey = 'commandHistory';
   static const _userCommandsKey = 'userCommands';
 
@@ -22,8 +24,14 @@ class PersistenceService {
       await _prefs.setString(key, value);
     } else if (value is int) {
       await _prefs.setInt(key, value);
+    } else if (value is double) {
+      await _prefs.setDouble(key, value);
+    } else if (value is bool) {
+      await _prefs.setBool(key, value);
     } else if (value is List<String>) {
       await _prefs.setStringList(key, value);
+    } else {
+      throw ArgumentError('Unsupported type: ${value.runtimeType}');
     }
   }
 
@@ -53,6 +61,14 @@ class PersistenceService {
     await _set(_themeModeKey, themeMode.index);
   }
 
+  Future<void> saveFont(String font) async {
+    await _set(_fontKey, font);
+  }
+
+  Future<void> saveFontSize(double fontSize) async {
+    await _set(_fontSizeKey, fontSize);
+  }
+
   Future<void> saveCommandHistory(List<String> history) async {
     await _set(_commandHistoryKey, history);
   }
@@ -68,10 +84,9 @@ class PersistenceService {
   int get port => _prefs.getInt(_portKey) ?? 22;
   String get commandPrefix => _prefs.getString(_commandPrefixKey) ?? 'sudo docker exec minecraft send-command';
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
-  ThemeMode get themeMode {
-    final index = _prefs.getInt(_themeModeKey) ?? 0;
-    return ThemeMode.values[index];
-  }
+  ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
+  String get font => _prefs.getString(_fontKey) ?? 'Roboto';
+  double get fontSize => _prefs.getDouble(_fontSizeKey) ?? 16;
 
   List<String> get commandHistory => _prefs.getStringList(_commandHistoryKey) ?? [];
   Set<String> get userCommands => _prefs.getStringList(_userCommandsKey)?.toSet() ?? {};
