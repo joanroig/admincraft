@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Import for package info
@@ -34,6 +36,7 @@ class _SettingsTabState extends State<SettingsTab> {
   late Model _model;
   String _version = '';
   String _buildNumber = '';
+  String _pemKeyContent = '';
 
   @override
   void initState() {
@@ -66,21 +69,25 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   Future<void> _pickPemFile() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pem', 'key']);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pem', 'key'],
+    );
+
     if (result != null) {
-      final pemKeyContent = await File(result.files.single.path!).readAsString();
+      if (kIsWeb) {
+        // For web
+        final fileBytes = result.files.first.bytes;
+        if (fileBytes == null) return;
+        _pemKeyContent = utf8.decode(fileBytes);
+      } else {
+        // For non-web platforms
+        _pemKeyContent = await File(result.files.single.path!).readAsString();
+      }
+
       setState(() {
         _pemFileController.text = 'Key Loaded';
       });
-
-      _model.setConnectionDetails(
-        alias: _aliasController.text,
-        hostname: _hostnameController.text,
-        username: _usernameController.text,
-        pemKeyContent: pemKeyContent,
-        port: int.parse(_portController.text),
-        commandPrefix: _commandPrefixController.text,
-      );
     }
   }
 
@@ -134,9 +141,23 @@ class _SettingsTabState extends State<SettingsTab> {
             decoration: InputDecoration(
               labelText: 'PEM Key',
               border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.folder_open),
-                onPressed: _pickPemFile,
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.folder_open),
+                    onPressed: _pickPemFile,
+                  ),
+                  if (_pemFileController.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _pemFileController.clear();
+                        });
+                      },
+                    ),
+                ],
               ),
             ),
             readOnly: true,
@@ -210,7 +231,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 alias: _aliasController.text,
                 hostname: _hostnameController.text,
                 username: _usernameController.text,
-                pemKeyContent: _model.pemKeyContent,
+                pemKeyContent: _pemKeyContent,
                 port: int.parse(_portController.text),
                 commandPrefix: _commandPrefixController.text,
               );
