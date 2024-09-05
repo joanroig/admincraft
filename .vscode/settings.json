@@ -3,5 +3,9 @@
   "[dart]": {
     "editor.rulers": [150]
   },
-  "cSpell.words": ["admincraft", "prefs"]
+  "cSpell.words": [
+    "admincraft",
+    "prefs"
+  ],
+  "cmake.ignoreCMakeListsMissing": true
 }

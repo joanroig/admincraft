@@ -3,6 +3,7 @@ class DefaultCommands {
   static final List<String> commands = [
     'help',
     'list',
+    'say <message>',
     'kick <player>',
     'ban <player>',
     'unban <player>',
