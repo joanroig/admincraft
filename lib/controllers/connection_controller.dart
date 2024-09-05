@@ -1,77 +1,86 @@
-import 'dart:async';
-
+import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/connection_service.dart';
 import 'package:admincraft/utils/toast_utils.dart';
-import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/material.dart';
 
 class ConnectionController with ChangeNotifier {
-  final ConnectionService _connectionService = ConnectionService();
-  bool _isConnecting = false;
-
-  bool get isConnecting => _isConnecting;
-  SSHClient? get sshClient => _connectionService.sshClient;
+  final ConnectionService connectionService = ConnectionService();
+  ConnectionStatus get status => connectionService.status;
+  int reconnectCount = 0;
 
   ConnectionController() {
-    _connectionService.startConnectionCheck();
+    connectionService.onConnectionLost = (Model model, bool reconnect) => _handleConnectionLost(model, reconnect);
   }
 
-  Future<void> attemptConnection(Model model, {bool startup = false}) async {
-    if (model.hostname.isEmpty || model.username.isEmpty || model.pemKeyContent.isEmpty) {
-      if (!startup) {
+  Future<void> attemptConnection(Model model, {bool reconnect = false}) async {
+    if (model.ip.isEmpty || model.secretKey.isEmpty) {
+      if (!reconnect) {
         ToastUtils.showToastError("Cannot connect, missing connection details.");
       }
-    } else if (_connectionService.sshClient != null) {
+    } else if (status == ConnectionStatus.connected) {
       ToastUtils.showToastError("Already connected!");
     } else {
-      await _connectionService.connectAndFetchLogs(model);
-      _connectionService.streamLogs(model);
+      connectionService.connect(model, reconnect: reconnect);
     }
   }
 
   Future<void> toggleConnection(Model model) async {
-    _isConnecting = true;
-    notifyListeners();
+    reconnectCount = 0;
 
     try {
-      if (_connectionService.sshClient != null) {
-        await _connectionService.disconnect();
+      if (status == ConnectionStatus.connected) {
+        connectionService.disconnect(model);
       } else {
-        await _connectionService.connectAndFetchLogs(model);
-        _connectionService.streamLogs(model);
+        await attemptConnection(model);
       }
     } finally {
-      _isConnecting = false;
       notifyListeners();
     }
   }
 
-  Future<void> disconnect() async {
-    await _connectionService.disconnect();
+  void _handleConnectionLost(Model model, bool reconnect) {
+    if (reconnect) {
+      if (reconnectCount == 0) {
+        reconnectCount++;
+        ToastUtils.showToastError("Connection lost, reconnecting in 5 seconds...");
+        Future.delayed(const Duration(seconds: 5), () {
+          attemptConnection(model, reconnect: reconnect);
+        });
+      } else {
+        ToastUtils.showToastError("Connection lost, please connect again.");
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> disconnect(Model model) async {
+    connectionService.disconnect(model);
     notifyListeners();
   }
 
   Future<void> restartServer(Model model) async {
     try {
-      await _connectionService.executeCommand('sudo docker compose restart');
-      ToastUtils.showToastSuccess('Server restarted successfully');
-      attemptConnection(model);
+      connectionService.executeCommand('admincraft restart-server');
+      ToastUtils.showToastSuccess('Server restart initiated, reconnecting in 5 seconds...');
+      disconnect(model);
+      await Future.delayed(const Duration(seconds: 5));
+      attemptConnection(model, reconnect: true);
       notifyListeners();
     } catch (e) {
       ToastUtils.showToastError(e.toString());
     }
   }
 
-  Future<String> executeMinecraftCommand(Model model, String command) async {
+  Future<void> executeMinecraftCommand(Model model, String command) async {
     model.addUserCommand(command);
     model.appendOutputCommand(command);
-    return _connectionService.executeCommandWithPrefix(command, model.commandPrefix);
+    connectionService.executeCommand(command);
   }
 
   @override
   void dispose() {
-    _connectionService.stopConnections();
+    // webSocketService.disconnect(model);
     super.dispose();
   }
 }

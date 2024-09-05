@@ -103,7 +103,7 @@ class _TerminalTabState extends State<TerminalTab> {
                     }
                   : null,
               child: Container(
-                padding: EdgeInsets.symmetric(vertical: 0.0),
+                padding: const EdgeInsets.symmetric(vertical: 0.0),
                 child: Text(
                   line,
                   style: TextStyle(

@@ -3,11 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class PersistenceService {
   static const _aliasKey = 'alias';
-  static const _hostnameKey = 'hostname';
-  static const _usernameKey = 'username';
-  static const _pemKeyContentKey = 'pemKeyContent';
+  static const _ipKey = 'ip';
   static const _portKey = 'port';
-  static const _commandPrefixKey = 'commandPrefix';
+  static const _secretKeyKey = 'secretKey';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
   static const _fontKey = 'font';
@@ -37,19 +35,15 @@ class PersistenceService {
 
   Future<void> saveConnectionDetails({
     required String alias,
-    required String hostname,
-    required String username,
-    required String pemKeyContent,
+    required String ip,
     required int port,
-    required String commandPrefix,
+    required String secretKey,
   }) async {
     await Future.wait([
       _set(_aliasKey, alias),
-      _set(_hostnameKey, hostname),
-      _set(_usernameKey, username),
-      _set(_pemKeyContentKey, pemKeyContent),
+      _set(_ipKey, ip),
       _set(_portKey, port),
-      _set(_commandPrefixKey, commandPrefix),
+      _set(_secretKeyKey, secretKey),
     ]);
   }
 
@@ -78,11 +72,9 @@ class PersistenceService {
   }
 
   String get alias => _prefs.getString(_aliasKey) ?? 'My World';
-  String get hostname => _prefs.getString(_hostnameKey) ?? '';
-  String get username => _prefs.getString(_usernameKey) ?? 'ubuntu';
-  String get pemKeyContent => _prefs.getString(_pemKeyContentKey) ?? '';
-  int get port => _prefs.getInt(_portKey) ?? 22;
-  String get commandPrefix => _prefs.getString(_commandPrefixKey) ?? 'sudo docker exec minecraft send-command';
+  String get ip => _prefs.getString(_ipKey) ?? '';
+  int get port => _prefs.getInt(_portKey) ?? 8080;
+  String get secretKey => _prefs.getString(_secretKeyKey) ?? '';
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
   ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';
