@@ -1,113 +1,72 @@
 import 'dart:async';
 
+import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
-import 'package:admincraft/utils/toast_utils.dart';
-import 'package:dartssh2/dartssh2.dart';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class ConnectionService {
-  SSHClient? sshClient;
-  bool _isLogging = false;
-  StreamSubscription<List<int>>? _logSubscription;
-  Timer? _connectionCheckTimer;
+  WebSocketChannel? _channel;
+  StreamSubscription? _subscription;
+  Function? onConnectionLost; // Callback to handle connection loss
+  ConnectionStatus _status = ConnectionStatus.disconnected;
+  ConnectionStatus get status => _status;
 
-  Future<void> connectAndFetchLogs(Model model) async {
-    try {
-      sshClient = SSHClient(
-        await SSHSocket.connect(model.hostname, model.port),
-        username: model.username,
-        identities: SSHKeyPair.fromPem(model.pemKeyContent),
-      );
-      model.clearUserCommands();
-      await executeCommand('echo Connected!');
-    } catch (e) {
-      ToastUtils.showToastError(e.toString());
-      sshClient = null;
-    }
+  void connect(Model model, {bool reconnect = false}) {
+    _status = ConnectionStatus.connecting;
+    String jwtToken = createJwt('Admincraft', model.secretKey);
+    final uri = Uri.parse('ws://${model.ip}:${model.port}?token=$jwtToken');
+
+    _channel = WebSocketChannel.connect(uri);
+
+    // Listen for incoming messages
+    _subscription = _channel?.stream.listen(
+      (message) {
+        _status = ConnectionStatus.connected;
+        print('New message: $message');
+        model.appendOutputCommand(message);
+      },
+      onError: (error) {
+        print('Error: $error');
+        disconnect(model, reconnect: true);
+      },
+      onDone: () {
+        print('Connection closed.');
+        disconnect(model, reconnect: reconnect);
+      },
+      cancelOnError: true,
+    );
   }
 
-  Future<void> disconnect() async {
-    sshClient?.close();
-    sshClient = null;
-  }
-
-  Future<void> streamLogs(Model model) async {
-    if (sshClient == null || _isLogging) return;
-
-    _isLogging = true;
-
-    try {
-      final session = await sshClient!.execute('sudo docker compose logs -f');
-      _logSubscription = session.stdout.listen(
-        (data) {
-          final logLine = String.fromCharCodes(data);
-          model.appendOutputCommand(logLine);
-        },
-        onError: (error) {
-          ToastUtils.showToastError(error.toString());
-          disconnect();
-        },
-        onDone: () {
-          _isLogging = false;
-          disconnect();
-        },
-        cancelOnError: true,
-      );
-    } catch (e) {
-      ToastUtils.showToastError(e.toString());
-    }
-  }
-
-  Future<String> executeCommand(String command) async {
-    return executeCommandWithPrefix(command, "");
-  }
-
-  Future<String> executeCommandWithPrefix(String command, String prefix) async {
-    try {
-      if (sshClient == null) {
-        throw Exception("SSH client is not connected");
-      }
-
-      String fullCommand = prefix.isNotEmpty ? "$prefix $command" : command;
-
-      final session = await sshClient!.execute(fullCommand).timeout(const Duration(seconds: 5));
-      final outputBuffer = <int>[];
-
-      await for (var chunk in session.stdout.timeout(const Duration(seconds: 5), onTimeout: (_) {
-        session.close();
-        disconnect();
-        throw TimeoutException('The command timed out');
-      })) {
-        outputBuffer.addAll(chunk);
-      }
-
-      session.close();
-      return String.fromCharCodes(outputBuffer);
-    } catch (e) {
-      disconnect();
-      ToastUtils.showToastError(e.toString());
-      return "";
-    }
-  }
-
-  void startConnectionCheck() {
-    _connectionCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) async {
-      if (sshClient == null) {
-        timer.cancel();
-        return;
-      }
-      try {
-        final result = await executeCommand('echo alive');
-        if (result.isEmpty) {
-          await disconnect();
-        }
-      } catch (e) {
-        await disconnect();
-      }
+  String createJwt(String userId, String secretKey) {
+    final jwt = JWT({
+      'userId': userId,
+      'exp': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000,
     });
+    return jwt.sign(SecretKey(secretKey));
   }
 
-  void stopConnections() {
-    _connectionCheckTimer?.cancel();
-    _logSubscription?.cancel();
+  void executeCommand(String message) {
+    if (isConnected()) {
+      _channel?.sink.add(message);
+    } else {
+      print('WebSocket is not connected.');
+    }
+  }
+
+  void disconnect(Model model, {bool reconnect = false}) {
+    _status = ConnectionStatus.disconnected;
+    _subscription?.cancel();
+    _channel?.sink.close();
+    _subscription = null;
+    _channel = null;
+    // Notify the model or update the state
+    if (onConnectionLost != null) {
+      onConnectionLost!(model, reconnect); // Notify controller
+    }
+  }
+
+  bool isConnected() {
+    return _channel != null && _subscription != null;
   }
 }

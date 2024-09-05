@@ -1,12 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/url_utils.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Import for package info
@@ -23,11 +19,9 @@ class SettingsTab extends StatefulWidget {
 
 class _SettingsTabState extends State<SettingsTab> {
   final TextEditingController _aliasController = TextEditingController();
-  final TextEditingController _hostnameController = TextEditingController();
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _pemFileController = TextEditingController();
+  final TextEditingController _ipController = TextEditingController();
   final TextEditingController _portController = TextEditingController();
-  final TextEditingController _commandPrefixController = TextEditingController();
+  final TextEditingController _secretKeyController = TextEditingController();
   final TextEditingController _maxOutLinesController = TextEditingController();
   ThemeMode _selectedThemeMode = ThemeMode.system;
   final TextEditingController _fontSizeController = TextEditingController();
@@ -36,7 +30,7 @@ class _SettingsTabState extends State<SettingsTab> {
   late Model _model;
   String _version = '';
   String _buildNumber = '';
-  String _pemKeyContent = '';
+  bool _isSecretVisible = false;
 
   @override
   void initState() {
@@ -50,13 +44,11 @@ class _SettingsTabState extends State<SettingsTab> {
 
   Future<void> _loadSettings() async {
     _aliasController.text = _model.alias;
-    _hostnameController.text = _model.hostname;
-    _usernameController.text = _model.username;
-    _pemFileController.text = _model.pemKeyContent.isEmpty ? '' : 'Key Loaded';
+    _ipController.text = _model.ip;
     _portController.text = _model.port.toString();
+    _secretKeyController.text = _model.secretKey;
     _selectedThemeMode = _model.themeMode;
     _fontSizeController.text = _model.fontSize.toString();
-    _commandPrefixController.text = _model.commandPrefix;
     _maxOutLinesController.text = _model.maxOutLines.toString();
   }
 
@@ -66,29 +58,6 @@ class _SettingsTabState extends State<SettingsTab> {
       _version = packageInfo.version;
       _buildNumber = packageInfo.buildNumber;
     });
-  }
-
-  Future<void> _pickPemFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pem', 'key'],
-    );
-
-    if (result != null) {
-      if (kIsWeb) {
-        // For web
-        final fileBytes = result.files.first.bytes;
-        if (fileBytes == null) return;
-        _pemKeyContent = utf8.decode(fileBytes);
-      } else {
-        // For non-web platforms
-        _pemKeyContent = await File(result.files.single.path!).readAsString();
-      }
-
-      setState(() {
-        _pemFileController.text = 'Key Loaded';
-      });
-    }
   }
 
   @override
@@ -115,52 +84,13 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
           const SizedBox(height: 10),
 
-          // Hostname Input
+          // IP Input
           TextField(
-            controller: _hostnameController,
+            controller: _ipController,
             decoration: const InputDecoration(
               labelText: 'IP / Hostname',
               border: OutlineInputBorder(),
             ),
-          ),
-          const SizedBox(height: 10),
-
-          // Username Input
-          TextField(
-            controller: _usernameController,
-            decoration: const InputDecoration(
-              labelText: 'Username',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // PEM File Input
-          TextField(
-            controller: _pemFileController,
-            decoration: InputDecoration(
-              labelText: 'PEM Key',
-              border: const OutlineInputBorder(),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.folder_open),
-                    onPressed: _pickPemFile,
-                  ),
-                  if (_pemFileController.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        setState(() {
-                          _pemFileController.clear();
-                        });
-                      },
-                    ),
-                ],
-              ),
-            ),
-            readOnly: true,
           ),
           const SizedBox(height: 10),
 
@@ -175,13 +105,26 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
           const SizedBox(height: 10),
 
-          // Command Prefix Input
+          // Secret Key Input
           TextField(
-            controller: _commandPrefixController,
-            decoration: const InputDecoration(
-              labelText: 'Command Prefix',
-              border: OutlineInputBorder(),
+            controller: _secretKeyController,
+            decoration: InputDecoration(
+              labelText: 'Secret Key',
+              border: const OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _isSecretVisible ? Icons.visibility : Icons.visibility_off,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _isSecretVisible = !_isSecretVisible;
+                  });
+                },
+              ),
             ),
+            obscureText: !_isSecretVisible,
+            enableSuggestions: false,
+            autocorrect: false,
           ),
           const SizedBox(height: 10),
 
@@ -229,11 +172,9 @@ class _SettingsTabState extends State<SettingsTab> {
               // Proceed with saving if validation passes
               await _model.setConnectionDetails(
                 alias: _aliasController.text,
-                hostname: _hostnameController.text,
-                username: _usernameController.text,
-                pemKeyContent: _pemKeyContent,
+                ip: _ipController.text,
+                secretKey: _secretKeyController.text,
                 port: int.parse(_portController.text),
-                commandPrefix: _commandPrefixController.text,
               );
               await _model.setMaxOutputLines(maxOutLines); // Save maxOutLines
               widget.onSettingsSaved();
