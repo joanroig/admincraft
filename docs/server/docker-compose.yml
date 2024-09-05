@@ -1,6 +1,7 @@
 # main docker compose configuration, place it in ./docker-compose.yml
+version: "3"
 services:
-  bds:
+  minecraft:
     container_name: minecraft
     image: itzg/minecraft-bedrock-server
     restart: always
@@ -22,24 +23,39 @@ services:
       - 2222
     ports:
       - 19132:19132/udp
-      # - 39133:39133/udp
     volumes:
-      - ./server:/data
+      - ./minecraft:/data
     stdin_open: true
     tty: true
-    
+
   backup:
-    container_name: backups
+    container_name: backup
     image: kaiede/minecraft-bedrock-backup
     restart: always
     depends_on:
       # Make sure the minecraft service starts before the backup
-      bds:
+      minecraft:
         condition: service_healthy
-    volumes:   
+    volumes:
       # Map your backups folder into /backups
       - ./backups:/backups
       # Map the data folders for the server
-      - ./server:/data
+      - ./minecraft:/minecraft
       # (Optional) Map a configuration folder separately from the backups.
       - ./backup-config:/config
+
+  ws:
+    container_name: ws
+    image: node:latest
+    restart: always
+    depends_on:
+      # Make sure the minecraft service starts before the websockets service
+      minecraft:
+        condition: service_healthy
+    ports:
+      - 8080:8080
+    volumes:
+      - ./ws:/usr/src/app
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
+    working_dir: /usr/src/app
+    command: bash -c "apt-get update && apt-get install -y docker.io && npm install && npm start"
