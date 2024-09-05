@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/views/control_tab_view.dart';
 import 'package:admincraft/views/settings_tab_view.dart';
@@ -23,22 +24,41 @@ class _TabsState extends State<Tabs> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-
     _initializationFuture = _initialize();
   }
 
   Future<void> _initialize() async {
-    final model = Provider.of<Model>(context, listen: false);
-    final connectionController = Provider.of<ConnectionController>(context, listen: false);
-    // Attempt a connection on startup
-    connectionController.attemptConnection(model, startup: true);
+    // Defer connection attempt until after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final model = Provider.of<Model>(context, listen: false);
+      final connectionController = Provider.of<ConnectionController>(context, listen: false);
+      connectionController.attemptConnection(model, reconnect: false);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final connectionController = Provider.of<ConnectionController>(context);
     final model = Provider.of<Model>(context);
-    final isConnected = connectionController.sshClient != null;
+
+    String statusText;
+    Color statusColor;
+
+    switch (connectionController.status) {
+      case ConnectionStatus.connected:
+        statusText = model.alias;
+        statusColor = Colors.green;
+        break;
+      case ConnectionStatus.connecting:
+        statusText = 'Connecting...';
+        statusColor = Colors.orange;
+        break;
+      case ConnectionStatus.disconnected:
+      default:
+        statusText = 'Disconnected';
+        statusColor = Colors.red;
+        break;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -49,26 +69,19 @@ class _TabsState extends State<Tabs> with SingleTickerProviderStateMixin {
               Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Text(
-                  connectionController.isConnecting
-                      ? 'Connecting...'
-                      : isConnected
-                          ? model.alias
-                          : 'Disconnected',
+                  statusText,
                   style: TextStyle(
-                    color: connectionController.isConnecting
-                        ? Colors.orange
-                        : isConnected
-                            ? Colors.green
-                            : Colors.red,
+                    color: statusColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
               IconButton(
-                icon: isConnected
+                icon: connectionController.status == ConnectionStatus.connected
                     ? const Icon(Icons.stop_circle_rounded, color: Colors.red)
                     : const Icon(Icons.play_circle_rounded, color: Colors.green),
-                onPressed: connectionController.isConnecting ? null : () => connectionController.toggleConnection(model),
+                // Disable button when connecting
+                onPressed: connectionController.status == ConnectionStatus.connecting ? null : () => connectionController.toggleConnection(model),
               ),
             ],
           ),
@@ -88,16 +101,20 @@ class _TabsState extends State<Tabs> with SingleTickerProviderStateMixin {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              TerminalTab(isEnabled: isConnected),
-              ControlTab(isEnabled: isConnected),
-              SettingsTab(onSettingsSaved: () {
-                connectionController.disconnect();
-                connectionController.attemptConnection(model);
-              }),
-            ],
+          // Disable TabBarView when connecting
+          return AbsorbPointer(
+            absorbing: connectionController.status == ConnectionStatus.connecting, // Disable interaction while connecting
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                TerminalTab(isEnabled: connectionController.status == ConnectionStatus.connected),
+                ControlTab(isEnabled: connectionController.status == ConnectionStatus.connected),
+                SettingsTab(onSettingsSaved: () {
+                  connectionController.disconnect(model);
+                  connectionController.attemptConnection(model);
+                }),
+              ],
+            ),
           );
         },
       ),

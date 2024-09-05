@@ -47,7 +47,7 @@ Minecraft main port
 - Once connected, execute those commands to open the needed ports:
 
 ```
-iptables -I INPUT -p udp -m udp --dport 19132 -j ACCEPT
+sudo iptables -I INPUT -p udp -m udp --dport 19132 -j ACCEPT
 iptables-save > /etc/iptables/rules.v4
 ```
 
