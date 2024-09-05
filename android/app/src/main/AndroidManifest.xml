@@ -42,7 +42,7 @@
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>    
-    <!-- The INTERNET permission is required for opening SSH connections. -->
+    <!-- Allow connecting to the Internet -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Allow interact with other apps to open URLs -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>

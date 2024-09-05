@@ -10,11 +10,9 @@ class Model with ChangeNotifier {
   String get output => _output;
 
   String get alias => _persistenceService.alias;
-  String get hostname => _persistenceService.hostname;
-  String get username => _persistenceService.username;
-  String get pemKeyContent => _persistenceService.pemKeyContent;
+  String get ip => _persistenceService.ip;
   int get port => _persistenceService.port;
-  String get commandPrefix => _persistenceService.commandPrefix;
+  String get secretKey => _persistenceService.secretKey;
   int get maxOutLines => _persistenceService.maxOutLines;
   ThemeMode get themeMode => _persistenceService.themeMode;
   String get font => _persistenceService.font;
@@ -33,19 +31,15 @@ class Model with ChangeNotifier {
 
   Future<void> setConnectionDetails({
     required String alias,
-    required String hostname,
-    required String username,
-    required String pemKeyContent,
+    required String ip,
     required int port,
-    required String commandPrefix,
+    required String secretKey,
   }) async {
     await _updatePersistenceService(() => _persistenceService.saveConnectionDetails(
           alias: alias,
-          hostname: hostname,
-          username: username,
-          pemKeyContent: pemKeyContent,
+          ip: ip,
           port: port,
-          commandPrefix: commandPrefix,
+          secretKey: secretKey,
         ));
   }
 
