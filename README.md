@@ -9,7 +9,7 @@
 </h1>
 
 <p align="center">
-  Multiplatform app for controlling Dockerized Minecraft Bedrock servers via SSH, built with Flutter.
+  Multiplatform app for controlling Dockerized Minecraft Bedrock servers, built with Flutter.
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 
 ## ![Admincraft logo](docs/logo/variants/dirt.png) What is Admincraft?
 
-Admincraft is a multiplatform app for managing Minecraft Bedrock servers in Docker containers. Since RCON isn't available for Bedrock, Admincraft uses SSH to execute Minecraft commands and handle server maintenance tasks like restarts and updates, all through an intuitive GUI.
+Admincraft is a multiplatform app for managing Minecraft Bedrock servers in Docker containers. Given that RCON isn't available for Bedrock, Admincraft uses the [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) project to interact with the Minecraft server. This approach allows for secure and real-time command execution and server management through a WebSocket connection, providing an intuitive GUI for tasks such as issuing commands, performing server maintenance, and monitoring server logs.
 
 ### Current project status
 
@@ -38,9 +38,9 @@ Admincraft is a multiplatform app for managing Minecraft Bedrock servers in Dock
 
 ## ![Admincraft logo](docs/logo/variants/pig.png) Getting Started
 
-You need a Minecraft Bedrock server to use Admincraft. Visit the [server setup guide](docs/server/SERVER_SETUP.md) to set up yours for free.
+You need a Minecraft Bedrock server and [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) running in Docker to use Admincraft. Visit the [server setup guide](docs/server/SERVER_SETUP.md) to set up yours for free!
 
-Once you have your server, download Admincraft for your platform from the [releases](https://github.com/joanroig/admincraft/releases) page, add your server in the app, and you're good to go!
+Once you have your server ready, [download Admincraft for your platform](https://github.com/joanroig/admincraft/releases), add your server in the app, and you're good to go!
 
 ## ![Admincraft logo](docs/logo/variants/obsidian.png) Development
 
@@ -73,6 +73,7 @@ Docker tools
 
 - [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server)
 - [Bedrockifier](https://github.com/Kaiede/Bedrockifier)
+- [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket)
 
 Fonts
 
