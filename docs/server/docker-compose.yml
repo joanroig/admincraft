@@ -1,4 +1,3 @@
-# main docker compose configuration, place it in ./docker-compose.yml
 version: "3"
 services:
   minecraft:
@@ -44,9 +43,9 @@ services:
       # (Optional) Map a configuration folder separately from the backups.
       - ./backup-config:/config
 
-  ws:
-    container_name: ws
-    image: node:latest
+  websocket:
+    container_name: websocket
+    image: joanroig/admincraft-websocket:latest
     restart: always
     depends_on:
       # Make sure the minecraft service starts before the websockets service
@@ -55,7 +54,6 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ./ws:/usr/src/app
       - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
-    working_dir: /usr/src/app
-    command: bash -c "apt-get update && apt-get install -y docker.io && npm install && npm start"
+    environment:
+      SECRET_KEY: your_secret_key_here
