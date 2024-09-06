@@ -1,6 +1,6 @@
 # ![Admincraft logo](../logo/variants/enderman.png) Minecraft Bedrock Server on Oracle Cloud (Always Free)
 
-This guide provides instructions for setting up a Minecraft Bedrock server on Oracle Cloud's Always Free tier. It covers everything from creating a virtual machine (VM) on Oracle Cloud Infrastructure to configuring the server with Docker and managing the server using common commands. After finishing this guide, you'll be able to control your server with Admincraft!
+This guide provides instructions for setting up a Minecraft Bedrock server on [Oracle Cloud's Always Free tier](https://www.oracle.com/cloud/free/). It covers everything from creating a virtual machine (VM) on Oracle Cloud Infrastructure to configuring the server with Docker and managing the server using common commands. After finishing this guide, you'll be able to control your server with Admincraft!
 
 ## Setup a VM on Oracle Cloud
 
@@ -41,26 +41,49 @@ Minecraft main port
 - Description: minecraft port
 ```
 
-## Setup
+## Setup the Minecraft server
 
 - Login via [MobaXterm](https://mobaxterm.mobatek.net/download.html) or the tool of your choice by using the IP, SSH Keys and username (ubuntu if you choose an Ubuntu image).
-- Once connected, execute those commands to open the needed ports:
+- Once connected, execute those commands to open the needed ports for Minecraft and Admincraft WebSocket:
 
 ```
-sudo iptables -I INPUT -p udp -m udp --dport 19132 -j ACCEPT
-iptables-save > /etc/iptables/rules.v4
+sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 19132 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT
+sudo netfilter-persistent save
 ```
 
-- Download the [docker-compose.yml](docker-compose.yml) file, edit the settings you like, and upload it to the home directory in the server. Alternatively, customize yours from scratch using [the original file](https://github.com/itzg/docker-minecraft-bedrock-server/blob/master/examples/docker-compose.yml).
+- Edit the [docker-compose.yml](docker-compose.yml) file:
+  - Change the `services.websocket.environment.SECRET_KEY` for a strong password you will use to control the server with Admincraft.
+  - Change any other settings you like in `services.minecraft`, like the `LEVEL_NAME` or `LEVEL_SEED`, you can see a full list [here](https://github.com/itzg/docker-minecraft-bedrock-server?tab=readme-ov-file#server-properties).
+- Make sure to edit the [backups-config/config.yml](backups-config/config.yml) file, the `worlds` setting should match the one you have introduced in the setting `LEVEL_NAME` in the [docker-compose.yml](docker-compose.yml). You can also change the backups frequency as you like.
+- Upload the [docker-compose.yml](docker-compose.yml) file and the [backups-config](backups-config) folder to the home folder of your server.
 - Run `sudo docker compose up -d` to start your server for the first time.
+- You should now be able to connect to your server with Minecraft and with Admincraft!
 
-## Common Commands
+> **_NOTE:_** If you enabled the setting `ALLOW_LIST = true` in the [docker-compose.yml](docker-compose.yml), you will need to whitelist the users you want to be able to connect with the command `whitelist add username`.
+
+## Connect with Admincraft
+
+- Open Admincraft and use the server IP and the SECRET_KEY you set in the previous steps.
+- Admincraft should connect automatically and display the server logs. If there is any issue you will be prompted with an error pop-up.
+
+## Automatic Upgrade and Backups
+
+To update the Minecraft server to the latest version, simply restart it from the Admincraft Control Panel, or execute this command in the server:
+
+`sudo docker compose restart`
+
+## Common Server Commands
 
 See all available commands [here](https://minecraftbedrock-archive.fandom.com/wiki/Commands/List_of_Commands).
 
-### Run containers
+### Run containers in the background (detached mode)
 
 `sudo docker compose up -d`
+
+### Run containers in the foreground (for debugging)
+
+`sudo docker compose up`
 
 ### Stop containers
 
@@ -70,15 +93,15 @@ See all available commands [here](https://minecraftbedrock-archive.fandom.com/wi
 
 `sudo docker compose restart`
 
-### Remove all containers (the world will NOT be lost)
+### Remove all containers (the world will not be lost)
 
 `sudo docker compose rm -fsv`
 
-### Remove all server data (the world will be lost!)
+### Remove all server data (the world WILL BE LOST!)
 
-`sudo rm -rf data/`
+`sudo rm -rf minecraft/`
 
-### See logs interactively, or see X log lines
+### See logs interactively
 
 `sudo docker compose logs -f`
 
@@ -86,7 +109,14 @@ See all available commands [here](https://minecraftbedrock-archive.fandom.com/wi
 
 `sudo docker compose logs --tail 2`
 
-### Send minecraft commands from outside the container
+### See logs interactively for a specific container
+
+```
+sudo docker compose logs admincraft -f
+sudo docker compose logs websocket -f
+```
+
+### Send minecraft commands from outside the container (this is exactly how Admincraft controls the server)
 
 ```
 sudo docker exec minecraft send-command <commandname>
@@ -107,20 +137,31 @@ whitelist add moaibeats
 give moaibeats coal 20
 ```
 
-## Automatic Upgrade and Backups
+## Architecture
 
-To update the server, simply restart the docker container:
+The system consists of three main containers running in a Docker environment:
 
-`sudo docker compose restart`
+1. **Minecraft Bedrock Server** (`minecraft`):
 
-The docker compose configuration already has the backups enabled, make sure to download the [config.yml](config.yml) file, edit it as you like (the world name should match the one you have introduced in [docker-compose.yml](docker-compose.yml)!), and finally upload it to a folder named `backup-config` in the home directory of the server.
+   - Exposes the Minecraft server to the internet through port `19132/udp`.
+   - Accepts incoming connections from Minecraft clients.
+   - SSH access is enabled for the backup process, and the Minecraft server data is stored in a mounted volume.
+   - Server configuration is set in the `docker-compose.yml` file, allowing for customization of settings such as world seed, level name, and gameplay modes.
 
-## Connect with Admincraft
+2. **Admincraft WebSocket Server** (`websocket`):
 
-Open Admincraft and use the server IP and the certificate you used to connect to your machine in the previous steps.
+   - Accessible via port `8080`, allowing secure control of the Minecraft server using Admincraft.
+   - The WebSocket server authenticates incoming connections using JWT (JSON Web Tokens), with the `SECRET_KEY` stored in environment variables.
+   - Once authenticated, users can issue Minecraft server commands, which are executed in real time within the Minecraft container.
+   - Additionally, certain Docker-level commands (like restarting the server) can be executed through the WebSocket interface, but these are restricted to predefined key commands for security reasons.
+
+3. **Backup Server** (`backup`):
+   - Connects to the Minecraft server every few hours via SSH to back up world data.
+   - The backup server uses a mounted volume to store backup files in a dedicated folder, ensuring Minecraft server data can be restored if needed.
+   - Backup configurations, including the backup schedule and the target Minecraft server, are stored in the `backups-config/config.yml` file.
 
 ## Credits and sources
 
 - https://github.com/itzg/docker-minecraft-bedrock-server
-- https://github.com/techtute/minecraft-bedrock-tools/blob/main/install-bedrock-server.sh
 - https://github.com/Kaiede/Bedrockifier
+- https://docs.oracle.com/en-us/iaas/developer-tutorials/tutorials/apache-on-ubuntu/01oci-ubuntu-apache-summary.htm
