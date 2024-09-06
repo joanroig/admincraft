@@ -9,7 +9,7 @@ External contributions are highly appreciated, but please be patient as they are
 ## Prerequisites
 
 - **Familiarity with GitHub Issues and Pull Requests.**
-- **Have a basic understanding of Flutter, Docker and SSH.**
+- **Have a basic understanding of Flutter, Docker and WebSockets.**
 - **Have Admincraft set up locally for testing.**
 
 ## Issues Before PRs
