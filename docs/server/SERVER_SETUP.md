@@ -97,6 +97,14 @@ See all available commands [here](https://minecraftbedrock-archive.fandom.com/wi
 
 `sudo docker compose rm -fsv`
 
+### Remove all containers and volumes (the world will not be lost)
+
+`sudo docker rm -vf $(sudo docker ps -aq)`
+
+### Remove all images (the world will not be lost)
+
+`sudo docker rmi -f $(sudo docker images -aq)`
+
 ### Remove all server data (the world WILL BE LOST!)
 
 `sudo rm -rf minecraft/`
@@ -136,6 +144,10 @@ sudo docker exec minecraft send-command time set 2000
 whitelist add moaibeats
 give moaibeats coal 20
 ```
+
+### Go into the container's shell
+
+`sudo docker exec -ti minecraft /bin/bash`
 
 ## Architecture
 
