@@ -33,18 +33,28 @@ Boot volume
 
 - In `Networking > Virtual cloud networks > your network > Subnet Details`, select `Security List Details` and press `Add Ingress Rules`:
 
+### Minecraft port
+
 ```
-Minecraft main port
 - Source CIDR: 0.0.0.0/0
 - IP Protocol: UDP
 - Destination Port Range: 19132
-- Description: minecraft port
+- Description: Minecraft port
+```
+
+### Admincraft WebSocket port
+
+```
+- Source CIDR: 0.0.0.0/0
+- IP Protocol: TCP
+- Destination Port Range: 8080
+- Description: Admincraft WebSocket port
 ```
 
 ## Setup the Minecraft server
 
-- Login via [MobaXterm](https://mobaxterm.mobatek.net/download.html) or the tool of your choice by using the IP, SSH Keys and username (ubuntu if you choose an Ubuntu image).
-- Once connected, execute those commands to open the needed ports for Minecraft and Admincraft WebSocket:
+1. Login via [MobaXterm](https://mobaxterm.mobatek.net/download.html) or the tool of your choice by using the IP, SSH Keys and username (ubuntu if you choose an Ubuntu image).
+2. Once connected, execute those commands to open the needed ports for Minecraft and Admincraft WebSocket:
 
 ```
 sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 19132 -j ACCEPT
@@ -52,19 +62,41 @@ sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT
 sudo netfilter-persistent save
 ```
 
-- Edit the [docker-compose.yml](docker-compose.yml) file:
-  - Change the `services.websocket.environment.SECRET_KEY` for a strong password you will use to control the server with Admincraft.
-  - Change any other settings you like in `services.minecraft`, like the `LEVEL_NAME` or `LEVEL_SEED`, you can see a full list [here](https://github.com/itzg/docker-minecraft-bedrock-server?tab=readme-ov-file#server-properties).
-- Make sure to edit the [backups-config/config.yml](backups-config/config.yml) file, the `worlds` setting should match the one you have introduced in the setting `LEVEL_NAME` in the [docker-compose.yml](docker-compose.yml). You can also change the backups frequency as you like.
-- Upload the [docker-compose.yml](docker-compose.yml) file and the [backups-config](backups-config) folder to the home folder of your server.
-- Run `sudo docker compose up -d` to start your server for the first time.
-- You should now be able to connect to your server with Minecraft and with Admincraft!
+3. Edit the [docker-compose.yml](docker-compose.yml) file:
+
+   - Change the `services.websocket.environment.SECRET_KEY` variable for a strong password you will use to control the server with Admincraft.
+   - Change any other variables you like in `services.minecraft`, like the `LEVEL_NAME` or `LEVEL_SEED`, you can see a full list [here](https://github.com/itzg/docker-minecraft-bedrock-server?tab=readme-ov-file#server-properties).
+
+4. Make sure to edit the [backups-config/config.yml](backups-config/config.yml) file, the `worlds` setting should match the one you have introduced in the setting `LEVEL_NAME` in the [docker-compose.yml](docker-compose.yml). You can also change the backups frequency as you like.
+
+> **_NOTE:_** If you want to enable SSL, follow the next chapter before continuing (recommended)!
+
+5. Upload the [docker-compose.yml](docker-compose.yml) file and the [backups-config](backups-config) folder to the home folder of your server.
+6. Run `sudo docker compose up -d` to start your server for the first time.
+7. You should now be able to connect to your server with Minecraft and with Admincraft!
 
 > **_NOTE:_** If you enabled the setting `ALLOW_LIST = true` in the [docker-compose.yml](docker-compose.yml), you will need to whitelist the users you want to be able to connect with the command `whitelist add username`.
 
-## Connect with Admincraft
+## Optional: Configure SSL
 
-- Open Admincraft and use the server IP and the SECRET_KEY you set in the previous steps.
+1. Edit the [certs/makecerts.sh](certs/makecerts.sh) by changing the variable `COMMON_NAME=YOUR_IP_HERE` for your server IP.
+2. Upload the [certs](certs) folder to the home folder of your server.
+3. Make the script executable, format it for Linux, and run it to generate the certificates:
+
+```
+cd certs
+chmod +x makecerts.sh
+sed -i 's/\r$//' makecerts.sh
+./makecerts.sh
+```
+
+4. Ensure that the `services.websocket.environment.USE_SSL` variable in the [docker-compose.yml](docker-compose.yml) file is set to true.
+
+5. The `server.crt` certificate can be downloaded directly from the server to avoid Man-in-the-Middle attacks. If using a safe network, it can download it from [https://IP:8080/getcert](https://IP:8080/getcert) ignoring the security warnings.
+
+## Login to Admincraft
+
+- Open Admincraft and use the server IP and the SECRET_KEY you set in the previous steps. If you enabled SSL, also provide the `server.crt`.
 - Admincraft should connect automatically and display the server logs. If there is any issue you will be prompted with an error pop-up.
 
 ## Automatic Upgrade and Backups
