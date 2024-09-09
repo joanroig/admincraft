@@ -13,6 +13,7 @@ class Model with ChangeNotifier {
   String get ip => _persistenceService.ip;
   int get port => _persistenceService.port;
   String get secretKey => _persistenceService.secretKey;
+  String get certificate => _persistenceService.certificate;
   int get maxOutLines => _persistenceService.maxOutLines;
   ThemeMode get themeMode => _persistenceService.themeMode;
   String get font => _persistenceService.font;
@@ -34,12 +35,14 @@ class Model with ChangeNotifier {
     required String ip,
     required int port,
     required String secretKey,
+    required String certificate,
   }) async {
     await _updatePersistenceService(() => _persistenceService.saveConnectionDetails(
           alias: alias,
           ip: ip,
           port: port,
           secretKey: secretKey,
+          certificate: certificate,
         ));
   }
 
