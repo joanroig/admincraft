@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/url_utils.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Import for package info
@@ -22,6 +26,7 @@ class _SettingsTabState extends State<SettingsTab> {
   final TextEditingController _ipController = TextEditingController();
   final TextEditingController _portController = TextEditingController();
   final TextEditingController _secretKeyController = TextEditingController();
+  final TextEditingController _certificateController = TextEditingController();
   final TextEditingController _maxOutLinesController = TextEditingController();
   ThemeMode _selectedThemeMode = ThemeMode.system;
   final TextEditingController _fontSizeController = TextEditingController();
@@ -31,6 +36,7 @@ class _SettingsTabState extends State<SettingsTab> {
   String _version = '';
   String _buildNumber = '';
   bool _isSecretVisible = false;
+  String _certificateContent = '';
 
   @override
   void initState() {
@@ -40,6 +46,7 @@ class _SettingsTabState extends State<SettingsTab> {
     _currentFontSize = _model.fontSize;
     _loadSettings();
     _loadAppInfo(); // Load app version and build number
+    _updateCertificateMessage(); // Update certificate message on init
   }
 
   Future<void> _loadSettings() async {
@@ -47,6 +54,7 @@ class _SettingsTabState extends State<SettingsTab> {
     _ipController.text = _model.ip;
     _portController.text = _model.port.toString();
     _secretKeyController.text = _model.secretKey;
+    _certificateContent = _model.certificate;
     _selectedThemeMode = _model.themeMode;
     _fontSizeController.text = _model.fontSize.toString();
     _maxOutLinesController.text = _model.maxOutLines.toString();
@@ -58,6 +66,35 @@ class _SettingsTabState extends State<SettingsTab> {
       _version = packageInfo.version;
       _buildNumber = packageInfo.buildNumber;
     });
+  }
+
+  void _updateCertificateMessage() {
+    if (_certificateContent.isNotEmpty) {
+      _certificateController.text = 'Certificate Loaded and SSL Enabled';
+    } else {
+      _certificateController.text = 'SSL Disabled, Load a Server Certificate to Enable SSL';
+    }
+  }
+
+  Future<void> _pickCertificateFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['crt'],
+    );
+
+    if (result != null) {
+      if (kIsWeb) {
+        final fileBytes = result.files.first.bytes;
+        if (fileBytes == null) return;
+        _certificateContent = utf8.decode(fileBytes);
+      } else {
+        _certificateContent = await File(result.files.single.path!).readAsString();
+      }
+
+      setState(() {
+        _updateCertificateMessage(); // Update message after loading the certificate
+      });
+    }
   }
 
   @override
@@ -127,6 +164,36 @@ class _SettingsTabState extends State<SettingsTab> {
             autocorrect: false,
           ),
           const SizedBox(height: 10),
+          // Certificate File Input
+          TextField(
+            controller: _certificateController,
+            decoration: InputDecoration(
+              labelText: 'Server Certificate',
+              border: const OutlineInputBorder(),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.folder_open),
+                    onPressed: _pickCertificateFile,
+                  ),
+                  if (_certificateContent.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _certificateController.clear();
+                          _certificateContent = '';
+                          _updateCertificateMessage(); // Update message when clearing the certificate
+                        });
+                      },
+                    ),
+                ],
+              ),
+            ),
+            readOnly: true,
+          ),
+          const SizedBox(height: 10),
 
           // Max Output Lines Input
           TextField(
@@ -174,6 +241,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 alias: _aliasController.text,
                 ip: _ipController.text,
                 secretKey: _secretKeyController.text,
+                certificate: _certificateContent,
                 port: int.parse(_portController.text),
               );
               await _model.setMaxOutputLines(maxOutLines); // Save maxOutLines
@@ -273,7 +341,6 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
           const SizedBox(height: 40),
 
-// At the bottom of your Column widget
           RichText(
             textAlign: TextAlign.center,
             text: TextSpan(

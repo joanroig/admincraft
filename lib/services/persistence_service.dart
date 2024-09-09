@@ -6,6 +6,7 @@ class PersistenceService {
   static const _ipKey = 'ip';
   static const _portKey = 'port';
   static const _secretKeyKey = 'secretKey';
+  static const _certificateKey = 'certificateKey';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
   static const _fontKey = 'font';
@@ -38,12 +39,14 @@ class PersistenceService {
     required String ip,
     required int port,
     required String secretKey,
+    required String certificate,
   }) async {
     await Future.wait([
       _set(_aliasKey, alias),
       _set(_ipKey, ip),
       _set(_portKey, port),
       _set(_secretKeyKey, secretKey),
+      _set(_certificateKey, certificate),
     ]);
   }
 
@@ -75,6 +78,7 @@ class PersistenceService {
   String get ip => _prefs.getString(_ipKey) ?? '';
   int get port => _prefs.getInt(_portKey) ?? 8080;
   String get secretKey => _prefs.getString(_secretKeyKey) ?? '';
+  String get certificate => _prefs.getString(_certificateKey) ?? '';
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
   ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';
