@@ -16,7 +16,10 @@ services:
       DIFFICULTY: normal
       ALLOW_CHEATS: true
       ALLOW_LIST: true
-      CLIENT_SIDE_CHUNK_GENERATION_ENABLED: true
+      CLIENT_SIDE_CHUNK_GENERATION_ENABLED: false # Beware: enabling this may cause stuttering/freezing
+      MAX_THREADS: 0 # Maximum threads
+      VIEW_DISTANCE: 20
+
     # Expose the mc-server-runner's SSH port to just the backup container
     expose:
       - 2222
@@ -54,12 +57,8 @@ services:
     ports:
       - 8080:8080
     volumes:
-      # Mount Docker socket
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Needed if environment.USE_SSL is "true"
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
       - ./certs:/usr/src/app/certs:ro
     environment:
-      # Login password to use in admincraft (use alphanumeric characters only)
-      SECRET_KEY: YOUR_SECRET_KEY_HERE
-      # Enable or disable SSL
-      USE_SSL: "false"
+      SECRET_KEY: 7VHKHrngbqrAvxrrDM4v4kjMtkhjhqK6RjvuzhTmNH4EaqbesTLBrna82ZGgiYf4
+      USE_SSL: "true" # Change to "false" to disable SSL
