@@ -27,6 +27,10 @@
   </a>
 </p>
 
+<p align="center">
+  <img alt="Admincraft Mockup made with https://previewed.app/" src="mockup.png">
+</p>
+
 ## ![Admincraft logo](docs/logo/variants/dirt.png) What is Admincraft?
 
 Admincraft is a multiplatform app for managing Minecraft Bedrock servers in Docker containers. Given that RCON isn't available for Bedrock, Admincraft uses the [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) project to interact with the Minecraft server. This approach allows for secure and real-time command execution and server management through a WebSocket connection, providing an intuitive GUI for tasks such as issuing commands, performing server maintenance, and monitoring server logs.
