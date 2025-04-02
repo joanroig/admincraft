@@ -1,6 +1,6 @@
 ## ![Admincraft logo](variants/dirt.png) Logo Design
 
-The [variants](variants) folder the Admincraft logo and its alternative versions. The official logo can be found at the [variants/dirt.png](variants/dirt.png).
+The [variants](variants) folder contains the Admincraft logo and its alternative versions. The official logo can be found at [variants/dirt.png](variants/dirt.png).
 
 ### Specification
 
