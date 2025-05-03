@@ -12,8 +12,21 @@ on:
       - completed
 
 jobs:
-  build-android:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - platform: android
+            os: ubuntu-latest
+            build_cmd: flutter build apk --release
+            output: build/app/outputs/flutter-apk/app-release.apk
+            ext: apk
+          - platform: windows
+            os: windows-latest
+            build_cmd: flutter build windows --release
+            output: build/windows/x64/runner/Release/app.exe
+            ext: exe
     steps:
       - uses: actions/checkout@v3
         with:
@@ -24,52 +37,38 @@ jobs:
           channel: stable
       - name: Install dependencies
         run: flutter pub get
-      - name: Build Android APK
-        run: flutter build apk --release
-      - name: Archive Android APK
+      - name: Build ${{ matrix.platform }}
+        run: ${{ matrix.build_cmd }}
+      - name: Move output to build dir with version
+        shell: bash
+        run: |
+          VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            OUT_VERSION=${GITHUB_REF#refs/tags/}
+          else
+            OUT_VERSION=${VERSION}-build.${{ github.run_number }}
+          fi
+          mkdir -p dist
+          if [ "${{ matrix.platform }}" = "android" ]; then
+            mv ${{ matrix.output }} dist/admincraft-android-${OUT_VERSION}.${{ matrix.ext }}
+          else
+            mv ${{ matrix.output }} dist/admincraft-windows-${OUT_VERSION}.${{ matrix.ext }}
+          fi
+      - name: Upload build as workflow artifact (optional)
+        if: false # disabled to save space
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-      - name: Install dependencies
-        run: flutter pub get
-      - name: Build Windows Executable
-        run: flutter build windows --release
-      - name: Archive Windows Executable
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-exe
-          path: build/windows/x64/runner/Release/
+          name: ${{ matrix.platform }}
+          path: dist/*
 
   release:
-    needs: [build-android, build-windows]
+    needs: build
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Download Android APK
-        uses: actions/download-artifact@v4
-        with:
-          name: android-apk
-          path: dist
-      - name: Download Windows Executable
-        uses: actions/download-artifact@v4
-        with:
-          name: windows-exe
-          path: dist/Release
       - name: Get version
         id: get_version
         run: |
@@ -82,13 +81,11 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
-      - name: Rename APK with version
-        run: mv dist/app-release.apk dist/admincraft-android-${{ steps.get_version.outputs.version }}.apk
-      - name: Zip Windows Executable with version
+      - name: Collect built files
         run: |
-          cd dist/Release
-          zip -r ../../admincraft-windows-${{ steps.get_version.outputs.version }}.zip .
-          cd ../../
+          mkdir -p dist
+          # Copy from all runners (if using a shared storage or upload step)
+          # In this setup, the files should be committed or otherwise made available
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -97,6 +94,6 @@ jobs:
           prerelease: ${{ steps.get_version.outputs.prerelease }}
           files: |
             dist/admincraft-android-${{ steps.get_version.outputs.version }}.apk
-            dist/admincraft-windows-${{ steps.get_version.outputs.version }}.zip
+            dist/admincraft-windows-${{ steps.get_version.outputs.version }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
