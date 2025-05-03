@@ -61,12 +61,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Download Android APK
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: android-apk
           path: dist
       - name: Download Windows Executable
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: windows-exe
           path: dist/Release
@@ -83,11 +83,11 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
       - name: Rename APK with version
-        run: mv dist/app-release.apk dist/app-${{ steps.get_version.outputs.version }}.apk
+        run: mv dist/app-release.apk dist/admincraft-android-${{ steps.get_version.outputs.version }}.apk
       - name: Zip Windows Executable with version
         run: |
           cd dist/Release
-          zip -r ../../app-${{ steps.get_version.outputs.version }}.zip .
+          zip -r ../../admincraft-windows-${{ steps.get_version.outputs.version }}.zip .
           cd ../../
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -96,7 +96,7 @@ jobs:
           name: Release ${{ steps.get_version.outputs.version }}
           prerelease: ${{ steps.get_version.outputs.prerelease }}
           files: |
-            dist/app-${{ steps.get_version.outputs.version }}.apk
-            dist/app-${{ steps.get_version.outputs.version }}.zip
+            dist/admincraft-android${{ steps.get_version.outputs.version }}.apk
+            dist/admincraft-windows-${{ steps.get_version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
