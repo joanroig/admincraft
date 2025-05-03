@@ -25,7 +25,7 @@ jobs:
           - platform: windows
             os: windows-latest
             build_cmd: flutter build windows --release
-            output: build/windows/x64/runner/Release/admincraft.exe
+            output: build/windows/x64/runner/Release/admincraft.zip
             ext: zip
     steps:
       - uses: actions/checkout@v3
@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           cd build/windows/x64/runner/Release
-          zip -r admincraft-windows-${{ steps.get_version.outputs.version }}.zip *
+          zip -r admincraft.zip *
       - name: Move output to build dir with version
         shell: bash
         run: |
