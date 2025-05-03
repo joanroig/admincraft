@@ -37,6 +37,9 @@ jobs:
           channel: stable
       - name: Install dependencies
         run: flutter pub get
+      - name: Install zip (Windows only)
+        if: matrix.platform == 'windows'
+        run: choco install zip -y
       - name: Build ${{ matrix.platform }}
         run: ${{ matrix.build_cmd }}
       - name: Get version
