@@ -26,7 +26,7 @@ jobs:
             os: windows-latest
             build_cmd: flutter build windows --release
             output: build/windows/x64/runner/Release/admincraft.exe
-            ext: exe
+            ext: zip
     steps:
       - uses: actions/checkout@v3
         with:
@@ -45,21 +45,27 @@ jobs:
         run: |
           VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            OUT_VERSION=${GITHUB_REF#refs/tags/}
+            VERSION_OUT=${GITHUB_REF#refs/tags/}
           else
-            OUT_VERSION=${VERSION}-build.${{ github.run_number }}
+            VERSION_OUT=${VERSION}-${{ github.run_number }}
           fi
-          echo "out_version=$OUT_VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION_OUT" >> $GITHUB_OUTPUT
+      - name: Prepare Windows zip
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          cd build/windows/x64/runner/Release
+          zip -r admincraft-windows-${{ steps.get_version.outputs.version }}.zip admincraft.exe flutter_windows.dll url_launcher_windows_plugin.dll data
       - name: Move output to build dir with version
         shell: bash
         run: |
           mkdir -p dist
-          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.out_version }}.${{ matrix.ext }}
+          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.version }}.${{ matrix.ext }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.out_version }}
-          path: dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.out_version }}.${{ matrix.ext }}
+          name: admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.version }}
+          path: dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.version }}.${{ matrix.ext }}
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -102,7 +108,7 @@ jobs:
           generate_release_notes: true
           files: |
             dist/admincraft-android-${{ steps.get_version.outputs.version }}.apk
-            dist/admincraft-windows-${{ steps.get_version.outputs.version }}.exe
+            dist/admincraft-windows-${{ steps.get_version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Delete build artifacts from GitHub
