@@ -12,7 +12,7 @@ on:
       - completed
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -26,29 +26,50 @@ jobs:
         run: flutter pub get
       - name: Build Android APK
         run: flutter build apk --release
-      - name: Build Windows Executable
-        run: flutter build windows --release
-      - name: Archive build artifacts
+      - name: Archive Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
-          path: |
-            build/app/outputs/apk/release/app-release.apk
-            build/windows/x64/runner/Release/
+          name: android-apk
+          path: build/app/outputs/apk/release/app-release.apk
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build Windows Executable
+        run: flutter build windows --release
+      - name: Archive Windows Executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: build/windows/x64/runner/Release/
 
   release:
-    needs: build
+    needs: [build-android, build-windows]
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Download build artifacts
+      - name: Download Android APK
         uses: actions/download-artifact@v3
         with:
-          name: build-artifacts
+          name: android-apk
           path: dist
+      - name: Download Windows Executable
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-exe
+          path: dist/Release
       - name: Get version
         id: get_version
         run: |
@@ -61,6 +82,13 @@ jobs:
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+      - name: Rename APK with version
+        run: mv dist/app-release.apk dist/app-${{ steps.get_version.outputs.version }}.apk
+      - name: Zip Windows Executable with version
+        run: |
+          cd dist/Release
+          zip -r ../../app-${{ steps.get_version.outputs.version }}.zip .
+          cd ../../
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -68,7 +96,7 @@ jobs:
           name: Release ${{ steps.get_version.outputs.version }}
           prerelease: ${{ steps.get_version.outputs.prerelease }}
           files: |
-            dist/app-release.apk
-            dist/Release/*
+            dist/app-${{ steps.get_version.outputs.version }}.apk
+            dist/app-${{ steps.get_version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
