@@ -58,7 +58,7 @@ jobs:
         shell: bash
         run: |
           cd build/windows/x64/runner/Release
-          zip -r admincraft-windows-${{ steps.get_version.outputs.version }}.zip admincraft.exe flutter_windows.dll url_launcher_windows_plugin.dll data
+          zip -r admincraft-windows-${{ steps.get_version.outputs.version }}.zip *
       - name: Move output to build dir with version
         shell: bash
         run: |
