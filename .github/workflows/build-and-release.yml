@@ -6,10 +6,11 @@ concurrency:
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Bump Version & Release"]
-    types:
-      - completed
+  push:
+    tags:
+      - '*'
+    branches:
+      - main
 
 jobs:
   build-android:
@@ -96,7 +97,7 @@ jobs:
           name: Release ${{ steps.get_version.outputs.version }}
           prerelease: ${{ steps.get_version.outputs.prerelease }}
           files: |
-            dist/admincraft-android${{ steps.get_version.outputs.version }}.apk
+            dist/admincraft-android-${{ steps.get_version.outputs.version }}.apk
             dist/admincraft-windows-${{ steps.get_version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
