@@ -39,7 +39,8 @@ jobs:
         run: flutter pub get
       - name: Build ${{ matrix.platform }}
         run: ${{ matrix.build_cmd }}
-      - name: Move output to build dir with version
+      - name: Get version
+        id: get_version
         shell: bash
         run: |
           VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
@@ -48,13 +49,17 @@ jobs:
           else
             OUT_VERSION=${VERSION}-build.${{ github.run_number }}
           fi
+          echo "out_version=$OUT_VERSION" >> $GITHUB_OUTPUT
+      - name: Move output to build dir with version
+        shell: bash
+        run: |
           mkdir -p dist
-          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${OUT_VERSION}.${{ matrix.ext }}
+          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.out_version }}.${{ matrix.ext }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: admincraft-${{ matrix.platform }}
-          path: dist/admincraft-${{ matrix.platform }}-*.${{ matrix.ext }}
+          name: admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.out_version }}
+          path: dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.out_version }}.${{ matrix.ext }}
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -81,12 +86,12 @@ jobs:
       - name: Download android artifact
         uses: actions/download-artifact@v4
         with:
-          name: admincraft-android
+          name: admincraft-android-${{ steps.get_version.outputs.version }}
           path: dist
       - name: Download windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: admincraft-windows
+          name: admincraft-windows-${{ steps.get_version.outputs.version }}
           path: dist
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -104,5 +109,5 @@ jobs:
         uses: geekyeggo/delete-artifact@v5
         with:
           name: |
-            admincraft-android
-            admincraft-windows
+            admincraft-android-${{ steps.get_version.outputs.version }}
+            admincraft-windows-${{ steps.get_version.outputs.version }}
