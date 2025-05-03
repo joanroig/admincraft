@@ -51,7 +51,7 @@ jobs:
           mkdir -p dist
           mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${OUT_VERSION}.${{ matrix.ext }}
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: admincraft-${{ matrix.platform }}
           path: dist/admincraft-${{ matrix.platform }}-*.${{ matrix.ext }}
@@ -79,12 +79,12 @@ jobs:
         run: |
           mkdir -p dist
       - name: Download android artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: admincraft-android
           path: dist
       - name: Download windows artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: admincraft-windows
           path: dist
@@ -94,6 +94,7 @@ jobs:
           tag_name: ${{ steps.get_version.outputs.version }}
           name: Release ${{ steps.get_version.outputs.version }}
           prerelease: ${{ steps.get_version.outputs.prerelease }}
+          generate_release_notes: true
           files: |
             dist/admincraft-android-${{ steps.get_version.outputs.version }}.apk
             dist/admincraft-windows-${{ steps.get_version.outputs.version }}.exe
