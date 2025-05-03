@@ -49,18 +49,12 @@ jobs:
             OUT_VERSION=${VERSION}-build.${{ github.run_number }}
           fi
           mkdir -p dist
-          if [ "${{ matrix.platform }}" = "android" ]; then
-            mv ${{ matrix.output }} dist/admincraft-android-${OUT_VERSION}.${{ matrix.ext }}
-          else
-            mv ${{ matrix.output }} dist/admincraft-windows-${OUT_VERSION}.${{ matrix.ext }}
-          fi
-      - name: Upload build as workflow artifact (optional)
-        if: false # disabled to save space
-        uses: actions/upload-artifact@v4
+          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${OUT_VERSION}.${{ matrix.ext }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: ${{ matrix.platform }}
-          path: dist/*
-
+          name: admincraft-${{ matrix.platform }}
+          path: dist/admincraft-${{ matrix.platform }}-*.${{ matrix.ext }}
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -76,7 +70,7 @@ jobs:
             VERSION=${GITHUB_REF#refs/tags/}
             PRERELEASE=false
           else
-            VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')-build.${{ github.run_number }}
+            VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')-${{ github.run_number }}
             PRERELEASE=true
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -84,8 +78,16 @@ jobs:
       - name: Collect built files
         run: |
           mkdir -p dist
-          # Copy from all runners (if using a shared storage or upload step)
-          # In this setup, the files should be committed or otherwise made available
+      - name: Download android artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: admincraft-android
+          path: dist
+      - name: Download windows artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: admincraft-windows
+          path: dist
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -97,3 +99,9 @@ jobs:
             dist/admincraft-windows-${{ steps.get_version.outputs.version }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete build artifacts from GitHub
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            admincraft-android
+            admincraft-windows
