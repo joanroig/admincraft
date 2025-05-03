@@ -6,11 +6,10 @@ concurrency:
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - '*'
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Bump Version & Release"]
+    types:
+      - completed
 
 jobs:
   build-android:
