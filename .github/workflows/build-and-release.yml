@@ -25,7 +25,7 @@ jobs:
           - platform: windows
             os: windows-latest
             build_cmd: flutter build windows --release
-            output: build/windows/x64/runner/Release/app.exe
+            output: build/windows/x64/runner/Release/admincraft.exe
             ext: exe
     steps:
       - uses: actions/checkout@v3
