@@ -56,6 +56,7 @@ jobs:
         shell: bash
         run: |
           VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
+          VERSION="v$VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Prepare Windows zip
         if: matrix.platform == 'windows'
@@ -84,6 +85,7 @@ jobs:
         id: get_version
         run: |
           VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
+          VERSION="v$VERSION"
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.release_type }}" == "prerelease" ]]; then
             PRERELEASE=true
           else
