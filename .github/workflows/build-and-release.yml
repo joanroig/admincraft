@@ -21,7 +21,29 @@ on:
       - completed
 
 jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      prerelease: ${{ steps.get_version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
+          VERSION="v$VERSION"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.release_type }}" == "prerelease" ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
   build:
+    needs: get-version
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -51,13 +73,6 @@ jobs:
         run: choco install zip -y
       - name: Build ${{ matrix.platform }}
         run: ${{ matrix.build_cmd }}
-      - name: Get version
-        id: get_version
-        shell: bash
-        run: |
-          VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
-          VERSION="v$VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Prepare Windows zip
         if: matrix.platform == 'windows'
         shell: bash
@@ -68,59 +83,47 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.version }}.${{ matrix.ext }}
+          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${{ needs.get-version.outputs.version }}.${{ matrix.ext }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.version }}
-          path: dist/admincraft-${{ matrix.platform }}-${{ steps.get_version.outputs.version }}.${{ matrix.ext }}
+          name: admincraft-${{ matrix.platform }}-${{ needs.get-version.outputs.version }}
+          path: dist/admincraft-${{ matrix.platform }}-${{ needs.get-version.outputs.version }}.${{ matrix.ext }}
   release:
-    needs: build
+    needs: [get-version, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
-          VERSION="v$VERSION"
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.release_type }}" == "prerelease" ]]; then
-            PRERELEASE=true
-          else
-            PRERELEASE=false
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
       - name: Collect built files
         run: |
           mkdir -p dist
       - name: Download android artifact
         uses: actions/download-artifact@v4
         with:
-          name: admincraft-android-${{ steps.get_version.outputs.version }}
+          name: admincraft-android-${{ needs.get-version.outputs.version }}
           path: dist
       - name: Download windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: admincraft-windows-${{ steps.get_version.outputs.version }}
+          name: admincraft-windows-${{ needs.get-version.outputs.version }}
           path: dist
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.get_version.outputs.version }}
-          name: Release ${{ steps.get_version.outputs.version }}
-          prerelease: ${{ steps.get_version.outputs.prerelease }}
+          tag_name: ${{ needs.get-version.outputs.version }}
+          name: Release ${{ needs.get-version.outputs.version }}
+          prerelease: ${{ needs.get-version.outputs.prerelease }}
           generate_release_notes: true
           files: |
-            dist/admincraft-android-${{ steps.get_version.outputs.version }}.apk
-            dist/admincraft-windows-${{ steps.get_version.outputs.version }}.zip
+            dist/admincraft-android-${{ needs.get-version.outputs.version }}.apk
+            dist/admincraft-windows-${{ needs.get-version.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Delete build artifacts from GitHub
         uses: geekyeggo/delete-artifact@v5
         with:
           name: |
-            admincraft-android-${{ steps.get_version.outputs.version }}
-            admincraft-windows-${{ steps.get_version.outputs.version }}
+            admincraft-android-${{ needs.get-version.outputs.version }}
+            admincraft-windows-${{ needs.get-version.outputs.version }}
