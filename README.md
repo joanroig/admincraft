@@ -27,6 +27,9 @@
   </a>
   <a href="https://github.com/joanroig/admincraft/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABVQTFRFAAAAMyURd0M1kF5DAZYRvYpy////M94BeAAAAAd0Uk5TAP///////6V/pvsAAAAzSURBVBiVY2BFAww0EmBEAtgF2NhYWECKWVjY2LAJMDODOMzMMBq7ABMTSICJCbcAXjMAV+YEKS5sU08AAAAASUVORK5CYII=" alt="PRs welcome!" />
+  </a>  
+  <a href="https://github.com/joanroig/admincraft/actions/workflows/build-and-release.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft/build-and-release.yml?style=flat-square&label=Build&logo=github" alt="Build"/>
   </a>
 </p>
 
@@ -63,6 +66,13 @@ Once you have your server ready, [download Admincraft for your platform](https:/
 
 - Run `flutter build windows`.
 - The .exe file with the required files will be available at [build/windows/x64/runner/Release](build/windows/x64/runner/Release).
+
+### Automatic Builds
+
+Admincraft uses GitHub Actions to automate building and releasing the app. New releases are triggered by running the "Bump Version & Release" workflow from the GitHub Actions tab. This will automatically start the build and release process. The process consists of two workflows:
+
+- **Bump Version & Release** ([.github/workflows/bump-version-and-release.yml](.github/workflows/bump-version-and-release.yml)): This workflow bumps the version in `pubspec.yaml`, commits the change, and creates a new tag. It can be triggered manually and supports major, minor, or patch version increments.
+- **Build and Release** ([.github/workflows/build-and-release.yml](.github/workflows/build-and-release.yml)): This workflow is triggered manually or automatically after the completion of the "Bump Version & Release" workflow. It builds the app for Android and Windows, names the artifacts with the version, and uploads them to the [GitHub Releases page](https://github.com/joanroig/admincraft/releases) as downloadable files.
 
 ## ![Admincraft logo](docs/logo/variants/grass.png) Feature Roadmap
 
