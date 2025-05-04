@@ -28,8 +28,8 @@
   <a href="https://github.com/joanroig/admincraft/blob/main/CONTRIBUTING.md">
     <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABVQTFRFAAAAMyURd0M1kF5DAZYRvYpy////M94BeAAAAAd0Uk5TAP///////6V/pvsAAAAzSURBVBiVY2BFAww0EmBEAtgF2NhYWECKWVjY2LAJMDODOMzMMBq7ABMTSICJCbcAXjMAV+YEKS5sU08AAAAASUVORK5CYII=" alt="PRs welcome!" />
   </a>  
-  <a href="https://github.com/joanroig/admincraft/actions/workflows/build-and-release.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft/build-and-release.yml?style=flat-square&label=Build&logo=github" alt="Build"/>
+  <a href="https://github.com/joanroig/admincraft/actions/workflows/build-and-release-app.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft/build-and-release-app.yml?style=flat-square&label=Build&logo=github" alt="Build"/>
   </a>
 </p>
 
