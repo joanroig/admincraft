@@ -13,24 +13,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/joanroig/admincraft-websocket">
-      <img src="https://img.shields.io/badge/Admincraft_WebSocket-339933?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAVVJREFUOE99k71LA0EQxXcLLxrBvYghRBDRykKtrG2s/IutbKxTqYWVYqOIYBLBaM7i5Df4lsn6Mc3Nzs68ffNmLtb1sA3f1raf5sW4FLw/n7+FTmdVafZVLKa00R7unlhwdHNm36qqDESJR3un4eruIgNQrFiEAQGKSmuaxhLvH6/D68eLsSpjxoBgP21ZYl33Mw7MiGHT96fAGZa+nQUAXhmPHzJIqcXBznFmo1esBQ6ihz+bTUO3myyH13TnX84iAwCyRPIM9AotSiN8mYntGUwmz6HX2wxry+uWo/5VACtE1R0tZw1ASysDUxsTiNRHD6aF2BKVmAFo5lz4dgARAHeaFhNRzb8Aoq498cslQfMiecXxNUItjkTWFmq5DADaXhhGVAKoQCP/sQdeNIlF/144iraH+wv/RR6jlCcBu7w9NxYlAHealDGlBVHOG/KL81fOFz/OD4TZn3QMAAAAAElFTkSuQmCC" alt="Admincraft WebSocket badge"/>
-  </a>
-  <a href="https://github.com/joanroig/Admincraft/blob/main/docs/server/SERVER_SETUP.md">
-    <img src="https://img.shields.io/badge/Bedrock_Server-805539?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAz0lEQVR4AY2TsRWDMAxE5dHYggGyRGoWSJeGLi0LJFOkYoEM4rzze+d3NmceBZFBh3T6EfH8Lnlep8x4f98OZ0SXQwxNfn5bdveIr/1RnqsGxQI/uFJKzUUBXsC5z7NQ8NALaJ1x1KCM4ASwrEX6PN8LzuU6QMDZR/kKEcIzy8wr4ArR/XUjJhytcUCQrvMZ3OJAZ3WdHbzGgd5ccUBehB9K+ooDaAm0MtB9d1a1MHXc0MKAIh1BqbvnbFD3oN8F/eLUJaLuRKiAttSmK6jQ/2cNI7f0f4TVAAAAAElFTkSuQmCC" alt="Minecraft badge"/>
-  </a>
-  <a href="https://flutter.dev">
-    <img src="https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=fff&style=flat-square" alt="Flutter badge" />
-  </a>
-  <a href="https://github.com/joanroig/Admincraft/issues">
-    <img src="https://img.shields.io/github/issues-raw/joanroig/admincraft.svg?maxAge=2592000&label=Open%20Issues&style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAMtJREFUOI1j1G5l+M+ABSiJ1GMTZmC++pqBgYGB4bb4NAYGBgYGJqyqSAAsMIbqyywUkzlfQxz2XZQRla8tysDAwMCg/bqOyi5gExNBccl3bTSboS6BhcEvqD7KXYBhIwPEJQw4woAB6lKYOOUugPndMDQSReL8tGUoNhtmRWGVp14sHFu9nIGBgYHhz823DAwMDAx2NTkoCg+1TEHh8woJUccFjGEtdSh5Ad2v6ADmd6rFAqNnUc5/BgaEnz6/e4dXA0zdr1dvqOMCAHUPQJl6c3AoAAAAAElFTkSuQmCC" alt="Open issues" />
-  </a>
-  <a href="https://github.com/joanroig/admincraft/blob/main/CONTRIBUTING.md">
-    <img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABVQTFRFAAAAMyURd0M1kF5DAZYRvYpy////M94BeAAAAAd0Uk5TAP///////6V/pvsAAAAzSURBVBiVY2BFAww0EmBEAtgF2NhYWECKWVjY2LAJMDODOMzMMBq7ABMTSICJCbcAXjMAV+YEKS5sU08AAAAASUVORK5CYII=" alt="PRs welcome!" />
-  </a>  
-  <a href="https://github.com/joanroig/admincraft/actions/workflows/build-and-release-app.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft/build-and-release-app.yml?style=flat-square&label=Build&logo=github" alt="Build"/>
-  </a>
+  <a href="https://github.com/joanroig/admincraft-websocket"><img src="https://img.shields.io/badge/Admincraft_WebSocket-339933?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAVVJREFUOE99k71LA0EQxXcLLxrBvYghRBDRykKtrG2s/IutbKxTqYWVYqOIYBLBaM7i5Df4lsn6Mc3Nzs68ffNmLtb1sA3f1raf5sW4FLw/n7+FTmdVafZVLKa00R7unlhwdHNm36qqDESJR3un4eruIgNQrFiEAQGKSmuaxhLvH6/D68eLsSpjxoBgP21ZYl33Mw7MiGHT96fAGZa+nQUAXhmPHzJIqcXBznFmo1esBQ6ihz+bTUO3myyH13TnX84iAwCyRPIM9AotSiN8mYntGUwmz6HX2wxry+uWo/5VACtE1R0tZw1ASysDUxsTiNRHD6aF2BKVmAFo5lz4dgARAHeaFhNRzb8Aoq498cslQfMiecXxNUItjkTWFmq5DADaXhhGVAKoQCP/sQdeNIlF/144iraH+wv/RR6jlCcBu7w9NxYlAHealDGlBVHOG/KL81fOFz/OD4TZn3QMAAAAAElFTkSuQmCC" alt="Admincraft WebSocket badge"/></a>
+  <a href="https://github.com/joanroig/Admincraft/blob/main/docs/server/SERVER_SETUP.md"><img src="https://img.shields.io/badge/Bedrock_Server-805539?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAz0lEQVR4AY2TsRWDMAxE5dHYggGyRGoWSJeGLi0LJFOkYoEM4rzze+d3NmceBZFBh3T6EfH8Lnlep8x4f98OZ0SXQwxNfn5bdveIr/1RnqsGxQI/uFJKzUUBXsC5z7NQ8NALaJ1x1KCM4ASwrEX6PN8LzuU6QMDZR/kKEcIzy8wr4ArR/XUjJhytcUCQrvMZ3OJAZ3WdHbzGgd5ccUBehB9K+ooDaAm0MtB9d1a1MHXc0MKAIh1BqbvnbFD3oN8F/eLUJaLuRKiAttSmK6jQ/2cNI7f0f4TVAAAAAElFTkSuQmCC" alt="Minecraft badge"/></a>
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=fff&style=flat-square" alt="Flutter badge" /></a>
+  <a href="https://github.com/joanroig/Admincraft/issues"><img src="https://img.shields.io/github/issues-raw/joanroig/admincraft.svg?maxAge=2592000&label=Open%20Issues&style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAMtJREFUOI1j1G5l+M+ABSiJ1GMTZmC++pqBgYGB4bb4NAYGBgYGJqyqSAAsMIbqyywUkzlfQxz2XZQRla8tysDAwMCg/bqOyi5gExNBccl3bTSboS6BhcEvqD7KXYBhIwPEJQw4woAB6lKYOOUugPndMDQSReL8tGUoNhtmRWGVp14sHFu9nIGBgYHhz823DAwMDAx2NTkoCg+1TEHh8woJUccFjGEtdSh5Ad2v6ADmd6rFAqNnUc5/BgaEnz6/e4dXA0zdr1dvqOMCAHUPQJl6c3AoAAAAAElFTkSuQmCC" alt="Open issues" /></a>
+  <a href="https://github.com/joanroig/admincraft/blob/main/CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABVQTFRFAAAAMyURd0M1kF5DAZYRvYpy////M94BeAAAAAd0Uk5TAP///////6V/pvsAAAAzSURBVBiVY2BFAww0EmBEAtgF2NhYWECKWVjY2LAJMDODOMzMMBq7ABMTSICJCbcAXjMAV+YEKS5sU08AAAAASUVORK5CYII=" alt="PRs welcome!" /></a>  
+  <a href="https://github.com/joanroig/admincraft/actions/workflows/build-and-release-app.yml"><img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft/build-and-release-app.yml?style=flat-square&label=Build&logo=github" alt="Build"/></a>
 </p>
 
 <p align="center">
