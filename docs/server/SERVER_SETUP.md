@@ -79,6 +79,18 @@ sudo netfilter-persistent save
 
 > **_NOTE:_** If you enabled the setting `ALLOW_LIST = true` in the [docker-compose.yml](docker-compose.yml), you will need to whitelist the users you want to be able to connect with the command `whitelist add username`.
 
+## Choosing how to connect
+
+The WebSocket gives full control of your server, so the connection always has to be encrypted by something: either the network it travels over, or TLS. Pick the option that fits you and follow its chapter below.
+
+| Option | App on the client | Certificate to copy | Reachable from the internet |
+| --- | --- | --- | --- |
+| [Tailscale](#connect-admincraft-with-tailscale-recommended) (recommended) | Tailscale | no | no |
+| [Tailscale Funnel](#alternative-tailscale-funnel-no-app-on-the-client) | none | no | yes |
+| [Self-signed SSL](#alternative-public-access-with-self-signed-ssl) | none | yes, and again on every renewal | yes |
+
+Each one maps to a **Connection Security** option in Admincraft's settings: `Private network`, `Public certificate` and `Self-signed certificate`.
+
 ## Connect Admincraft with Tailscale (recommended)
 
 The WebSocket gives full control of your server, so it should never be exposed to the internet without protection. [Tailscale](https://tailscale.com) puts your phone and your server on a private encrypted network, so the WebSocket port stays invisible to everyone else. It is free for personal use, needs no certificates and nothing ever expires.
@@ -104,16 +116,38 @@ tailscale ip -4
 
 4. Open Admincraft and connect:
 
-   - **Address:** the Tailscale address from step 2 (for example `100.101.102.103`)
+   - **IP / Hostname:** the Tailscale address from step 2 (for example `100.101.102.103`)
    - **Port:** `8080`
    - **Secret key:** the `SECRET_KEY` from your [docker-compose.yml](docker-compose.yml)
-   - **Certificate:** leave empty
+   - **Connection security:** `Private network`
 
 Admincraft should connect automatically and display the server logs. If there is any issue you will be prompted with an error pop-up.
 
 Traffic is encrypted by Tailscale itself, so no certificate is needed. Keep port `8080` closed in your cloud firewall: only your own devices can reach it.
 
 > **_NOTE:_** Tailscale must be connected on the device running Admincraft. To let someone else administer the server, invite them to your Tailscale network instead of sharing the secret key.
+
+## Alternative: Tailscale Funnel (no app on the client)
+
+Use this if you do not want to install Tailscale on every device running Admincraft. Only the server runs Tailscale; Funnel publishes the WebSocket on a public hostname with a certificate that renews itself, so there is still nothing to copy into the app.
+
+Follow steps 1 and 2 of the Tailscale setup above, then expose the WebSocket:
+
+```
+tailscale funnel --bg 8080
+tailscale funnel status
+```
+
+Funnel needs MagicDNS and HTTPS enabled in your tailnet, plus the Funnel attribute in the tailnet policy file. The public side must use port `443`, `8443` or `10000`.
+
+Connect Admincraft with:
+
+- **IP / Hostname:** the `ts.net` hostname reported by `tailscale funnel status`
+- **Port:** `443`
+- **Secret key:** the `SECRET_KEY` from your [docker-compose.yml](docker-compose.yml)
+- **Connection security:** `Public certificate`
+
+> **_WARNING:_** Funnel makes the WebSocket reachable from the whole internet, so the `SECRET_KEY` becomes the only thing protecting your server. Use a long random value and never commit it anywhere public. The private Tailscale setup above is safer.
 
 ## Alternative: public access with self-signed SSL
 
@@ -136,9 +170,16 @@ sed -i 's/\r$//' makecerts.sh
 
 5. The `server.crt` certificate can be downloaded directly from the server to avoid Man-in-the-Middle attacks. If using a safe network, it can download it from [https://IP:8080/getcert](https://IP:8080/getcert) ignoring the security warnings.
 
-6. Open Admincraft and connect with the server IP, port `8080`, your `SECRET_KEY` and the contents of `server.crt` in the certificate field.
+6. Open Admincraft and connect:
 
-> **_WARNING:_** Do not expose port `8080` without SSL. With an empty certificate field Admincraft falls back to an unencrypted connection, which sends your secret key and every command in clear text.
+   - **IP / Hostname:** your server IP
+   - **Port:** `8080`
+   - **Secret key:** the `SECRET_KEY` from your [docker-compose.yml](docker-compose.yml)
+   - **Connection security:** `Self-signed certificate`, then load `server.crt`
+
+> **_WARNING:_** Do not expose port `8080` with `Private network` selected. That mode sends your secret key and every command in clear text, and is only safe inside Tailscale, a VPN or a LAN.
+
+> **_NOTE:_** `makecerts.sh` issues certificates valid for one year. Once it expires Admincraft will refuse to connect, and you have to run the script again and reload `server.crt`. The Tailscale options avoid this entirely.
 
 ## Keeping the Server Updated
 

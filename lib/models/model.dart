@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:flutter/material.dart';
 
@@ -14,6 +15,7 @@ class Model with ChangeNotifier {
   int get port => _persistenceService.port;
   String get secretKey => _persistenceService.secretKey;
   String get certificate => _persistenceService.certificate;
+  ConnectionSecurity get connectionSecurity => _persistenceService.connectionSecurity;
   int get maxOutLines => _persistenceService.maxOutLines;
   ThemeMode get themeMode => _persistenceService.themeMode;
   String get font => _persistenceService.font;
@@ -36,6 +38,7 @@ class Model with ChangeNotifier {
     required int port,
     required String secretKey,
     required String certificate,
+    required ConnectionSecurity connectionSecurity,
   }) async {
     await _updatePersistenceService(() => _persistenceService.saveConnectionDetails(
           alias: alias,
@@ -43,6 +46,7 @@ class Model with ChangeNotifier {
           port: port,
           secretKey: secretKey,
           certificate: certificate,
+          connectionSecurity: connectionSecurity,
         ));
   }
 

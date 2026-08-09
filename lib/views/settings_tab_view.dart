@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/url_utils.dart';
@@ -37,6 +38,7 @@ class _SettingsTabState extends State<SettingsTab> {
   String _buildNumber = '';
   bool _isSecretVisible = false;
   String _certificateContent = '';
+  ConnectionSecurity _selectedSecurity = ConnectionSecurity.privateNetwork;
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _SettingsTabState extends State<SettingsTab> {
     _portController.text = _model.port.toString();
     _secretKeyController.text = _model.secretKey;
     _certificateContent = _model.certificate;
+    _selectedSecurity = _model.connectionSecurity;
     _selectedThemeMode = _model.themeMode;
     _fontSizeController.text = _model.fontSize.toString();
     _maxOutLinesController.text = _model.maxOutLines.toString();
@@ -70,9 +73,9 @@ class _SettingsTabState extends State<SettingsTab> {
 
   void _updateCertificateMessage() {
     if (_certificateContent.isNotEmpty) {
-      _certificateController.text = 'Certificate Loaded and SSL Enabled';
+      _certificateController.text = 'Certificate Loaded';
     } else {
-      _certificateController.text = 'SSL Disabled, Load a Server Certificate to Enable SSL';
+      _certificateController.text = 'No Certificate Loaded';
     }
   }
 
@@ -164,36 +167,69 @@ class _SettingsTabState extends State<SettingsTab> {
             autocorrect: false,
           ),
           const SizedBox(height: 10),
-          // Certificate File Input
-          TextField(
-            controller: _certificateController,
-            decoration: InputDecoration(
-              labelText: 'Server Certificate',
-              border: const OutlineInputBorder(),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.folder_open),
-                    onPressed: _pickCertificateFile,
-                  ),
-                  if (_certificateContent.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        setState(() {
-                          _certificateController.clear();
-                          _certificateContent = '';
-                          _updateCertificateMessage(); // Update message when clearing the certificate
-                        });
-                      },
-                    ),
-                ],
-              ),
+
+          // Connection Security Dropdown
+          DropdownButtonFormField<ConnectionSecurity>(
+            value: _selectedSecurity,
+            decoration: const InputDecoration(
+              labelText: 'Connection Security',
+              border: OutlineInputBorder(),
             ),
-            readOnly: true,
+            items: ConnectionSecurity.values
+                .map((security) => DropdownMenuItem(
+                      value: security,
+                      child: Text(security.label),
+                    ))
+                .toList(),
+            onChanged: (ConnectionSecurity? security) {
+              if (security != null) {
+                setState(() {
+                  _selectedSecurity = security;
+                });
+              }
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 12, right: 12),
+            child: Text(
+              _selectedSecurity.description,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ),
           const SizedBox(height: 10),
+
+          // Certificate File Input, only relevant when pinning a certificate
+          if (_selectedSecurity.requiresCertificate) ...[
+            TextField(
+              controller: _certificateController,
+              decoration: InputDecoration(
+                labelText: 'Server Certificate',
+                border: const OutlineInputBorder(),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: _pickCertificateFile,
+                    ),
+                    if (_certificateContent.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _certificateController.clear();
+                            _certificateContent = '';
+                            _updateCertificateMessage(); // Update message when clearing the certificate
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              readOnly: true,
+            ),
+            const SizedBox(height: 10),
+          ],
 
           // Max Output Lines Input
           TextField(
@@ -236,6 +272,19 @@ class _SettingsTabState extends State<SettingsTab> {
                 return; // Prevent saving if not a valid number
               }
 
+              // A pinned certificate is the only trust anchor in that mode, so
+              // saving without one would leave the connection unable to verify
+              // anything at all.
+              if (_selectedSecurity.requiresCertificate && _certificateContent.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Load a server certificate, or pick another connection security option.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
               // Proceed with saving if validation passes
               await _model.setConnectionDetails(
                 alias: _aliasController.text,
@@ -243,6 +292,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 secretKey: _secretKeyController.text,
                 certificate: _certificateContent,
                 port: int.parse(_portController.text),
+                connectionSecurity: _selectedSecurity,
               );
               await _model.setMaxOutputLines(maxOutLines); // Save maxOutLines
               widget.onSettingsSaved();

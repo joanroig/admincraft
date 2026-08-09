@@ -1,3 +1,4 @@
+import 'package:admincraft/models/connection_security.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +8,7 @@ class PersistenceService {
   static const _portKey = 'port';
   static const _secretKeyKey = 'secretKey';
   static const _certificateKey = 'certificateKey';
+  static const _connectionSecurityKey = 'connectionSecurity';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
   static const _fontKey = 'font';
@@ -40,6 +42,7 @@ class PersistenceService {
     required int port,
     required String secretKey,
     required String certificate,
+    required ConnectionSecurity connectionSecurity,
   }) async {
     await Future.wait([
       _set(_aliasKey, alias),
@@ -47,6 +50,7 @@ class PersistenceService {
       _set(_portKey, port),
       _set(_secretKeyKey, secretKey),
       _set(_certificateKey, certificate),
+      _set(_connectionSecurityKey, connectionSecurity.name),
     ]);
   }
 
@@ -79,6 +83,20 @@ class PersistenceService {
   int get port => _prefs.getInt(_portKey) ?? 8080;
   String get secretKey => _prefs.getString(_secretKeyKey) ?? '';
   String get certificate => _prefs.getString(_certificateKey) ?? '';
+
+  ConnectionSecurity get connectionSecurity {
+    final stored = _prefs.getString(_connectionSecurityKey);
+    if (stored == null) return _legacyConnectionSecurity;
+    return ConnectionSecurity.values.firstWhere(
+      (security) => security.name == stored,
+      orElse: () => _legacyConnectionSecurity,
+    );
+  }
+
+  /// Before this setting existed, TLS was enabled exactly when a certificate
+  /// had been loaded. Keep users on the behaviour they already had.
+  ConnectionSecurity get _legacyConnectionSecurity =>
+      certificate.isEmpty ? ConnectionSecurity.privateNetwork : ConnectionSecurity.customCertificate;
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
   ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';

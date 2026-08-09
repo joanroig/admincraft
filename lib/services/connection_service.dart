@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io'; // For SecurityContext
 
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
-import 'package:flutter/services.dart';
 import 'package:web_socket_channel/io.dart'; // For IOWebSocketChannel
 
 class ConnectionService {
@@ -13,17 +14,25 @@ class ConnectionService {
   Function? onConnectionLost; // Callback to handle connection loss
   ConnectionStatus _status = ConnectionStatus.disconnected;
   ConnectionStatus get status => _status;
-  SecurityContext? _context;
 
-// Initialize SecurityContext for custom certificate
-  Future<void> _initSecurityContext(String certificateData) async {
-    _context = SecurityContext(withTrustedRoots: false);
-    try {
-      // Convert the certificate string to bytes
-      _context!.setTrustedCertificatesBytes(Uint8List.fromList(certificateData.codeUnits));
-    } catch (e) {
-      print('Error loading certificate: $e');
+  /// Builds the trust configuration for the selected security mode.
+  ///
+  /// Rebuilt on every connection so that changing the mode or the certificate
+  /// in the settings takes effect right away, without restarting the app.
+  SecurityContext _buildSecurityContext(ConnectionSecurity security, String certificateData) {
+    // Loading a certificate is a deliberate pin: trust it and nothing else, so
+    // a self-signed setup cannot be silently satisfied by a public authority.
+    final context = SecurityContext(withTrustedRoots: !security.requiresCertificate);
+
+    if (security.requiresCertificate && certificateData.isNotEmpty) {
+      try {
+        context.setTrustedCertificatesBytes(utf8.encode(certificateData));
+      } catch (e) {
+        print('Error loading certificate: $e');
+      }
     }
+
+    return context;
   }
 
   Future<void> connect(Model model, {bool reconnect = false}) async {
@@ -31,20 +40,15 @@ class ConnectionService {
     String jwtToken = createJwt('Admincraft', model.secretKey);
 
     // Determine protocol and URI
-    final useWss = model.certificate.isNotEmpty;
-    final protocol = useWss ? 'wss' : 'ws';
+    final security = model.connectionSecurity;
+    final protocol = security.usesTls ? 'wss' : 'ws';
     final uri = Uri.parse('$protocol://${model.ip}:${model.port}?token=$jwtToken');
-
-    // Initialize security context if using wss
-    if (useWss && _context == null) {
-      await _initSecurityContext(model.certificate);
-    }
 
     // Connect using the appropriate protocol
     try {
       _channel = IOWebSocketChannel.connect(
         uri,
-        customClient: useWss ? HttpClient(context: _context) : null,
+        customClient: security.usesTls ? HttpClient(context: _buildSecurityContext(security, model.certificate)) : null,
       );
 
       // Listen for incoming messages
