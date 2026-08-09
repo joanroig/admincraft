@@ -1,5 +1,8 @@
 import 'package:admincraft/controllers/terminal_controller.dart';
+import 'package:admincraft/models/bedrock_command.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/utils/command_completion.dart';
+import 'package:admincraft/utils/command_utils.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +22,22 @@ class _TerminalTabState extends State<TerminalTab> {
   final FocusNode _focusNode = FocusNode();
   int _historyIndex = 0;
   late Model _model;
+  List<Completion> _suggestions = const [];
+
+  void _refreshSuggestions() {
+    setState(() {
+      _suggestions = CommandCompletion.suggest(
+        _commandController.text,
+        onlinePlayers: _model.onlinePlayers,
+      );
+    });
+  }
+
+  void _applySuggestion(String value) {
+    _commandController.text = CommandCompletion.apply(_commandController.text, value);
+    _setCursorToEnd();
+    _refreshSuggestions();
+  }
 
   @override
   void initState() {
@@ -30,6 +49,10 @@ class _TerminalTabState extends State<TerminalTab> {
 
     // Initialize the history index
     _resetHistoryIndex();
+
+    // Assigned directly rather than through _refreshSuggestions: setState is
+    // not available until the first build.
+    _suggestions = CommandCompletion.suggest('', onlinePlayers: _model.onlinePlayers);
   }
 
   @override
@@ -59,6 +82,8 @@ class _TerminalTabState extends State<TerminalTab> {
               ),
               const SizedBox(height: 10),
               _buildCommandControls(),
+              _buildSuggestions(),
+              _buildSyntaxHint(),
               const SizedBox(height: 10),
               _buildCommandInput(),
             ],
@@ -160,6 +185,77 @@ class _TerminalTabState extends State<TerminalTab> {
     );
   }
 
+  /// Horizontal strip of completions for the argument being typed.
+  Widget _buildSuggestions() {
+    if (_suggestions.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _suggestions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final suggestion = _suggestions[index];
+          return ActionChip(
+            label: Text(suggestion.value),
+            tooltip: suggestion.detail.isEmpty ? null : suggestion.detail,
+            onPressed: () => _applySuggestion(suggestion.value),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Shows the syntax of the command being typed, with the argument currently
+  /// under the cursor emphasised, so the expected shape is visible while
+  /// typing rather than only in the command list.
+  Widget _buildSyntaxHint() {
+    final text = _commandController.text;
+    final command = CommandCompletion.commandFor(text);
+    final rejected = text.trim().isNotEmpty && !CommandUtils.isAccepted(text.trim());
+
+    if (command == null && !rejected) return const SizedBox.shrink();
+
+    final base = Theme.of(context).textTheme.bodySmall;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (command != null) _syntaxLine(command, CommandCompletion.activeArgIndex(text), base),
+          if (command != null)
+            Text(command.description, style: base?.copyWith(fontStyle: FontStyle.italic)),
+          if (rejected)
+            Text(
+              CommandUtils.rejectionMessage,
+              style: base?.copyWith(color: Theme.of(context).colorScheme.error),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _syntaxLine(BedrockCommand command, int activeIndex, TextStyle? base) {
+    final spans = <TextSpan>[
+      TextSpan(text: command.name, style: base?.copyWith(fontWeight: FontWeight.bold)),
+    ];
+
+    for (var i = 0; i < command.args.length; i++) {
+      final isActive = i == activeIndex;
+      spans.add(TextSpan(
+        text: ' ${command.args[i].hint}',
+        style: base?.copyWith(
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          color: isActive ? Theme.of(context).colorScheme.primary : base.color?.withValues(alpha: 0.6),
+        ),
+      ));
+    }
+
+    return RichText(text: TextSpan(children: spans));
+  }
+
   Widget _buildCommandInput() {
     return Row(
       children: [
@@ -171,9 +267,11 @@ class _TerminalTabState extends State<TerminalTab> {
               labelText: 'Enter command',
               border: OutlineInputBorder(),
             ),
+            onChanged: (_) => _refreshSuggestions(),
             onSubmitted: (command) async {
               await _terminalController.executeCommand(command, _commandController);
               _resetHistoryIndex();
+              _refreshSuggestions();
               _focusNode.requestFocus();
             },
           ),

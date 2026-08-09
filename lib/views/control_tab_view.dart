@@ -25,9 +25,18 @@ class _PromptedAction {
   const _PromptedAction(this.label, this.icon, this.placeholder, this.build);
 }
 
-class ControlTab extends StatelessWidget {
+class ControlTab extends StatefulWidget {
   final bool isEnabled;
   const ControlTab({super.key, required this.isEnabled});
+
+  @override
+  State<ControlTab> createState() => _ControlTabState();
+}
+
+class _ControlTabState extends State<ControlTab> {
+  /// The last command sent from this panel, echoed back so a tap visibly does
+  /// something even though the server's reply arrives in the Terminal tab.
+  String? _lastCommand;
 
   static const List<_QuickAction> _playerActions = [
     _QuickAction('Who is online', Icons.people, 'list'),
@@ -71,6 +80,10 @@ class ControlTab extends StatelessWidget {
     final model = Provider.of<Model>(context, listen: false);
     final connection = Provider.of<ConnectionController>(context, listen: false);
     await connection.executeMinecraftCommand(model, command);
+
+    if (!mounted) return;
+    setState(() => _lastCommand = command);
+    ToastUtils.showToastSuccess('Sent: $command');
   }
 
   Future<void> _promptAndSend(BuildContext context, _PromptedAction action) async {
@@ -105,19 +118,66 @@ class ControlTab extends StatelessWidget {
     );
   }
 
+  /// The tail of the server log, so the panel shows what the server said back
+  /// without switching to the Terminal tab.
+  Widget _responsePanel(BuildContext context, Model model) {
+    final lines = model.output.split('\n').where((line) => line.trim().isNotEmpty).toList();
+    final tail = lines.length <= 6 ? lines : lines.sublist(lines.length - 6);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.terminal, size: 16, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 6),
+                Text('Server response', style: Theme.of(context).textTheme.titleSmall),
+              ],
+            ),
+            if (_lastCommand != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Last sent: $_lastCommand',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            if (tail.isEmpty)
+              Text('Waiting for output...', style: Theme.of(context).textTheme.bodySmall)
+            else
+              ...tail.map((line) => Text(line, style: Theme.of(context).textTheme.bodySmall)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (!isEnabled) {
+    if (!widget.isEnabled) {
       return const Center(
         child: Text('Connect to enable the Control Panel'),
       );
     }
+
+    // Watched, not read: the panel rebuilds as server output arrives so the
+    // response section stays live.
+    final model = Provider.of<Model>(context);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _responsePanel(context, model),
+          const SizedBox(height: 20),
           _section(context, 'Players', [
             ..._playerActions.map((action) => ActionChip(
                   avatar: Icon(action.icon, size: 18),

@@ -78,11 +78,35 @@ class Model with ChangeNotifier {
     await _updatePersistenceService(() => _persistenceService.removeUserCommand(command));
   }
 
+  /// Players currently connected, tracked from the server log so that command
+  /// completion can offer real names instead of a fixed list.
+  final Set<String> _onlinePlayers = {};
+  Set<String> get onlinePlayers => Set.unmodifiable(_onlinePlayers);
+
+  static final RegExp _connected = RegExp(r'Player connected:\s*([^,]+)');
+  static final RegExp _disconnected = RegExp(r'Player disconnected:\s*([^,]+)');
+
+  void _trackPlayers(String chunk) {
+    for (final line in chunk.split('\n')) {
+      final joined = _connected.firstMatch(line);
+      if (joined != null) {
+        _onlinePlayers.add(joined.group(1)!.trim());
+        continue;
+      }
+      final left = _disconnected.firstMatch(line);
+      if (left != null) {
+        _onlinePlayers.remove(left.group(1)!.trim());
+      }
+    }
+  }
+
   void clearOutput() {
     _output = '';
+    _onlinePlayers.clear();
   }
 
   void appendOutputCommand(String command) {
+    _trackPlayers(command);
     _output += "$command\n";
     final lines = _output.split('\n');
     if (lines.length > _persistenceService.maxOutLines) {
