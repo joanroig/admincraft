@@ -6,6 +6,7 @@ import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/services/websocket_connector.dart';
+import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -91,6 +92,21 @@ class _SettingsTabState extends State<SettingsTab> {
       .where((security) => supportsCustomCertificate || !security.requiresCertificate)
       .toList();
 
+  Future<void> _deleteServer() async {
+    final server = _model.selectedServer;
+    final confirmed = await DialogUtils.confirmAction(
+      context,
+      title: 'Delete Server',
+      message: 'Remove "${server.alias}" and its saved secret key from this device?',
+      confirmLabel: 'Delete',
+    );
+    if (!confirmed) return;
+
+    await _model.deleteServer(server.id);
+    if (!mounted) return;
+    widget.onSettingsSaved();
+  }
+
   String _connectionPreview() {
     final scheme = _selectedSecurity.usesTls ? 'wss' : 'ws';
     final host = _ipController.text.trim().isEmpty ? '<ip>' : _ipController.text.trim();
@@ -128,9 +144,23 @@ class _SettingsTabState extends State<SettingsTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Server Settings Header
-          Text(
-            'Server Settings',
-            style: Theme.of(context).textTheme.headlineMedium,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Server Settings',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+              ),
+              // Hidden rather than disabled when only one server is left:
+              // there always has to be a selected server to connect with.
+              if (_model.servers.length > 1)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Delete this server',
+                  onPressed: _deleteServer,
+                ),
+            ],
           ),
           const SizedBox(height: 16),
 

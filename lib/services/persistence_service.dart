@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,6 +12,8 @@ class PersistenceService {
   static const _secretKeyKey = 'secretKey';
   static const _certificateKey = 'certificateKey';
   static const _connectionSecurityKey = 'connectionSecurity';
+  static const _serversKey = 'servers';
+  static const _selectedServerKey = 'selectedServer';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
   static const _fontKey = 'font';
@@ -34,24 +39,6 @@ class PersistenceService {
     } else {
       throw ArgumentError('Unsupported type: ${value.runtimeType}');
     }
-  }
-
-  Future<void> saveConnectionDetails({
-    required String alias,
-    required String ip,
-    required int port,
-    required String secretKey,
-    required String certificate,
-    required ConnectionSecurity connectionSecurity,
-  }) async {
-    await Future.wait([
-      _set(_aliasKey, alias),
-      _set(_ipKey, ip),
-      _set(_portKey, port),
-      _set(_secretKeyKey, secretKey),
-      _set(_certificateKey, certificate),
-      _set(_connectionSecurityKey, connectionSecurity.name),
-    ]);
   }
 
   Future<void> saveMaxOutLines(int lines) async {
@@ -97,6 +84,49 @@ class PersistenceService {
   /// had been loaded. Keep users on the behaviour they already had.
   ConnectionSecurity get _legacyConnectionSecurity =>
       certificate.isEmpty ? ConnectionSecurity.privateNetwork : ConnectionSecurity.customCertificate;
+
+  // ---------------------------------------------------------------------------
+  // Server profiles
+  // ---------------------------------------------------------------------------
+
+  /// Saved servers.
+  ///
+  /// When nothing has been stored yet the single set of connection details
+  /// from before multi-server support is promoted to the first profile, so an
+  /// existing install keeps its server instead of starting empty.
+  List<ServerProfile> get servers {
+    final stored = _prefs.getStringList(_serversKey);
+    if (stored != null) {
+      return stored
+          .map((entry) => ServerProfile.fromJson(jsonDecode(entry) as Map<String, dynamic>))
+          .toList();
+    }
+
+    return [
+      ServerProfile(
+        id: 'default',
+        alias: alias,
+        ip: ip,
+        port: port,
+        secretKey: secretKey,
+        certificate: certificate,
+        security: connectionSecurity,
+      )
+    ];
+  }
+
+  Future<void> saveServers(List<ServerProfile> servers) async {
+    await _set(
+      _serversKey,
+      servers.map((server) => jsonEncode(server.toJson())).toList(),
+    );
+  }
+
+  String? get selectedServerId => _prefs.getString(_selectedServerKey);
+
+  Future<void> saveSelectedServerId(String id) async {
+    await _set(_selectedServerKey, id);
+  }
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
   ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';
