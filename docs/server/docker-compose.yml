@@ -7,6 +7,8 @@ services:
     environment:
       # Enable SSH
       ENABLE_SSH: true
+      # Timezone used for the server's log timestamps
+      TZ: CET
       # Server settings
       EULA: "TRUE"
       GAMEMODE: survival
@@ -18,7 +20,8 @@ services:
       ALLOW_LIST: true
       CLIENT_SIDE_CHUNK_GENERATION_ENABLED: false # Beware: enabling this may cause stuttering/freezing
       MAX_THREADS: 0 # Maximum threads
-      VIEW_DISTANCE: 20
+      VIEW_DISTANCE: 20 # Memory-hungry: raise it (40+) only if the VM has headroom
+      CONTENT_LOG_FILE_ENABLED: true
 
     # Expose the mc-server-runner's SSH port to just the backup container
     expose:
@@ -44,7 +47,7 @@ services:
       # Map the data folders for the server
       - ./minecraft:/minecraft
       # (Optional) Map a configuration folder separately from the backups.
-      - ./backup-config:/config
+      - ./backups-config:/config
 
   websocket:
     container_name: websocket

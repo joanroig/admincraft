@@ -71,7 +71,7 @@ sudo netfilter-persistent save
 
 > **_NOTE:_** If you want to enable SSL, follow the next chapter before continuing (recommended)!
 
-5. Upload the [docker-compose.yml](docker-compose.yml) file and the [backups-config](backups-config) folder to the home folder of your server.
+5. Upload the [docker-compose.yml](docker-compose.yml) file, the [backups-config](backups-config) folder and the [update-server.sh](update-server.sh) script to the home folder of your server.
 6. Run `sudo docker compose up -d` to start your server for the first time.
 7. You should now be able to connect to your server with Minecraft and with Admincraft!
 
@@ -99,11 +99,70 @@ sed -i 's/\r$//' makecerts.sh
 - Open Admincraft and use the server IP and the SECRET_KEY you set in the previous steps. If you enabled SSL, also provide the `server.crt`.
 - Admincraft should connect automatically and display the server logs. If there is any issue you will be prompted with an error pop-up.
 
-## Automatic Upgrade and Backups
+## Keeping the Server Updated
 
-To update the Minecraft server to the latest version, simply restart it from the Admincraft Control Panel, or execute this command in the server:
+There are **two** separate things that need updating, and confusing them will leave your server stranded on an old version:
 
-`sudo docker compose restart`
+| What | How it updates |
+| --- | --- |
+| **Bedrock server binary** | Re-checked against Mojang's API on every container start, so a restart is enough. |
+| **Container images** (`itzg/minecraft-bedrock-server`, etc.) | Only ever update when you explicitly run `docker compose pull`. |
+
+Restarting alone handles the first but **never** the second. That matters because the version lookup lives inside the image: when Mojang changed their download page, older images failed with `Unable to find an element with attribute matcher data-platform=serverBedrockLinux` and silently kept running the last version they had. Newer images query a JSON API instead. If you only ever restart, you never receive that fix.
+
+### Manual update
+
+```
+sudo docker compose pull
+sudo docker compose up -d
+```
+
+If the pull fails with `unauthorized: your account must log in with a Personal Access Token (PAT)`, a stale Docker Hub credential is stored for `root`. Clear it and retry:
+
+```
+sudo docker logout
+```
+
+### Automatic nightly update
+
+[update-server.sh](update-server.sh) warns any online players, pulls new images, recreates the stack, prunes old images, and then **verifies that a fresh backup actually landed** before reporting success. Upload it to your home folder and install it:
+
+```
+chmod +x ~/update-server.sh
+sudo chown root:root ~/update-server.sh
+sudo crontab -e
+```
+
+Add this line to run it every night at 04:00:
+
+```
+0 4 * * * /home/ubuntu/update-server.sh >> /var/log/minecraft-update.log 2>&1
+```
+
+> **_NOTE:_** Cron follows the host's system clock. Check yours with `timedatectl` before assuming a time zone.
+
+Review runs with `sudo tail -n 40 /var/log/minecraft-update.log`.
+
+Because `VERSION` defaults to `LATEST`, this means Mojang decides when your world converts to a new format, and **Bedrock world upgrades are one-way**. The nightly backup taken immediately after each update is your safety net. If you would rather approve each version bump yourself, pin `VERSION: 1.26.43.1` (or whichever build you want) in the [docker-compose.yml](docker-compose.yml) — you will still receive image fixes automatically without surprise world conversions.
+
+## Backups
+
+Backups are handled by the `backup` container and configured in [backups-config/config.yml](backups-config/config.yml). With `runInitialBackup: true`, a snapshot is taken on every service start in addition to the regular interval, so each nightly update leaves a restore point behind.
+
+Check that backups are working:
+
+```
+sudo ls -lht ~/backups
+sudo docker exec backup /opt/bedrock/bedrockifier healthcheck
+```
+
+Force one immediately:
+
+```
+sudo docker exec backup /opt/bedrock/bedrockifier trigger-backup
+```
+
+> **_NOTE:_** The container's healthcheck only covers its HTTP endpoint, so it can report `healthy` while no backups are being written. Trust the timestamps in `~/backups` over the container status.
 
 ## Common Server Commands
 

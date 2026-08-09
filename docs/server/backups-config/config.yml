@@ -10,10 +10,14 @@ containers:
       worlds:
         - /minecraft/worlds/Moaiworld
 schedule:
-  # This will perform a backup every 3 hours.
-  # At most this will generate 8 backups a day.
+  # This will perform a backup every 6 hours.
+  # At most this will generate 4 backups a day.
   interval: 6h
   startupDelay: 1m
+  # Take a backup whenever the service starts, so every restart (including the
+  # nightly update job) leaves a fresh snapshot behind.
+  # Bedrockifier made this opt-in in v1.4.0; older versions always did it.
+  runInitialBackup: true
 trim:
   # Keep all backups for the last two days (today and yesterday)
   # Keep at least one backup for the last 14 days
