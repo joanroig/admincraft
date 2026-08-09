@@ -91,6 +91,8 @@ The WebSocket gives full control of your server, so the connection always has to
 
 Each one maps to a **Connection Security** option in Admincraft's settings: `Private network`, `Public certificate` and `Self-signed certificate`.
 
+> **_NOTE:_** Running Admincraft in a browser narrows the choice. Self-signed certificates cannot be loaded at all, and if the app itself is served over HTTPS the browser blocks the unencrypted `Private network` option as mixed content. Tailscale Funnel is the option that always works in a browser.
+
 ## Connect Admincraft with Tailscale (recommended)
 
 The WebSocket gives full control of your server, so it should never be exposed to the internet without protection. [Tailscale](https://tailscale.com) puts your phone and your server on a private encrypted network, so the WebSocket port stays invisible to everyone else. It is free for personal use, needs no certificates and nothing ever expires.

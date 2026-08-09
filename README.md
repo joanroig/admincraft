@@ -33,6 +33,7 @@ Admincraft is a multiplatform app for managing Minecraft Bedrock servers in Dock
 
 - Currently optimized for use with Oracle Always Free, using a server created with [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master).
 - Development is focused on Android and Windows; other platforms may be unstable.
+- Runs in the browser too (`flutter run -d chrome`), with two limitations the browser imposes: self-signed certificates cannot be loaded, because the browser validates TLS itself and exposes no way to add a trust anchor, and a page served over HTTPS cannot open an unencrypted `ws://` connection, so the `Private network` option only works when the app itself is served over `http://` (such as a local build).
 
 ## ![Admincraft logo](docs/logo/variants/pig.png) Getting Started
 
