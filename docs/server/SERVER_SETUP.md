@@ -68,7 +68,7 @@ sudo netfilter-persistent save
 
 3. Edit the [docker-compose.yml](docker-compose.yml) file:
 
-   - Change the `services.websocket.environment.SECRET_KEY` variable for a strong password you will use to control the server with Admincraft.
+   - Change the `services.websocket.environment.SECRET_KEY` variable for a strong password you will use to control the server with Admincraft. Generate one with `openssl rand -hex 32` and keep it out of any public repository: anyone holding it can run commands on your server.
    - Change any other variables you like in `services.minecraft`, like the `LEVEL_NAME` or `LEVEL_SEED`, you can see a full list [here](https://github.com/itzg/docker-minecraft-bedrock-server?tab=readme-ov-file#server-properties).
 
 4. Make sure to edit the [backups-config/config.yml](backups-config/config.yml) file, the `worlds` setting should match the one you have introduced in the setting `LEVEL_NAME` in the [docker-compose.yml](docker-compose.yml). You can also change the backups frequency as you like.
@@ -131,21 +131,36 @@ Traffic is encrypted by Tailscale itself, so no certificate is needed. Keep port
 
 Use this if you do not want to install Tailscale on every device running Admincraft. Only the server runs Tailscale; Funnel publishes the WebSocket on a public hostname with a certificate that renews itself, so there is still nothing to copy into the app.
 
-Follow steps 1 and 2 of the Tailscale setup above, then expose the WebSocket:
+Follow step 1 of the Tailscale setup above to install Tailscale on the server, then:
+
+1. Funnel terminates TLS for you, so the WebSocket should speak plain HTTP and listen only on the server itself. In the [docker-compose.yml](docker-compose.yml), set `USE_SSL: "false"` and bind the port to loopback:
+
+```yaml
+    ports:
+      - 127.0.0.1:8080:8080
+```
+
+Apply it with `sudo docker compose up -d`. Binding to `127.0.0.1` is what keeps the socket private: Funnel reaches it from the server itself, nothing else can, and the cloud firewall becomes a second layer instead of the only one.
+
+2. Publish it:
 
 ```
-tailscale funnel --bg 8080
-tailscale funnel status
+sudo tailscale funnel --bg 8080
+sudo tailscale funnel status
 ```
 
-Funnel needs MagicDNS and HTTPS enabled in your tailnet, plus the Funnel attribute in the tailnet policy file. The public side must use port `443`, `8443` or `10000`.
+> **_NOTE:_** The first run blocks and prints `Funnel is not enabled on your tailnet` with a link. Open the link to enable Funnel, then run the command again. It does not continue on its own.
 
-Connect Admincraft with:
+`status` reports your public hostname, in the form `machine-name.tailnet-name.ts.net`. Tailscale requests and renews the certificate automatically; the public side always uses port `443`.
+
+3. Connect Admincraft with:
 
 - **IP / Hostname:** the `ts.net` hostname reported by `tailscale funnel status`
 - **Port:** `443`
 - **Secret key:** the `SECRET_KEY` from your [docker-compose.yml](docker-compose.yml)
 - **Connection security:** `Public certificate`
+
+> **_NOTE:_** With the port bound to `127.0.0.1`, the private Tailscale option above stops working, because devices on your tailnet can no longer reach it either. To use both, add a second mapping for the server's Tailscale address, for example `- 100.101.102.103:8080:8080`.
 
 > **_WARNING:_** Funnel makes the WebSocket reachable from the whole internet, so the `SECRET_KEY` becomes the only thing protecting your server. Use a long random value and never commit it anywhere public. The private Tailscale setup above is safer.
 
