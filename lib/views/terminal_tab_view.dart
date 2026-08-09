@@ -100,6 +100,9 @@ class _TerminalTabState extends State<TerminalTab> {
       child: Stack(
         children: [
           Column(
+            // Stretched so the syntax hint sits flush with the input rather
+            // than centred on the width of its own text.
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: _model.output.isEmpty
@@ -111,8 +114,10 @@ class _TerminalTabState extends State<TerminalTab> {
               ),
               const SizedBox(height: 10),
               _buildCommandControls(),
-              _buildSuggestions(),
+              // Hint above, chips directly above the input: the chips are what
+              // gets tapped, so they belong closest to where typing happens.
               _buildSyntaxHint(),
+              _buildSuggestions(),
               const SizedBox(height: 10),
               _buildCommandInput(),
             ],
@@ -172,6 +177,9 @@ class _TerminalTabState extends State<TerminalTab> {
 
   Widget _buildCommandControls() {
     return Row(
+      // The parent stretches its children, so the row is told where to start
+      // rather than filling and centring its buttons.
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         IconButton(
           icon: const Icon(Icons.list),
