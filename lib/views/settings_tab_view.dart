@@ -79,6 +79,14 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
+  String _connectionPreview() {
+    final scheme = _selectedSecurity.usesTls ? 'wss' : 'ws';
+    final host = _ipController.text.trim().isEmpty ? '<ip>' : _ipController.text.trim();
+    final port = _portController.text.trim().isEmpty ? '<port>' : _portController.text.trim();
+    final suffix = _selectedSecurity.usesTls ? '' : '  (not encrypted)';
+    return '$scheme://$host:$port$suffix';
+  }
+
   Future<void> _pickCertificateFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -131,6 +139,7 @@ class _SettingsTabState extends State<SettingsTab> {
               labelText: 'IP / Hostname',
               border: OutlineInputBorder(),
             ),
+            onChanged: (_) => setState(() {}), // Keep the connection preview in sync
           ),
           const SizedBox(height: 10),
 
@@ -142,6 +151,7 @@ class _SettingsTabState extends State<SettingsTab> {
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}), // Keep the connection preview in sync
           ),
           const SizedBox(height: 10),
 
@@ -191,9 +201,25 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
           Padding(
             padding: const EdgeInsets.only(top: 6, left: 12, right: 12),
-            child: Text(
-              _selectedSecurity.description,
-              style: Theme.of(context).textTheme.bodySmall,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _selectedSecurity.description,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 4),
+                // Showing the resulting address makes the difference between
+                // an encrypted and an unencrypted connection visible before
+                // saving, rather than after something goes wrong.
+                Text(
+                  _connectionPreview(),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: _selectedSecurity.usesTls ? null : Theme.of(context).colorScheme.error,
+                      ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),

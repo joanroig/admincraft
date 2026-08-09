@@ -40,6 +40,8 @@ You need a Minecraft Bedrock server and [Admincraft WebSocket](https://github.co
 
 Once you have your server ready, [download Admincraft for your platform](https://github.com/joanroig/admincraft/releases), add your server in the app, and you're good to go!
 
+In the app settings, pick the **Connection Security** option matching your setup: `Private network` for Tailscale, a VPN or a LAN, `Public certificate` for a server with a publicly trusted certificate, and `Self-signed certificate` to load your own. The [server setup guide](docs/server/SERVER_SETUP.md#choosing-how-to-connect) walks through each one.
+
 ## ![Admincraft logo](docs/logo/variants/obsidian.png) Development
 
 - Follow the official [Flutter installation guide](https://docs.flutter.dev/get-started/install).
