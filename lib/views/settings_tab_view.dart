@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
+import 'package:admincraft/services/websocket_connector.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -58,6 +59,11 @@ class _SettingsTabState extends State<SettingsTab> {
     _secretKeyController.text = _model.secretKey;
     _certificateContent = _model.certificate;
     _selectedSecurity = _model.connectionSecurity;
+    // A setting saved on another platform can name a mode this one cannot
+    // offer, which would leave the dropdown without a matching entry.
+    if (!_securityOptions.contains(_selectedSecurity)) {
+      _selectedSecurity = ConnectionSecurity.trustedCertificate;
+    }
     _selectedThemeMode = _model.themeMode;
     _fontSizeController.text = _model.fontSize.toString();
     _maxOutLinesController.text = _model.maxOutLines.toString();
@@ -78,6 +84,12 @@ class _SettingsTabState extends State<SettingsTab> {
       _certificateController.text = 'No Certificate Loaded';
     }
   }
+
+  /// Pinning a certificate needs a trust store the app controls, which the
+  /// browser does not expose, so that mode is hidden on web.
+  List<ConnectionSecurity> get _securityOptions => ConnectionSecurity.values
+      .where((security) => supportsCustomCertificate || !security.requiresCertificate)
+      .toList();
 
   String _connectionPreview() {
     final scheme = _selectedSecurity.usesTls ? 'wss' : 'ws';
@@ -180,12 +192,12 @@ class _SettingsTabState extends State<SettingsTab> {
 
           // Connection Security Dropdown
           DropdownButtonFormField<ConnectionSecurity>(
-            value: _selectedSecurity,
+            initialValue: _selectedSecurity,
             decoration: const InputDecoration(
               labelText: 'Connection Security',
               border: OutlineInputBorder(),
             ),
-            items: ConnectionSecurity.values
+            items: _securityOptions
                 .map((security) => DropdownMenuItem(
                       value: security,
                       child: Text(security.label),
@@ -219,6 +231,13 @@ class _SettingsTabState extends State<SettingsTab> {
                         color: _selectedSecurity.usesTls ? null : Theme.of(context).colorScheme.error,
                       ),
                 ),
+                if (!supportsCustomCertificate) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Self-signed certificates cannot be loaded in a browser. Trust the certificate in the browser first by opening the server address, or use a server with a publicly trusted certificate.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
               ],
             ),
           ),
