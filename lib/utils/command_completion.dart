@@ -1,4 +1,5 @@
 import 'package:admincraft/data/bedrock_commands.dart';
+import 'package:admincraft/data/bedrock_gamerules.dart';
 import 'package:admincraft/data/bedrock_ids.dart';
 import 'package:admincraft/models/bedrock_command.dart';
 
@@ -9,7 +10,11 @@ class Completion {
   /// Shown next to the value, e.g. what a command does.
   final String detail;
 
-  const Completion(this.value, [this.detail = '']);
+  /// What kind of value this is, so it can be given an icon. Null for command
+  /// names, which are rendered with their syntax instead.
+  final ArgType? type;
+
+  const Completion(this.value, [this.detail = '', this.type]);
 }
 
 class CommandCompletion {
@@ -78,22 +83,27 @@ class CommandCompletion {
   static List<Completion> _forArg(CommandArg arg, String prefix, Set<String> onlinePlayers) {
     switch (arg.type) {
       case ArgType.literal:
-        return _rank(arg.options.map((o) => Completion(o)).toList(), prefix);
+        return _rank(arg.options.map((o) => Completion(o, '', ArgType.literal)).toList(), prefix);
       case ArgType.player:
         return _rank(
-          onlinePlayers.map((player) => Completion(player, 'online')).toList(),
+          onlinePlayers.map((player) => Completion(player, 'online', ArgType.player)).toList(),
           prefix,
         );
       case ArgType.item:
-        return _rank(BedrockIds.items.map((i) => Completion(i)).toList(), prefix);
+        return _rank(BedrockIds.items.map((i) => Completion(i, '', ArgType.item)).toList(), prefix);
       case ArgType.entity:
-        return _rank(BedrockIds.entities.map((e) => Completion(e)).toList(), prefix);
+        return _rank(BedrockIds.entities.map((e) => Completion(e, '', ArgType.entity)).toList(), prefix);
       case ArgType.effect:
-        return _rank(BedrockIds.effects.map((e) => Completion(e)).toList(), prefix);
+        return _rank(BedrockIds.effects.map((e) => Completion(e, '', ArgType.effect)).toList(), prefix);
       case ArgType.enchantment:
-        return _rank(BedrockIds.enchantments.map((e) => Completion(e)).toList(), prefix);
+        return _rank(
+            BedrockIds.enchantments.map((e) => Completion(e, '', ArgType.enchantment)).toList(), prefix);
       case ArgType.gamerule:
-        return _rank(BedrockIds.gamerules.map((g) => Completion(g)).toList(), prefix);
+        return _rank(
+            BedrockIds.gamerules
+                .map((g) => Completion(g, BedrockGamerules.forName(g).label, ArgType.gamerule))
+                .toList(),
+            prefix);
       case ArgType.number:
       case ArgType.text:
       case ArgType.position:

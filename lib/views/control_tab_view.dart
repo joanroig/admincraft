@@ -1,4 +1,5 @@
 import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/data/bedrock_gamerules.dart';
 import 'package:admincraft/data/bedrock_ids.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/world_state.dart';
@@ -292,12 +293,29 @@ class _ControlTabState extends State<ControlTab> {
             )
           : Column(
               children: known.entries.where((e) => e.value == 'true' || e.value == 'false').map((entry) {
-                final on = entry.value == 'true';
+                final info = BedrockGamerules.forName(entry.key);
                 return SwitchListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  title: Text(entry.key, style: Theme.of(context).textTheme.bodyMedium),
-                  value: on,
+                  title: Text(info.label, style: Theme.of(context).textTheme.bodyMedium),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (info.description.isNotEmpty)
+                        Text(info.description, style: Theme.of(context).textTheme.bodySmall),
+                      // The raw name still matters: it is what you type into a
+                      // command, and what the server reports back.
+                      Text(
+                        entry.key,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontFamily: 'Monocraft',
+                              color: Theme.of(context).hintColor,
+                            ),
+                      ),
+                    ],
+                  ),
+                  isThreeLine: info.description.isNotEmpty,
+                  value: entry.value == 'true',
                   onChanged: (next) => _send('gamerule ${entry.key} $next'),
                 );
               }).toList(),
@@ -344,6 +362,21 @@ class _ControlTabState extends State<ControlTab> {
     final model = Provider.of<Model>(context);
     final world = model.world;
 
+    // The response stays pinned below the scrolling cards: it is the feedback
+    // for whatever was just tapped, and scrolling away from it would hide the
+    // result of the action.
+    return Column(
+      children: [
+        Expanded(child: _buildCards(model, world)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: _responseCard(model),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCards(Model model, WorldState world) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -387,7 +420,6 @@ class _ControlTabState extends State<ControlTab> {
               label: const Text('Restart Server'),
             ),
           ),
-          _responseCard(model),
         ],
       ),
     );

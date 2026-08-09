@@ -177,10 +177,34 @@ class Model with ChangeNotifier {
 
   void clearOutput() => _resetSession();
 
-  void appendOutputCommand(String command) {
-    for (final (name, joined) in ConsoleParser.playerChanges(command)) {
+  /// Set once a `list` header has been seen, because the names arrive on the
+  /// following line, which may even come in a later message.
+  bool _expectingPlayerNames = false;
+
+  void _trackPlayers(String chunk) {
+    for (final (name, joined) in ConsoleParser.playerChanges(chunk)) {
       joined ? _onlinePlayers.add(name) : _onlinePlayers.remove(name);
     }
+
+    for (final line in chunk.split('\n')) {
+      final count = ConsoleParser.playerCountHeader(line);
+      if (count != null) {
+        // A `list` reply is authoritative, so it replaces what was tracked
+        // from connect and disconnect lines rather than adding to it.
+        _onlinePlayers.clear();
+        _expectingPlayerNames = count > 0;
+        continue;
+      }
+
+      if (_expectingPlayerNames && line.trim().isNotEmpty) {
+        _onlinePlayers.addAll(ConsoleParser.namesFrom(line));
+        _expectingPlayerNames = false;
+      }
+    }
+  }
+
+  void appendOutputCommand(String command) {
+    _trackPlayers(command);
     _world = ConsoleParser.apply(_world, command);
     _output += "$command\n";
     final lines = _output.split('\n');

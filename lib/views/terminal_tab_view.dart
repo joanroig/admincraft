@@ -4,9 +4,16 @@ import 'package:admincraft/models/bedrock_command.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/utils/command_completion.dart';
 import 'package:admincraft/utils/command_utils.dart';
+import 'package:admincraft/utils/completion_icons.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
+/// Accepting the highlighted completion with the Tab key.
+class _AcceptCompletionIntent extends Intent {
+  const _AcceptCompletionIntent();
+}
 
 class TerminalTab extends StatefulWidget {
   final bool isEnabled;
@@ -186,68 +193,62 @@ class _TerminalTabState extends State<TerminalTab> {
     );
   }
 
-  /// Completions for whatever is being typed.
+  /// Completions for whatever is being typed, as a single scrolling strip.
   ///
-  /// Command names get a vertical list showing full syntax and description,
-  /// since choosing a command is where that context matters. Argument values
-  /// are chips: there are many more of them and the name is the whole story.
+  /// Deliberately compact: this sits directly above the input and is on screen
+  /// constantly, so it stays one row. The full syntax and descriptions live in
+  /// the command list dialog, where there is room for them.
   Widget _buildSuggestions() {
     if (_suggestions.isEmpty) return const SizedBox.shrink();
-
-    final completingCommand = !_commandController.text.trimLeft().contains(' ');
-    return completingCommand ? _buildCommandList() : _buildValueChips();
+    return _buildValueChips();
   }
 
-  Widget _buildCommandList() {
-    final theme = Theme.of(context);
-
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 180),
-      decoration: BoxDecoration(
-        border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        itemCount: _suggestions.length,
-        itemBuilder: (context, index) {
-          final suggestion = _suggestions[index];
-          final command = BedrockCommands.byName[suggestion.value];
-
-          return InkWell(
-            onTap: () => _applySuggestion(suggestion.value),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    command?.syntax ?? suggestion.value,
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  if (suggestion.detail.isNotEmpty)
-                    Text(suggestion.detail, style: theme.textTheme.bodySmall),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+  static IconData _categoryIcon(String? category) {
+    switch (category) {
+      case 'Players':
+        return Icons.group;
+      case 'Items':
+        return Icons.inventory_2;
+      case 'World':
+        return Icons.public;
+      case 'Server':
+        return Icons.dns;
+      default:
+        return Icons.terminal;
+    }
   }
 
   Widget _buildValueChips() {
+    final scheme = Theme.of(context).colorScheme;
+
+    // Tall enough for a chip with a leading icon: a shorter strip clips the
+    // avatar out entirely rather than scaling it down.
     return SizedBox(
-      height: 40,
+      height: 50,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: _suggestions.length,
         separatorBuilder: (_, __) => const SizedBox(width: 6),
         itemBuilder: (context, index) {
           final suggestion = _suggestions[index];
+          final color = CompletionIcons.colorFor(suggestion.type, scheme);
+
+          // Command names have no argument type; they are recognised by
+          // category instead so the strip is still readable at a glance.
+          final command = suggestion.type == null ? BedrockCommands.byName[suggestion.value] : null;
+          final icon = command != null
+              ? _categoryIcon(command.category)
+              : CompletionIcons.forType(suggestion.type, suggestion.value);
+
           return ActionChip(
+            avatar: Icon(icon, size: 18, color: color),
+            // The first entry is what Tab accepts, so it is marked as such.
+            side: index == 0 ? BorderSide(color: color, width: 1.4) : null,
             label: Text(suggestion.value),
-            tooltip: suggestion.detail.isEmpty ? null : suggestion.detail,
+            tooltip: command != null
+                ? '${command.syntax}\n${command.description}'
+                : (suggestion.detail.isEmpty ? null : suggestion.detail),
             onPressed: () => _applySuggestion(suggestion.value),
           );
         },
@@ -308,7 +309,20 @@ class _TerminalTabState extends State<TerminalTab> {
     return Row(
       children: [
         Expanded(
-          child: TextField(
+          // Tab is the conventional completion key in a console, and Flutter
+          // would otherwise consume it to move focus out of the field.
+          child: Shortcuts(
+            shortcuts: const {SingleActivator(LogicalKeyboardKey.tab): _AcceptCompletionIntent()},
+            child: Actions(
+              actions: {
+                _AcceptCompletionIntent: CallbackAction<_AcceptCompletionIntent>(
+                  onInvoke: (_) {
+                    if (_suggestions.isNotEmpty) _applySuggestion(_suggestions.first.value);
+                    return null;
+                  },
+                ),
+              },
+              child: TextField(
             controller: _commandController,
             focusNode: _focusNode,
             decoration: const InputDecoration(
@@ -322,6 +336,8 @@ class _TerminalTabState extends State<TerminalTab> {
               _refreshSuggestions();
               _focusNode.requestFocus();
             },
+              ),
+            ),
           ),
         ),
         const SizedBox(width: 10),

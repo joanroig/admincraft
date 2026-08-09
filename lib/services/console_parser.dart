@@ -57,6 +57,25 @@ class ConsoleParser {
     return result;
   }
 
+  /// The online count if [line] is the header of a `list` reply.
+  ///
+  /// The names follow on the next line, which is why this is exposed
+  /// separately rather than handled inside [apply]: the caller has to keep
+  /// track across lines, and the two can even arrive in different messages.
+  static int? playerCountHeader(String line) {
+    final match = _playerCount.firstMatch(stripPrefix(line));
+    return match == null ? null : int.tryParse(match.group(1)!);
+  }
+
+  /// Names from the line following a `list` header, which are comma separated.
+  static List<String> namesFrom(String line) {
+    return stripPrefix(line)
+        .split(',')
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList();
+  }
+
   /// Player names joining or leaving in [chunk], as (name, joined) pairs.
   static List<(String, bool)> playerChanges(String chunk) {
     final changes = <(String, bool)>[];
