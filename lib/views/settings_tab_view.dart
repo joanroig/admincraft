@@ -231,7 +231,10 @@ class _SettingsTabState extends State<SettingsTab> {
                         color: _selectedSecurity.usesTls ? null : Theme.of(context).colorScheme.error,
                       ),
                 ),
-                if (!supportsCustomCertificate) ...[
+                // Only worth explaining where someone would otherwise reach for
+                // a certificate: it says nothing useful about an unencrypted
+                // connection over a private network.
+                if (!supportsCustomCertificate && _selectedSecurity.usesTls) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Self-signed certificates cannot be loaded in a browser. Trust the certificate in the browser first by opening the server address, or use a server with a publicly trusted certificate.',
