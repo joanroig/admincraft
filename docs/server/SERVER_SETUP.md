@@ -44,6 +44,8 @@ Boot volume
 
 ### Admincraft WebSocket port
 
+> **_NOTE:_** Only needed if you follow the [self-signed SSL alternative](#alternative-public-access-with-self-signed-ssl). The recommended Tailscale setup reaches the WebSocket over a private network, so this port stays closed to the internet.
+
 ```
 - Source CIDR: 0.0.0.0/0
 - IP Protocol: TCP
@@ -54,13 +56,15 @@ Boot volume
 ## Setup the Minecraft server
 
 1. Login via [MobaXterm](https://mobaxterm.mobatek.net/download.html) or the tool of your choice by using the IP, SSH Keys and username (ubuntu if you choose an Ubuntu image).
-2. Once connected, execute those commands to open the needed ports for Minecraft and Admincraft WebSocket:
+2. Once connected, execute those commands to open the Minecraft port:
 
 ```
 sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 19132 -j ACCEPT
-sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT
 sudo netfilter-persistent save
 ```
+
+> **_NOTE:_** Only add the WebSocket port if you follow the [self-signed SSL alternative](#alternative-public-access-with-self-signed-ssl):
+> `sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT`
 
 3. Edit the [docker-compose.yml](docker-compose.yml) file:
 
@@ -69,15 +73,53 @@ sudo netfilter-persistent save
 
 4. Make sure to edit the [backups-config/config.yml](backups-config/config.yml) file, the `worlds` setting should match the one you have introduced in the setting `LEVEL_NAME` in the [docker-compose.yml](docker-compose.yml). You can also change the backups frequency as you like.
 
-> **_NOTE:_** If you want to enable SSL, follow the next chapter before continuing (recommended)!
-
 5. Upload the [docker-compose.yml](docker-compose.yml) file, the [backups-config](backups-config) folder and the [update-server.sh](update-server.sh) script to the home folder of your server.
 6. Run `sudo docker compose up -d` to start your server for the first time.
-7. You should now be able to connect to your server with Minecraft and with Admincraft!
+7. You should now be able to connect to your server with Minecraft. To connect with Admincraft, continue with the next chapter.
 
 > **_NOTE:_** If you enabled the setting `ALLOW_LIST = true` in the [docker-compose.yml](docker-compose.yml), you will need to whitelist the users you want to be able to connect with the command `whitelist add username`.
 
-## Optional: Configure SSL
+## Connect Admincraft with Tailscale (recommended)
+
+The WebSocket gives full control of your server, so it should never be exposed to the internet without protection. [Tailscale](https://tailscale.com) puts your phone and your server on a private encrypted network, so the WebSocket port stays invisible to everyone else. It is free for personal use, needs no certificates and nothing ever expires.
+
+1. Install Tailscale on the server:
+
+```
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+The command prints a login link. Open it and sign in.
+
+> **_NOTE:_** Sign up with a personal account (Google, GitHub, Microsoft). Custom email domains are treated as business use and do not get the free Personal plan.
+
+2. Note the server's Tailscale address:
+
+```
+tailscale ip -4
+```
+
+3. Install the Tailscale app on your phone or PC and sign in with the same account.
+
+4. Open Admincraft and connect:
+
+   - **Address:** the Tailscale address from step 2 (for example `100.101.102.103`)
+   - **Port:** `8080`
+   - **Secret key:** the `SECRET_KEY` from your [docker-compose.yml](docker-compose.yml)
+   - **Certificate:** leave empty
+
+Admincraft should connect automatically and display the server logs. If there is any issue you will be prompted with an error pop-up.
+
+Traffic is encrypted by Tailscale itself, so no certificate is needed. Keep port `8080` closed in your cloud firewall: only your own devices can reach it.
+
+> **_NOTE:_** Tailscale must be connected on the device running Admincraft. To let someone else administer the server, invite them to your Tailscale network instead of sharing the secret key.
+
+## Alternative: public access with self-signed SSL
+
+Use this if you cannot install Tailscale on the device running Admincraft, or you need the WebSocket reachable from anywhere. It exposes port `8080` to the internet, so SSL is mandatory and the certificate has to be copied into Admincraft by hand.
+
+Open port `8080` first (see [Setup a VM on Oracle Cloud](#setup-a-vm-on-oracle-cloud) and step 2 of the server setup), then:
 
 1. Edit the [certs/makecerts.sh](certs/makecerts.sh) by changing the variable `COMMON_NAME=YOUR_IP_HERE` for your server IP.
 2. Upload the [certs](certs) folder to the home folder of your server.
@@ -90,14 +132,13 @@ sed -i 's/\r$//' makecerts.sh
 ./makecerts.sh
 ```
 
-4. Ensure that the `services.websocket.environment.USE_SSL` variable in the [docker-compose.yml](docker-compose.yml) file is set to true.
+4. In the [docker-compose.yml](docker-compose.yml) file, set `services.websocket.environment.USE_SSL` to `"true"` and uncomment the `./certs` volume mount.
 
 5. The `server.crt` certificate can be downloaded directly from the server to avoid Man-in-the-Middle attacks. If using a safe network, it can download it from [https://IP:8080/getcert](https://IP:8080/getcert) ignoring the security warnings.
 
-## Login to Admincraft
+6. Open Admincraft and connect with the server IP, port `8080`, your `SECRET_KEY` and the contents of `server.crt` in the certificate field.
 
-- Open Admincraft and use the server IP and the SECRET_KEY you set in the previous steps. If you enabled SSL, also provide the `server.crt`.
-- Admincraft should connect automatically and display the server logs. If there is any issue you will be prompted with an error pop-up.
+> **_WARNING:_** Do not expose port `8080` without SSL. With an empty certificate field Admincraft falls back to an unencrypted connection, which sends your secret key and every command in clear text.
 
 ## Keeping the Server Updated
 
@@ -253,7 +294,7 @@ The system consists of three main containers running in a Docker environment:
 
 2. **Admincraft WebSocket Server** (`websocket`):
 
-   - Accessible via port `8080`, allowing secure control of the Minecraft server using Admincraft.
+   - Listens on port `8080`, allowing control of the Minecraft server using Admincraft. In the recommended setup this port is reached over Tailscale and stays closed to the internet; the self-signed SSL alternative exposes it publicly instead.
    - The WebSocket server authenticates incoming connections using JWT (JSON Web Tokens), with the `SECRET_KEY` stored in environment variables.
    - Once authenticated, users can issue Minecraft server commands, which are executed in real time within the Minecraft container.
    - Additionally, certain Docker-level commands (like restarting the server) can be executed through the WebSocket interface, but these are restricted to predefined key commands for security reasons.
