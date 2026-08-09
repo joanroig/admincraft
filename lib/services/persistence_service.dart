@@ -14,6 +14,7 @@ class PersistenceService {
   static const _connectionSecurityKey = 'connectionSecurity';
   static const _serversKey = 'servers';
   static const _selectedServerKey = 'selectedServer';
+  static const _commandUsageKey = 'commandUsage';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
   static const _fontKey = 'font';
@@ -120,6 +121,19 @@ class PersistenceService {
       _serversKey,
       servers.map((server) => jsonEncode(server.toJson())).toList(),
     );
+  }
+
+  /// How often each command has been sent, used to order completions so the
+  /// commands someone actually reaches for come first.
+  Map<String, int> get commandUsage {
+    final stored = _prefs.getString(_commandUsageKey);
+    if (stored == null) return {};
+    final decoded = jsonDecode(stored) as Map<String, dynamic>;
+    return decoded.map((key, value) => MapEntry(key, value as int));
+  }
+
+  Future<void> saveCommandUsage(Map<String, int> usage) async {
+    await _set(_commandUsageKey, jsonEncode(usage));
   }
 
   String? get selectedServerId => _prefs.getString(_selectedServerKey);

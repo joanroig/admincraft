@@ -6,6 +6,7 @@ import 'package:admincraft/utils/command_completion.dart';
 import 'package:admincraft/utils/command_utils.dart';
 import 'package:admincraft/utils/completion_icons.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
+import 'package:admincraft/views/widgets/item_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -37,14 +38,30 @@ class _TerminalTabState extends State<TerminalTab> {
       _suggestions = CommandCompletion.suggest(
         _commandController.text,
         onlinePlayers: _model.onlinePlayers,
+        usage: _model.commandUsage,
       );
     });
   }
 
   void _applySuggestion(String value) {
-    _commandController.text = CommandCompletion.apply(_commandController.text, value);
-    _setCursorToEnd();
+    _setText(CommandCompletion.apply(_commandController.text, value));
     _refreshSuggestions();
+  }
+
+  /// Replaces the input and leaves the caret at the end.
+  ///
+  /// The caret is set twice on purpose. A field that regains focus selects its
+  /// whole contents, so setting the selection only before the focus change
+  /// leaves everything highlighted and the next keystroke wipes the line. The
+  /// post-frame pass reasserts it once focus has settled.
+  void _setText(String value) {
+    final caret = TextSelection.collapsed(offset: value.length);
+    _commandController.value = TextEditingValue(text: value, selection: caret);
+    _focusNode.requestFocus();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _commandController.selection = caret;
+    });
   }
 
   @override
@@ -60,7 +77,11 @@ class _TerminalTabState extends State<TerminalTab> {
 
     // Assigned directly rather than through _refreshSuggestions: setState is
     // not available until the first build.
-    _suggestions = CommandCompletion.suggest('', onlinePlayers: _model.onlinePlayers);
+    _suggestions = CommandCompletion.suggest(
+      '',
+      onlinePlayers: _model.onlinePlayers,
+      usage: _model.commandUsage,
+    );
   }
 
   @override
@@ -127,12 +148,7 @@ class _TerminalTabState extends State<TerminalTab> {
             child: GestureDetector(
               onTap: isUserCommand
                   ? () {
-                      _commandController.text = line;
-                      // Move the cursor to the end of the text
-                      _commandController.selection = TextSelection.fromPosition(
-                        TextPosition(offset: _commandController.text.length),
-                      );
-                      _focusNode.requestFocus(); // Ensure the focus is on the text field
+                      _setText(line);
                     }
                   : null,
               child: Container(
@@ -160,10 +176,14 @@ class _TerminalTabState extends State<TerminalTab> {
         IconButton(
           icon: const Icon(Icons.list),
           onPressed: () {
+            // Picking a command types it into the input and hands over to the
+            // completion strip, rather than interrogating the user with one
+            // dialog per placeholder.
             DialogUtils.showDefaultCommandsPopup(
               context,
               (command) async {
-                await _terminalController.handleCommandInput(command, _commandController);
+                _setText('$command ');
+                _refreshSuggestions();
               },
             );
           },
@@ -200,7 +220,9 @@ class _TerminalTabState extends State<TerminalTab> {
   /// the command list dialog, where there is room for them.
   Widget _buildSuggestions() {
     if (_suggestions.isEmpty) return const SizedBox.shrink();
-    return _buildValueChips();
+    // Chips must not take focus: tapping one would pull focus out of the input
+    // and the field would select its whole contents on the way back.
+    return ExcludeFocus(child: _buildValueChips());
   }
 
   static IconData _categoryIcon(String? category) {
@@ -237,12 +259,21 @@ class _TerminalTabState extends State<TerminalTab> {
           // Command names have no argument type; they are recognised by
           // category instead so the strip is still readable at a glance.
           final command = suggestion.type == null ? BedrockCommands.byName[suggestion.value] : null;
-          final icon = command != null
-              ? _categoryIcon(command.category)
-              : CompletionIcons.forType(suggestion.type, suggestion.value);
+
+          // Items get their real pixel artwork; everything else keeps a
+          // symbolic icon, since there is no artwork for a game rule.
+          final Widget avatar = suggestion.type == ArgType.item
+              ? ItemIcon(suggestion.value, size: 18, fallbackColor: color)
+              : Icon(
+                  command != null
+                      ? _categoryIcon(command.category)
+                      : CompletionIcons.forType(suggestion.type, suggestion.value),
+                  size: 18,
+                  color: color,
+                );
 
           return ActionChip(
-            avatar: Icon(icon, size: 18, color: color),
+            avatar: avatar,
             // The first entry is what Tab accepts, so it is marked as such.
             side: index == 0 ? BorderSide(color: color, width: 1.4) : null,
             label: Text(suggestion.value),
@@ -371,8 +402,7 @@ class _TerminalTabState extends State<TerminalTab> {
       setState(() {
         _historyIndex--;
         if (_historyIndex >= 0 && _historyIndex < _model.commandHistory.length) {
-          _commandController.text = _model.commandHistory[_historyIndex];
-          _setCursorToEnd();
+          _setText(_model.commandHistory[_historyIndex]);
         }
       });
     }
@@ -382,24 +412,17 @@ class _TerminalTabState extends State<TerminalTab> {
     if (_historyIndex < _model.commandHistory.length - 1) {
       setState(() {
         _historyIndex++;
-        _commandController.text = _model.commandHistory[_historyIndex];
-        _setCursorToEnd();
+        _setText(_model.commandHistory[_historyIndex]);
       });
     } else {
       setState(() {
         _resetHistoryIndex();
-        _commandController.clear();
-        _setCursorToEnd();
+        _setText('');
       });
     }
   }
 
-  void _setCursorToEnd() {
-    _commandController.selection = TextSelection.fromPosition(
-      TextPosition(offset: _commandController.text.length),
-    );
-    _focusNode.requestFocus(); // Ensure the focus is on the text field
-  }
+  void _setCursorToEnd() => _setText(_commandController.text);
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {

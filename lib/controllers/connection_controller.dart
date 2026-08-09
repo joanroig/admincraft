@@ -74,6 +74,7 @@ class ConnectionController with ChangeNotifier {
 
   Future<void> executeMinecraftCommand(Model model, String command) async {
     model.addUserCommand(command);
+    model.recordCommandUsage(command);
     model.appendOutputCommand(command);
     connectionService.executeCommand(command);
   }

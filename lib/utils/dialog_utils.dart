@@ -115,7 +115,9 @@ class DialogUtils {
                                     InkWell(
                                       onTap: () {
                                         Navigator.of(context).pop();
-                                        onCommandSelected(command.syntax);
+                                        // Only the name: the arguments are
+                                        // what completion is for.
+                                        onCommandSelected(command.name);
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(

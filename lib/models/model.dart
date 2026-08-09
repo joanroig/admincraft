@@ -47,6 +47,8 @@ class Model with ChangeNotifier {
 
     final stored = _persistenceService.selectedServerId;
     _selectedServerId = _servers.any((server) => server.id == stored) ? stored! : _servers.first.id;
+
+    _commandUsage = _persistenceService.commandUsage;
   }
 
   static String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
@@ -137,6 +139,19 @@ class Model with ChangeNotifier {
 
   Future<void> setCommandHistory(List<String> history) async {
     await _updatePersistenceService(() => _persistenceService.saveCommandHistory(history));
+  }
+
+  Map<String, int> _commandUsage = {};
+  Map<String, int> get commandUsage => Map.unmodifiable(_commandUsage);
+
+  /// Counts a command as used, keyed by its name so that arguments do not
+  /// fragment the count across "give bob stone" and "give ann dirt".
+  Future<void> recordCommandUsage(String command) async {
+    final name = command.trim().split(RegExp(r'\s+')).first.toLowerCase();
+    if (name.isEmpty) return;
+    _commandUsage = {..._commandUsage, name: (_commandUsage[name] ?? 0) + 1};
+    await _persistenceService.saveCommandUsage(_commandUsage);
+    notifyListeners();
   }
 
   Future<void> addUserCommand(String command) async {

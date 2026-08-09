@@ -77,6 +77,8 @@ Our [Contribution Guide](https://github.com/joanroig/admincraft/blob/main/CONTRI
 
 ## ![Admincraft logo](docs/logo/variants/enderman.png) Credits
 
+- Item icons from [mcicons](https://github.com/themuhamed/mcicons) by @themuhamed, used under the MIT License.
+
 Docker tools
 
 - [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server)
