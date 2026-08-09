@@ -108,6 +108,17 @@
         var loading = document.getElementById("loading");
         if (loading) loading.remove();
       });
+
+      // Caches the engine and assets so repeat visits do not download them
+      // again. Registered after load so it never competes with the first
+      // paint. Failure is non-fatal: the app works without it.
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function (error) {
+            console.warn("Service worker registration failed:", error);
+          });
+        });
+      }
     </script>
     <script src="flutter_bootstrap.js" async></script>
   </body>
