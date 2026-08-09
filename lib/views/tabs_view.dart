@@ -90,6 +90,16 @@ class _TabsState extends State<Tabs> with SingleTickerProviderStateMixin {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Pixel art at its native 16px: nearest neighbour keeps the edges
+          // hard instead of blurring them when scaled up.
+          Image.asset(
+            'assets/logo.png',
+            width: 26,
+            height: 26,
+            filterQuality: FilterQuality.none,
+            isAntiAlias: false,
+          ),
+          const SizedBox(width: 10),
           Flexible(
             child: Text(
               model.alias.isEmpty ? 'Admincraft' : model.alias,

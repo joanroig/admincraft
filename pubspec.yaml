@@ -58,6 +58,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    # The app logo, kept in step with the platform icons by
+    # docs/logo/change_logo.py.
+    - assets/logo.png
     # Item icons from mcicons (MIT), named after Minecraft identifiers.
     # See the credits in README.md.
     - assets/mcicons/
