@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/server_profile.dart';
+import 'package:admincraft/models/world_state.dart';
+import 'package:admincraft/services/console_parser.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:flutter/material.dart';
 
@@ -58,8 +60,7 @@ class Model with ChangeNotifier {
   Future<void> selectServer(String id) async {
     if (!_servers.any((server) => server.id == id)) return;
     _selectedServerId = id;
-    _output = '';
-    _onlinePlayers.clear();
+    _resetSession();
     await _persistenceService.saveSelectedServerId(id);
     notifyListeners();
   }
@@ -70,8 +71,7 @@ class Model with ChangeNotifier {
     final created = ServerProfile.empty(_newId());
     _servers = [..._servers, created];
     _selectedServerId = created.id;
-    _output = '';
-    _onlinePlayers.clear();
+    _resetSession();
     await _persistenceService.saveSelectedServerId(created.id);
     await _persistServers();
     return created;
@@ -84,8 +84,7 @@ class Model with ChangeNotifier {
     _servers = _servers.where((server) => server.id != id).toList();
     if (_selectedServerId == id) {
       _selectedServerId = _servers.first.id;
-      _output = '';
-      _onlinePlayers.clear();
+      _resetSession();
       await _persistenceService.saveSelectedServerId(_selectedServerId);
     }
     await _persistServers();
@@ -153,30 +152,36 @@ class Model with ChangeNotifier {
   final Set<String> _onlinePlayers = {};
   Set<String> get onlinePlayers => Set.unmodifiable(_onlinePlayers);
 
-  static final RegExp _connected = RegExp(r'Player connected:\s*([^,]+)');
-  static final RegExp _disconnected = RegExp(r'Player disconnected:\s*([^,]+)');
+  WorldState _world = const WorldState();
+  WorldState get world => _world;
 
-  void _trackPlayers(String chunk) {
-    for (final line in chunk.split('\n')) {
-      final joined = _connected.firstMatch(line);
-      if (joined != null) {
-        _onlinePlayers.add(joined.group(1)!.trim());
-        continue;
-      }
-      final left = _disconnected.firstMatch(line);
-      if (left != null) {
-        _onlinePlayers.remove(left.group(1)!.trim());
-      }
-    }
+  /// Records what was set from here for the values the server cannot report
+  /// back, so the panel can still show them.
+  void recordWeather(String weather) {
+    _world = _world.copyWith(lastWeather: weather);
+    notifyListeners();
   }
 
-  void clearOutput() {
+  void recordDifficulty(String difficulty) {
+    _world = _world.copyWith(lastDifficulty: difficulty);
+    notifyListeners();
+  }
+
+  /// Drops everything tied to the connected server: output, tracked players
+  /// and world state all belong to the session that is ending.
+  void _resetSession() {
     _output = '';
     _onlinePlayers.clear();
+    _world = const WorldState();
   }
 
+  void clearOutput() => _resetSession();
+
   void appendOutputCommand(String command) {
-    _trackPlayers(command);
+    for (final (name, joined) in ConsoleParser.playerChanges(command)) {
+      joined ? _onlinePlayers.add(name) : _onlinePlayers.remove(name);
+    }
+    _world = ConsoleParser.apply(_world, command);
     _output += "$command\n";
     final lines = _output.split('\n');
     if (lines.length > _persistenceService.maxOutLines) {

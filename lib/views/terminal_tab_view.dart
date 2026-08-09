@@ -1,4 +1,5 @@
 import 'package:admincraft/controllers/terminal_controller.dart';
+import 'package:admincraft/data/bedrock_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/utils/command_completion.dart';
@@ -185,10 +186,57 @@ class _TerminalTabState extends State<TerminalTab> {
     );
   }
 
-  /// Horizontal strip of completions for the argument being typed.
+  /// Completions for whatever is being typed.
+  ///
+  /// Command names get a vertical list showing full syntax and description,
+  /// since choosing a command is where that context matters. Argument values
+  /// are chips: there are many more of them and the name is the whole story.
   Widget _buildSuggestions() {
     if (_suggestions.isEmpty) return const SizedBox.shrink();
 
+    final completingCommand = !_commandController.text.trimLeft().contains(' ');
+    return completingCommand ? _buildCommandList() : _buildValueChips();
+  }
+
+  Widget _buildCommandList() {
+    final theme = Theme.of(context);
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 180),
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: _suggestions.length,
+        itemBuilder: (context, index) {
+          final suggestion = _suggestions[index];
+          final command = BedrockCommands.byName[suggestion.value];
+
+          return InkWell(
+            onTap: () => _applySuggestion(suggestion.value),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    command?.syntax ?? suggestion.value,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  if (suggestion.detail.isNotEmpty)
+                    Text(suggestion.detail, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildValueChips() {
     return SizedBox(
       height: 40,
       child: ListView.separated(
