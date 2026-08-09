@@ -45,7 +45,6 @@ class _TerminalTabState extends State<TerminalTab> {
 
   void _applySuggestion(String value) {
     _setText(CommandCompletion.apply(_commandController.text, value));
-    _refreshSuggestions();
   }
 
   /// Replaces the input and leaves the caret at the end.
@@ -62,6 +61,11 @@ class _TerminalTabState extends State<TerminalTab> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _commandController.selection = caret;
     });
+
+    // Every route that changes the input goes through here, so refreshing the
+    // completions here keeps them in step with the syntax hint, which reads
+    // the controller directly on every build.
+    _refreshSuggestions();
   }
 
   @override
@@ -189,10 +193,7 @@ class _TerminalTabState extends State<TerminalTab> {
             // dialog per placeholder.
             DialogUtils.showDefaultCommandsPopup(
               context,
-              (command) async {
-                _setText('$command ');
-                _refreshSuggestions();
-              },
+              (command) async => _setText('$command '),
             );
           },
           tooltip: 'Show default commands',
@@ -372,8 +373,7 @@ class _TerminalTabState extends State<TerminalTab> {
             onSubmitted: (command) async {
               await _terminalController.executeCommand(command, _commandController);
               _resetHistoryIndex();
-              _refreshSuggestions();
-              _focusNode.requestFocus();
+              _setText('');
             },
               ),
             ),
@@ -405,28 +405,24 @@ class _TerminalTabState extends State<TerminalTab> {
     );
   }
 
+  // No setState here: _setText refreshes the completions, and that already
+  // rebuilds, which also picks up the new history index.
   void _navigateCommandHistoryUp() {
     if (_historyIndex > 0) {
-      setState(() {
-        _historyIndex--;
-        if (_historyIndex >= 0 && _historyIndex < _model.commandHistory.length) {
-          _setText(_model.commandHistory[_historyIndex]);
-        }
-      });
+      _historyIndex--;
+      if (_historyIndex >= 0 && _historyIndex < _model.commandHistory.length) {
+        _setText(_model.commandHistory[_historyIndex]);
+      }
     }
   }
 
   void _navigateCommandHistoryDown() {
     if (_historyIndex < _model.commandHistory.length - 1) {
-      setState(() {
-        _historyIndex++;
-        _setText(_model.commandHistory[_historyIndex]);
-      });
+      _historyIndex++;
+      _setText(_model.commandHistory[_historyIndex]);
     } else {
-      setState(() {
-        _resetHistoryIndex();
-        _setText('');
-      });
+      _historyIndex = _model.commandHistory.length;
+      _setText('');
     }
   }
 
