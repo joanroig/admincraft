@@ -378,18 +378,21 @@ class _WorkspaceSidebar extends StatelessWidget {
                   children: [
                     Image.asset(
                       'assets/logo.png',
-                      width: 30,
-                      height: 30,
+                      width: 38,
+                      height: 38,
                       filterQuality: FilterQuality.none,
                       isAntiAlias: false,
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'Admincraft',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.4,
+                            ),
                       ),
                     ),
                   ],
@@ -441,7 +444,7 @@ class _WorkspaceSidebar extends StatelessWidget {
               ),
               _ActionTile(
                 icon: Icons.help_outline,
-                label: 'Documentation',
+                label: 'Docs',
                 onTap: () => UrlUtils.openDocumentation(),
               ),
             ],

@@ -37,8 +37,13 @@ void main() {
     expect(find.text('Overview'), findsWidgets);
     expect(find.text('Data & Sync'), findsOneWidget);
     expect(find.text('Configuration'), findsOneWidget);
-    expect(find.text('Documentation'), findsOneWidget);
+    expect(find.text('Docs'), findsOneWidget);
     expect(find.text('Automatic cloud sync'), findsNothing);
+    expect(tester.widget<Image>(find.byType(Image).first).width, 38);
+    expect(
+      tester.widget<Text>(find.text('Admincraft')).style?.fontWeight,
+      FontWeight.w700,
+    );
 
     await tester.tap(find.text('Data & Sync'));
     await tester.pumpAndSettle();
@@ -77,7 +82,7 @@ void main() {
     await tester.enterText(aliasField, 'Unsaved draft');
     await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
-    expect(find.text('Documentation'), findsOneWidget);
+    expect(find.text('Docs'), findsOneWidget);
     await tester.tap(find.text('Servers'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byTooltip('Edit server'));

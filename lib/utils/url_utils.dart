@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UrlUtils {
@@ -13,10 +14,22 @@ class UrlUtils {
     }
   }
 
-  /// Opens the published documentation, optionally at a page relative to the
-  /// documentation root. Native apps and the hosted web app share these URLs.
+  static Uri documentationUri({
+    String page = '',
+    bool? web,
+    Uri? baseUri,
+  }) {
+    final runningOnWeb = web ?? kIsWeb;
+    final root = runningOnWeb
+        ? (baseUri ?? Uri.base).resolve('docs/')
+        : Uri.parse(documentationBaseUrl);
+    return root.resolve(page);
+  }
+
+  /// Opens documentation beside the web app when running in a browser. Native
+  /// apps use the published site because they do not bundle the MkDocs output.
   static Future<void> openDocumentation([String page = '']) {
-    final uri = Uri.parse(documentationBaseUrl).resolve(page);
+    final uri = documentationUri(page: page);
     return openUrl(uri.toString());
   }
 }

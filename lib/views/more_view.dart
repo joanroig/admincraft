@@ -55,7 +55,7 @@ class MoreView extends StatelessWidget {
               const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.help_outline),
-                title: const Text('Documentation'),
+                title: const Text('Docs'),
                 subtitle: const Text('Setup guides and feature reference'),
                 trailing: const Icon(Icons.open_in_new),
                 onTap: onDocumentation,
