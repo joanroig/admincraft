@@ -1,0 +1,77 @@
+site_name: Admincraft Docs
+site_description: Set up, use, back up, and troubleshoot Admincraft.
+site_url: !ENV [MKDOCS_SITE_URL, "https://joanroig.github.io/admincraft/docs/"]
+repo_url: https://github.com/joanroig/admincraft
+repo_name: joanroig/admincraft
+edit_uri: edit/main/docs/
+copyright: Admincraft is licensed under GPLv3.
+
+theme:
+  name: material
+  language: en
+  logo: logo/variants/dirt.png
+  favicon: logo/variants/dirt.png
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: admincraft-light
+      toggle:
+        icon: material/weather-night
+        name: Use dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: admincraft-dark
+      toggle:
+        icon: material/weather-sunny
+        name: Use light mode
+  features:
+    - content.code.copy
+    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Overview: getting-started/index.md
+      - Install Admincraft: getting-started/install.md
+      - Connect your first server: getting-started/first-server.md
+      - Bedrock server setup: server/SERVER_SETUP.md
+  - Guides:
+      - Connection security: guides/connection-security.md
+      - Server profiles: guides/server-profiles.md
+      - Backup and transfer: guides/backup-transfer.md
+      - Using the web app: guides/web-app.md
+  - Troubleshooting: troubleshooting.md
+  - Development:
+      - Build from source: development/building.md
+      - Logo design: logo/LOGO_DESIGN.md
+  - Open Admincraft ↗: https://joanroig.github.io/admincraft/
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/joanroig/admincraft
+      name: Admincraft on GitHub

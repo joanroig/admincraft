@@ -73,7 +73,7 @@ sudo netfilter-persistent save
 
 4. Make sure to edit the [backups-config/config.yml](backups-config/config.yml) file, the `worlds` setting should match the one you have introduced in the setting `LEVEL_NAME` in the [docker-compose.yml](docker-compose.yml). You can also change the backups frequency as you like.
 
-5. Upload the [docker-compose.yml](docker-compose.yml) file, the [backups-config](backups-config) folder and the [update-server.sh](update-server.sh) script to the home folder of your server.
+5. Upload the [docker-compose.yml](docker-compose.yml) file, the [`backups-config`](https://github.com/joanroig/admincraft/tree/main/docs/server/backups-config) folder and the [update-server.sh](update-server.sh) script to the home folder of your server.
 6. Run `sudo docker compose up -d` to start your server for the first time.
 7. You should now be able to connect to your server with Minecraft. To connect with Admincraft, continue with the next chapter.
 
@@ -173,7 +173,7 @@ Use this if you cannot install Tailscale on the device running Admincraft, or yo
 Open port `8080` first (see [Setup a VM on Oracle Cloud](#setup-a-vm-on-oracle-cloud) and step 2 of the server setup), then:
 
 1. Edit the [certs/makecerts.sh](certs/makecerts.sh) by changing the variable `COMMON_NAME=YOUR_IP_HERE` for your server IP.
-2. Upload the [certs](certs) folder to the home folder of your server.
+2. Upload the [`certs`](https://github.com/joanroig/admincraft/tree/main/docs/server/certs) folder to the home folder of your server.
 3. Make the script executable, format it for Linux, and run it to generate the certificates:
 
 ```
