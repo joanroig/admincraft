@@ -27,7 +27,7 @@ Choose Chrome for the web app, Windows for the desktop app, or a connected Andro
 === "Web"
 
     ```bash
-    flutter build web --release --base-href /admincraft/
+    flutter build web --release --wasm --base-href /admincraft/
     ```
 
 === "Windows"
@@ -59,7 +59,7 @@ local preview.
 ## Build the combined GitHub Pages site
 
 ```bash
-flutter build web --release --base-href /admincraft/
+flutter build web --release --wasm --base-href /admincraft/
 python -m mkdocs build --strict --site-dir build/web/docs
 ```
 

@@ -17,7 +17,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `admincraft-${CACHE_VERSION}`;
 
 self.addEventListener('install', (event) => {
@@ -40,8 +40,11 @@ self.addEventListener('activate', (event) => {
 /** Puts a response in the cache, ignoring anything not worth storing. */
 async function store(request, response) {
   if (!response || !response.ok || response.type !== 'basic') return response;
+  // Clone before yielding: the browser may start consuming the original
+  // response as soon as respondWith receives it.
+  const copy = response.clone();
   const cache = await caches.open(CACHE_NAME);
-  await cache.put(request, response.clone());
+  await cache.put(request, copy);
   return response;
 }
 
@@ -58,21 +61,23 @@ async function networkFirst(request) {
 async function staleWhileRevalidate(request, waitUntil) {
   const cached = await caches.match(request);
 
-  const network = fetch(request)
+  // Do not make a cold visitor wait for Cache Storage to write multi-megabyte
+  // Flutter engine and application files. Return the network response as soon
+  // as it arrives and keep the cache write alive in the background.
+  const network = fetch(request);
+  const refresh = network
     .then((response) => store(request, response))
     .catch(() => undefined);
+  waitUntil(refresh);
 
   // Serve the cached copy the moment there is one; the refresh continues in
   // the background and is used by the next load. waitUntil is called while the
   // event is still active, which keeps the worker alive for that refresh.
   if (cached) {
-    waitUntil(network);
     return cached;
   }
 
-  const response = await network;
-  if (response) return response;
-  throw new Error('offline and not cached');
+  return network;
 }
 
 self.addEventListener('fetch', (event) => {

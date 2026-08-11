@@ -66,7 +66,7 @@ The **Backup & Transfer** section can copy/paste or export/import all saved serv
 ### Build Web and Documentation
 
 - Install the documentation dependencies with `python -m pip install -r requirements-docs.txt`.
-- Run `flutter build web --release --base-href /admincraft/`.
+- Run `flutter build web --release --wasm --base-href /admincraft/`.
 - Run `python -m mkdocs build --strict --site-dir build/web/docs`.
 - The combined GitHub Pages site will be available under `build/web`, with documentation in `build/web/docs`.
 

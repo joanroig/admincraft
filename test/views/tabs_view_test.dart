@@ -36,6 +36,17 @@ void main() {
 
     expect(find.text('Overview'), findsWidgets);
     expect(find.text('Data & Sync'), findsOneWidget);
+    expect(find.text('Automatic cloud sync'), findsNothing);
+
+    await tester.tap(find.text('Data & Sync'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Automatic cloud sync'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Data & Sync'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -54,6 +65,19 @@ void main() {
 
     expect(find.text('Edit server'), findsWidgets);
     expect(find.text('Save changes'), findsOneWidget);
+
+    final aliasField = find.widgetWithText(TextFormField, 'Alias');
+    await tester.enterText(aliasField, 'Unsaved draft');
+    await tester.tap(find.text('Overview'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Edit server'));
+    await tester.tap(find.text('Edit server'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextFormField>(aliasField).controller?.text,
+      'Unsaved draft',
+    );
     expect(tester.takeException(), isNull);
   });
 }

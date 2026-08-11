@@ -48,7 +48,7 @@ jobs:
         run: flutter test
 
       - name: Build Admincraft web
-        run: flutter build web --release --base-href "${{ steps.pages.outputs.base_path }}/"
+        run: flutter build web --release --wasm --base-href "${{ steps.pages.outputs.base_path }}/"
 
       - name: Build documentation inside the web app artifact
         run: python -m mkdocs build --strict --site-dir build/web/docs

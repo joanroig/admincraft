@@ -109,15 +109,45 @@
         if (loading) loading.remove();
       });
 
-      // Caches the engine and assets so repeat visits do not download them
-      // again. Registered after load so it never competes with the first
-      // paint. Failure is non-fatal: the app works without it.
+      // A production service worker makes repeat visits faster. Never use it
+      // for local development: caching Dart debug modules makes hot reload,
+      // startup and rebuilds both slower and prone to stale module mismatches.
       if ("serviceWorker" in navigator) {
-        window.addEventListener("load", function () {
-          navigator.serviceWorker.register("sw.js").catch(function (error) {
-            console.warn("Service worker registration failed:", error);
+        var isLocalhost =
+          location.hostname === "localhost" || location.hostname === "127.0.0.1";
+
+        if (isLocalhost) {
+          Promise.all([
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              return Promise.all(
+                registrations.map(function (registration) {
+                  return registration.unregister();
+                })
+              );
+            }),
+            "caches" in window
+              ? caches.keys().then(function (names) {
+                  return Promise.all(
+                    names
+                      .filter(function (name) {
+                        return name.indexOf("admincraft-") === 0;
+                      })
+                      .map(function (name) {
+                        return caches.delete(name);
+                      })
+                  );
+                })
+              : Promise.resolve(),
+          ]).catch(function (error) {
+            console.warn("Local cache cleanup failed:", error);
           });
-        });
+        } else {
+          window.addEventListener("load", function () {
+            navigator.serviceWorker.register("sw.js").catch(function (error) {
+              console.warn("Service worker registration failed:", error);
+            });
+          });
+        }
       }
     </script>
     <script src="flutter_bootstrap.js" async></script>

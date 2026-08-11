@@ -61,12 +61,20 @@ class Tabs extends StatefulWidget {
 class _TabsState extends State<Tabs> {
   static const double _desktopBreakpoint = 820;
   late Future<void> _initializationFuture;
+  late final PageController _pageController;
   _WorkspaceDestination _destination = _WorkspaceDestination.overview;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     _initializationFuture = _initialize();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _initialize() async {
@@ -82,7 +90,11 @@ class _TabsState extends State<Tabs> {
   }
 
   void _go(_WorkspaceDestination destination) {
+    if (_destination == destination) return;
     setState(() => _destination = destination);
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(destination.index);
+    }
   }
 
   Future<void> _selectServer(String id) async {
@@ -135,36 +147,55 @@ class _TabsState extends State<Tabs> {
     }
   }
 
-  List<Widget> _pages(Model model, ConnectionController connection) => [
-        OverviewView(
+  Widget _pageAt(
+    int index,
+    Model model,
+    ConnectionController connection,
+  ) {
+    final destination = _WorkspaceDestination.values[index];
+    return switch (destination) {
+      _WorkspaceDestination.overview => OverviewView(
           onOpenConsole: () => _go(_WorkspaceDestination.console),
           onOpenControls: () => _go(_WorkspaceDestination.controls),
           onEditServer: () => _go(_WorkspaceDestination.serverEditor),
         ),
-        TerminalTab(
+      _WorkspaceDestination.console => TerminalTab(
           isEnabled: connection.status == ConnectionStatus.connected,
         ),
-        ControlTab(
+      _WorkspaceDestination.controls => ControlTab(
           isEnabled: connection.status == ConnectionStatus.connected,
         ),
-        ServersView(
+      _WorkspaceDestination.servers => ServersView(
           onSelect: _selectServer,
           onAdd: _addServer,
           onEditSelected: () => _go(_WorkspaceDestination.serverEditor),
         ),
-        ServerEditorView(
+      _WorkspaceDestination.serverEditor => ServerEditorView(
           key: ValueKey(model.selectedServerId),
           onSaved: _serverSaved,
           onDeleted: _serverDeleted,
         ),
+      _WorkspaceDestination.dataSync =>
         DataSyncView(onServersChanged: _serversImported),
-        const PreferencesView(),
-        MoreView(
+      _WorkspaceDestination.preferences => const PreferencesView(),
+      _WorkspaceDestination.more => MoreView(
           onServers: () => _go(_WorkspaceDestination.servers),
           onDataSync: () => _go(_WorkspaceDestination.dataSync),
           onPreferences: () => _go(_WorkspaceDestination.preferences),
         ),
-      ];
+    };
+  }
+
+  Widget _pageHost(Model model, ConnectionController connection) {
+    return PageView.builder(
+      controller: _pageController,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _WorkspaceDestination.values.length,
+      itemBuilder: (context, index) => _KeepAlivePage(
+        child: _pageAt(index, model, connection),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,10 +253,7 @@ class _TabsState extends State<Tabs> {
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: IndexedStack(
-                    index: _destination.index,
-                    children: _pages(model, connection),
-                  ),
+                  child: _pageHost(model, connection),
                 ),
               ],
             ),
@@ -274,10 +302,7 @@ class _TabsState extends State<Tabs> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _destination.index,
-        children: _pages(model, connection),
-      ),
+      body: _pageHost(model, connection),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _mobileIndex,
         onDestinationSelected: (index) => _go(switch (index) {
@@ -577,5 +602,26 @@ class _ConnectionAction extends StatelessWidget {
             )
           : Icon(connected ? Icons.stop_rounded : Icons.play_arrow_rounded),
     );
+  }
+}
+
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
