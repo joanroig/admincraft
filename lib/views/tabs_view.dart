@@ -62,6 +62,7 @@ class _TabsState extends State<Tabs> {
   static const double _desktopBreakpoint = 820;
   late Future<void> _initializationFuture;
   late final PageController _pageController;
+  final _pageViewKey = GlobalKey();
   _WorkspaceDestination _destination = _WorkspaceDestination.overview;
 
   @override
@@ -190,6 +191,7 @@ class _TabsState extends State<Tabs> {
 
   Widget _pageHost(Model model, ConnectionController connection) {
     return PageView.builder(
+      key: _pageViewKey,
       controller: _pageController,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _WorkspaceDestination.values.length,

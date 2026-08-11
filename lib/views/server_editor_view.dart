@@ -374,6 +374,21 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: Text(_saving ? 'Saving…' : 'Save changes'),
+                  ),
+                ),
                 if (_model.servers.length > 1) ...[
                   const SizedBox(height: 14),
                   Card(
@@ -423,21 +438,6 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton.icon(
-                    onPressed: _saving ? null : _save,
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(_saving ? 'Saving…' : 'Save changes'),
-                  ),
-                ),
               ],
             ),
           ),

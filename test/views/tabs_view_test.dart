@@ -49,6 +49,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Data & Sync'), findsWidgets);
+    expect(find.text('Automatic cloud sync'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -67,6 +68,10 @@ void main() {
 
     expect(find.text('Edit server'), findsWidgets);
     expect(find.text('Save changes'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Save changes')).dy,
+      lessThan(tester.getTopLeft(find.text('Danger zone')).dy),
+    );
 
     final aliasField = find.widgetWithText(TextFormField, 'Alias');
     await tester.enterText(aliasField, 'Unsaved draft');
