@@ -10,7 +10,7 @@ hide:
 
 # Your Minecraft server, under control
 
-Admincraft is a multiplatform control panel for Minecraft Bedrock servers. Connect securely, run commands, manage the world, and carry your saved servers between devices.
+Admincraft is a multiplatform control panel for Minecraft Bedrock and Java Edition servers. Connect securely, run commands, manage the world, and carry your saved servers between devices.
 
 <div class="admincraft-hero__actions">
   <a class="md-button md-button--primary" href="../">Open Admincraft</a>

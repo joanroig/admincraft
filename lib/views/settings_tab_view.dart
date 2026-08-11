@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/services/config_file.dart';
@@ -45,6 +46,7 @@ class _SettingsTabState extends State<SettingsTab> {
   bool _isSecretVisible = false;
   String _certificateContent = '';
   ConnectionSecurity _selectedSecurity = ConnectionSecurity.privateNetwork;
+  MinecraftEdition _selectedEdition = MinecraftEdition.bedrock;
 
   @override
   void initState() {
@@ -64,6 +66,7 @@ class _SettingsTabState extends State<SettingsTab> {
     _secretKeyController.text = _model.secretKey;
     _certificateContent = _model.certificate;
     _selectedSecurity = _model.connectionSecurity;
+    _selectedEdition = _model.minecraftEdition;
     // A setting saved on another platform can name a mode this one cannot
     // offer, which would leave the dropdown without a matching entry.
     if (!_securityOptions.contains(_selectedSecurity)) {
@@ -231,8 +234,11 @@ class _SettingsTabState extends State<SettingsTab> {
 
   String _connectionPreview() {
     final scheme = _selectedSecurity.usesTls ? 'wss' : 'ws';
-    final host = _ipController.text.trim().isEmpty ? '<ip>' : _ipController.text.trim();
-    final port = _portController.text.trim().isEmpty ? '<port>' : _portController.text.trim();
+    final host =
+        _ipController.text.trim().isEmpty ? '<ip>' : _ipController.text.trim();
+    final port = _portController.text.trim().isEmpty
+        ? '<port>'
+        : _portController.text.trim();
     final suffix = _selectedSecurity.usesTls ? '' : '  (not encrypted)';
     return '$scheme://$host:$port$suffix';
   }
@@ -249,7 +255,8 @@ class _SettingsTabState extends State<SettingsTab> {
         if (fileBytes == null) return;
         _certificateContent = utf8.decode(fileBytes);
       } else {
-        _certificateContent = await File(result.files.single.path!).readAsString();
+        _certificateContent =
+            await File(result.files.single.path!).readAsString();
       }
 
       setState(() {
@@ -293,6 +300,34 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
           const SizedBox(height: 16),
 
+          DropdownButtonFormField<MinecraftEdition>(
+            key: ValueKey(_selectedEdition),
+            initialValue: _selectedEdition,
+            decoration: const InputDecoration(
+              labelText: 'Minecraft Edition',
+              border: OutlineInputBorder(),
+            ),
+            items: MinecraftEdition.values
+                .map((edition) => DropdownMenuItem(
+                      value: edition,
+                      child: Text(edition.label),
+                    ))
+                .toList(),
+            onChanged: (MinecraftEdition? edition) {
+              if (edition != null) {
+                setState(() => _selectedEdition = edition);
+              }
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 12, right: 12),
+            child: Text(
+              'The bridge must use the same edition. Java bridges send commands through RCON.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          const SizedBox(height: 10),
+
           // Alias Input
           TextField(
             controller: _aliasController,
@@ -310,7 +345,8 @@ class _SettingsTabState extends State<SettingsTab> {
               labelText: 'IP / Hostname',
               border: OutlineInputBorder(),
             ),
-            onChanged: (_) => setState(() {}), // Keep the connection preview in sync
+            onChanged: (_) =>
+                setState(() {}), // Keep the connection preview in sync
           ),
           const SizedBox(height: 10),
 
@@ -322,7 +358,8 @@ class _SettingsTabState extends State<SettingsTab> {
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}), // Keep the connection preview in sync
+            onChanged: (_) =>
+                setState(() {}), // Keep the connection preview in sync
           ),
           const SizedBox(height: 10),
 
@@ -495,10 +532,12 @@ class _SettingsTabState extends State<SettingsTab> {
               // A pinned certificate is the only trust anchor in that mode, so
               // saving without one would leave the connection unable to verify
               // anything at all.
-              if (_selectedSecurity.requiresCertificate && _certificateContent.isEmpty) {
+              if (_selectedSecurity.requiresCertificate &&
+                  _certificateContent.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Load a server certificate, or pick another connection security option.'),
+                    content: Text(
+                        'Load a server certificate, or pick another connection security option.'),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -513,6 +552,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 certificate: _certificateContent,
                 port: int.parse(_portController.text),
                 connectionSecurity: _selectedSecurity,
+                minecraftEdition: _selectedEdition,
               );
               await _model.setMaxOutputLines(maxOutLines); // Save maxOutLines
               widget.onSettingsSaved();
@@ -680,7 +720,8 @@ class _SettingsTabState extends State<SettingsTab> {
                       ),
                   recognizer: TapGestureRecognizer()
                     ..onTap = () {
-                      UrlUtils.openUrl('https://github.com/joanroig/admincraft');
+                      UrlUtils.openUrl(
+                          'https://github.com/joanroig/admincraft');
                     },
                 ),
                 TextSpan(

@@ -66,6 +66,7 @@ services:
     environment:
       # Generate your own with: openssl rand -hex 32
       SECRET_KEY: YOUR_SECRET_KEY_HERE
+      SERVER_TYPE: bedrock
       # The recommended setup reaches this port over Tailscale, which already
       # encrypts the traffic. Set to "true" only for the self-signed SSL
       # alternative, which exposes port 8080 to the internet.

@@ -1,11 +1,15 @@
 class CommandUtils {
-  /// Mirrors the validation the Admincraft WebSocket server applies before
-  /// running a command. Checking it here turns a bare "Invalid input." reply
-  /// from the server into a message that explains what was wrong.
-  static final RegExp _accepted = RegExp(r'^[a-zA-Z0-9_\- ]+$');
+  static const int _maxLength = 2048;
+  static final RegExp _controlCharacters = RegExp(r'[\u0000-\u001f\u007f]');
 
-  static bool isAccepted(String command) => _accepted.hasMatch(command);
+  /// Commands are passed as one argument to Docker or directly to RCON, so
+  /// normal Minecraft syntax such as selectors, namespaces and quoted text is
+  /// safe. Line breaks and other control characters remain forbidden.
+  static bool isAccepted(String command) =>
+      command.trim().isNotEmpty &&
+      command.length <= _maxLength &&
+      !_controlCharacters.hasMatch(command);
 
   static const String rejectionMessage =
-      'The server only accepts letters, digits, spaces, underscores and hyphens in commands.';
+      'Commands must be a single non-empty line of at most 2048 characters.';
 }

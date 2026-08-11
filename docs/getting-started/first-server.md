@@ -6,16 +6,18 @@ Before starting, have these values ready:
 - The Admincraft WebSocket port, normally `8080`.
 - The `SECRET_KEY` configured for the WebSocket.
 - The correct [connection security mode](../guides/connection-security.md).
+- Whether the server runs Bedrock or Java Edition.
 - For **Self-signed certificate**, the server's `.crt` file.
 
 ## Add the profile
 
 1. Open **Settings** in Admincraft.
-2. Give the server a recognizable **Alias**.
-3. Enter its **IP / Hostname**, **Port**, and **Secret Key**.
-4. Choose **Connection Security**.
-5. If you selected **Self-signed certificate**, load the certificate file.
-6. Select **Save Settings**.
+2. Choose **Minecraft Edition**. It must match the bridge's `SERVER_TYPE`.
+3. Give the server a recognizable **Alias**.
+4. Enter its **IP / Hostname**, **Port**, and **Secret Key**.
+5. Choose **Connection Security**.
+6. If you selected **Self-signed certificate**, load the certificate file.
+7. Select **Save Settings**.
 
 Admincraft reconnects using the saved values. The status in the app bar changes to **Connected** when the WebSocket accepts the connection.
 

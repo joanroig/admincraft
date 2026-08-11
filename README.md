@@ -9,7 +9,7 @@
 </h1>
 
 <p align="center">
-  Multiplatform app to control Minecraft Bedrock Dockerized servers, built with Flutter.
+  Multiplatform app to control Minecraft Bedrock and Java servers, built with Flutter.
 </p>
 
 <p align="center">
@@ -28,19 +28,19 @@
 
 ## ![Admincraft logo](docs/logo/variants/dirt.png) What is Admincraft?
 
-Admincraft is a multiplatform app for managing Minecraft Bedrock servers in Docker containers. Given that RCON isn't available for Bedrock, Admincraft uses the [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) project to interact with the Minecraft server. This approach allows for secure and real-time command execution and server management through a WebSocket connection, providing an intuitive GUI for tasks such as issuing commands, performing server maintenance, and monitoring server logs.
+Admincraft is a multiplatform app for managing Minecraft Bedrock and Java Edition servers. The [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) bridge uses the Bedrock Docker console or Java RCON internally, while the app keeps the same secure WebSocket connection on every platform. It provides an intuitive GUI for issuing commands, performing server maintenance, and monitoring server logs.
 
 [Open Admincraft Web](https://joanroig.github.io/admincraft/) · [Read the documentation](https://joanroig.github.io/admincraft/docs/)
 
 ### Current project status
 
-- Currently optimized for use with Oracle Always Free, using a server created with [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master).
+- Bedrock is optimized for [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master); Java is optimized for [docker-minecraft-server](https://github.com/itzg/docker-minecraft-server).
 - Development is focused on Android and Windows; other platforms may be unstable.
 - Runs in the browser too (`flutter run -d chrome`), with two limitations the browser imposes: self-signed certificates cannot be loaded, because the browser validates TLS itself and exposes no way to add a trust anchor, and a page served over HTTPS cannot open an unencrypted `ws://` connection, so the `Private network` option only works when the app itself is served over `http://` (such as a local build).
 
 ## ![Admincraft logo](docs/logo/variants/pig.png) Getting Started
 
-You need a Minecraft Bedrock server and [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket). Visit the [documentation](https://joanroig.github.io/admincraft/docs/) for installation, connection, backup, and troubleshooting guides, or jump directly to the [server setup guide](docs/server/SERVER_SETUP.md).
+You need a Minecraft server and [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket). Visit the [documentation](https://joanroig.github.io/admincraft/docs/) for installation, connection, backup, and troubleshooting guides. Use the [Bedrock setup guide](docs/server/SERVER_SETUP.md) or the [Java setup guide](docs/getting-started/java-server.md).
 
 Once you have your server ready, [download Admincraft for your platform](https://github.com/joanroig/admincraft/releases), add your server in the app, and you're good to go!
 

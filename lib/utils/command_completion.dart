@@ -1,7 +1,9 @@
-import 'package:admincraft/data/bedrock_commands.dart';
 import 'package:admincraft/data/bedrock_gamerules.dart';
 import 'package:admincraft/data/bedrock_ids.dart';
+import 'package:admincraft/data/java_ids.dart';
+import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
+import 'package:admincraft/models/minecraft_edition.dart';
 
 class Completion {
   /// The value to insert.
@@ -28,17 +30,23 @@ class CommandCompletion {
     String input, {
     Set<String> onlinePlayers = const {},
     Map<String, int> usage = const {},
+    MinecraftEdition edition = MinecraftEdition.bedrock,
   }) {
     // A trailing space means the current word is empty: the user has finished
     // the previous argument and is starting the next one.
     final atNewWord = input.isEmpty || input.endsWith(' ');
-    final words = input.trimLeft().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words = input
+        .trimLeft()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
 
     if (words.isEmpty || (words.length == 1 && !atNewWord)) {
-      return _commands(words.isEmpty ? '' : words.first, usage);
+      return _commands(words.isEmpty ? '' : words.first, usage, edition);
     }
 
-    final command = BedrockCommands.byName[words.first.toLowerCase()];
+    final command =
+        MinecraftCommands.byName(edition)[words.first.toLowerCase()];
     if (command == null) return const [];
 
     // Index of the argument being typed, counting from after the command name.
@@ -48,20 +56,31 @@ class CommandCompletion {
     final arg = command.argAt(argIndex);
     if (arg == null) return const [];
 
-    return _forArg(arg, prefix, onlinePlayers);
+    return _forArg(arg, prefix, onlinePlayers, edition);
   }
 
   /// The command whose syntax should be displayed for [input], if any.
-  static BedrockCommand? commandFor(String input) {
-    final words = input.trimLeft().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+  static BedrockCommand? commandFor(
+    String input, {
+    MinecraftEdition edition = MinecraftEdition.bedrock,
+  }) {
+    final words = input
+        .trimLeft()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     if (words.isEmpty) return null;
-    return BedrockCommands.byName[words.first.toLowerCase()];
+    return MinecraftCommands.byName(edition)[words.first.toLowerCase()];
   }
 
   /// Which argument index [input] is currently on, for highlighting the hint.
   static int activeArgIndex(String input) {
     final atNewWord = input.isEmpty || input.endsWith(' ');
-    final words = input.trimLeft().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final words = input
+        .trimLeft()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
     if (words.length <= 1) return atNewWord && words.isNotEmpty ? 0 : -1;
     return atNewWord ? words.length - 1 : words.length - 2;
   }
@@ -77,36 +96,70 @@ class CommandCompletion {
     return '${input.substring(0, lastSpace + 1)}$value ';
   }
 
-  static List<Completion> _commands(String prefix, Map<String, int> usage) {
+  static List<Completion> _commands(
+    String prefix,
+    Map<String, int> usage,
+    MinecraftEdition edition,
+  ) {
     return _rank(
-      BedrockCommands.all.map((c) => Completion(c.name, c.description)).toList(),
+      MinecraftCommands.all(edition)
+          .map((c) => Completion(c.name, c.description))
+          .toList(),
       prefix,
       usage: usage,
     );
   }
 
-  static List<Completion> _forArg(CommandArg arg, String prefix, Set<String> onlinePlayers) {
+  static List<Completion> _forArg(
+    CommandArg arg,
+    String prefix,
+    Set<String> onlinePlayers,
+    MinecraftEdition edition,
+  ) {
     switch (arg.type) {
       case ArgType.literal:
-        return _rank(arg.options.map((o) => Completion(o, '', ArgType.literal)).toList(), prefix);
+        return _rank(
+            arg.options.map((o) => Completion(o, '', ArgType.literal)).toList(),
+            prefix);
       case ArgType.player:
         return _rank(
-          onlinePlayers.map((player) => Completion(player, 'online', ArgType.player)).toList(),
+          onlinePlayers
+              .map((player) => Completion(player, 'online', ArgType.player))
+              .toList(),
           prefix,
         );
       case ArgType.item:
-        return _rank(BedrockIds.items.map((i) => Completion(i, '', ArgType.item)).toList(), prefix);
+        return _rank(
+            BedrockIds.items
+                .map((i) => Completion(i, '', ArgType.item))
+                .toList(),
+            prefix);
       case ArgType.entity:
-        return _rank(BedrockIds.entities.map((e) => Completion(e, '', ArgType.entity)).toList(), prefix);
+        return _rank(
+            BedrockIds.entities
+                .map((e) => Completion(e, '', ArgType.entity))
+                .toList(),
+            prefix);
       case ArgType.effect:
-        return _rank(BedrockIds.effects.map((e) => Completion(e, '', ArgType.effect)).toList(), prefix);
+        return _rank(
+            BedrockIds.effects
+                .map((e) => Completion(e, '', ArgType.effect))
+                .toList(),
+            prefix);
       case ArgType.enchantment:
         return _rank(
-            BedrockIds.enchantments.map((e) => Completion(e, '', ArgType.enchantment)).toList(), prefix);
+            BedrockIds.enchantments
+                .map((e) => Completion(e, '', ArgType.enchantment))
+                .toList(),
+            prefix);
       case ArgType.gamerule:
+        final gamerules = edition == MinecraftEdition.java
+            ? JavaIds.gamerules
+            : BedrockIds.gamerules;
         return _rank(
-            BedrockIds.gamerules
-                .map((g) => Completion(g, BedrockGamerules.forName(g).label, ArgType.gamerule))
+            gamerules
+                .map((g) => Completion(
+                    g, BedrockGamerules.forName(g).label, ArgType.gamerule))
                 .toList(),
             prefix);
       case ArgType.number:
@@ -129,7 +182,8 @@ class CommandCompletion {
     Map<String, int> usage = const {},
   }) {
     int byUsage(Completion a, Completion b) {
-      final used = (usage[b.value.toLowerCase()] ?? 0) - (usage[a.value.toLowerCase()] ?? 0);
+      final used = (usage[b.value.toLowerCase()] ?? 0) -
+          (usage[a.value.toLowerCase()] ?? 0);
       return used != 0 ? used : a.value.compareTo(b.value);
     }
 

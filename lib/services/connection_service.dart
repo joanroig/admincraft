@@ -16,12 +16,17 @@ class ConnectionService {
 
   Future<void> connect(Model model, {bool reconnect = false}) async {
     _status = ConnectionStatus.connecting;
-    String jwtToken = createJwt('Admincraft', model.secretKey);
+    String jwtToken = createJwt(
+      'Admincraft',
+      model.secretKey,
+      edition: model.minecraftEdition.name,
+    );
 
     // Determine protocol and URI
     final security = model.connectionSecurity;
     final protocol = security.usesTls ? 'wss' : 'ws';
-    final uri = Uri.parse('$protocol://${model.ip}:${model.port}?token=$jwtToken');
+    final uri =
+        Uri.parse('$protocol://${model.ip}:${model.port}?token=$jwtToken');
 
     // Connect using whichever WebSocket the platform provides
     try {
@@ -53,10 +58,17 @@ class ConnectionService {
     }
   }
 
-  String createJwt(String userId, String secretKey) {
+  String createJwt(
+    String userId,
+    String secretKey, {
+    required String edition,
+  }) {
     final jwt = JWT({
       'userId': userId,
-      'exp': DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000,
+      'edition': edition,
+      'exp':
+          DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
+              1000,
     });
     return jwt.sign(SecretKey(secretKey));
   }

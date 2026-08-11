@@ -41,6 +41,7 @@ nav:
       - Install Admincraft: getting-started/install.md
       - Connect your first server: getting-started/first-server.md
       - Bedrock server setup: server/SERVER_SETUP.md
+      - Java server setup: getting-started/java-server.md
   - Guides:
       - Connection security: guides/connection-security.md
       - Server profiles: guides/server-profiles.md
