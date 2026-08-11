@@ -49,6 +49,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Automatic cloud sync'), findsOneWidget);
+    expect(find.text('Back up and transfer application data'), findsOneWidget);
+    expect(find.text('Bedrock Edition'), findsOneWidget);
 
     tester.view.physicalSize = const Size(390, 844);
     await tester.pumpAndSettle();

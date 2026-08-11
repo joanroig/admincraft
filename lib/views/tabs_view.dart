@@ -466,6 +466,21 @@ class _WorkspaceHeader extends StatelessWidget {
     required this.connection,
   });
 
+  String get _subtitle => switch (destination) {
+        _WorkspaceDestination.overview ||
+        _WorkspaceDestination.console ||
+        _WorkspaceDestination.controls ||
+        _WorkspaceDestination.serverEditor =>
+          model.ip.isEmpty
+              ? model.selectedServer.edition.label
+              : '${model.selectedServer.edition.label} · ${model.ip}:${model.port}',
+        _WorkspaceDestination.servers => 'Manage saved server profiles',
+        _WorkspaceDestination.dataSync =>
+          'Back up and transfer application data',
+        _WorkspaceDestination.preferences => 'Application-wide settings',
+        _WorkspaceDestination.more => 'Application tools and settings',
+      };
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -483,9 +498,7 @@ class _WorkspaceHeader extends StatelessWidget {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    model.ip.isEmpty
-                        ? model.selectedServer.edition.label
-                        : '${model.selectedServer.edition.label} · ${model.ip}:${model.port}',
+                    _subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall,
