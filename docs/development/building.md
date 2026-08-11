@@ -51,7 +51,10 @@ python -m pip install -r requirements-docs.txt
 python -m mkdocs serve
 ```
 
-MkDocs prints the local preview address. Changes under `docs/` reload automatically.
+Open `http://127.0.0.1:8000/` to view the local documentation. Changes under
+`docs/` reload automatically. Production builds set `MKDOCS_SITE_URL` so links
+use the GitHub Pages `/admincraft/docs/` path without imposing that path on the
+local preview.
 
 ## Build the combined GitHub Pages site
 

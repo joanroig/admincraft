@@ -1,6 +1,6 @@
 site_name: Admincraft Docs
 site_description: Set up, use, back up, and troubleshoot Admincraft.
-site_url: !ENV [MKDOCS_SITE_URL, "https://joanroig.github.io/admincraft/docs/"]
+site_url: !ENV [MKDOCS_SITE_URL, "http://127.0.0.1:8000/"]
 repo_url: https://github.com/joanroig/admincraft
 repo_name: joanroig/admincraft
 edit_uri: edit/main/docs/
@@ -62,6 +62,9 @@ markdown_extensions:
   - md_in_html
   - tables
   - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.superfences
