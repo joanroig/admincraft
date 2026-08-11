@@ -274,6 +274,13 @@ class _SettingsTabState extends State<SettingsTab> {
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
+              IconButton(
+                icon: const Icon(Icons.help_outline),
+                tooltip: 'Server setup guide',
+                onPressed: () => UrlUtils.openDocumentation(
+                  'getting-started/first-server/',
+                ),
+              ),
               // Hidden rather than disabled when only one server is left:
               // there always has to be a selected server to connect with.
               if (_model.servers.length > 1)
@@ -380,13 +387,26 @@ class _SettingsTabState extends State<SettingsTab> {
                   _connectionPreview(),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: _selectedSecurity.usesTls ? null : Theme.of(context).colorScheme.error,
+                        color: _selectedSecurity.usesTls
+                            ? null
+                            : Theme.of(context).colorScheme.error,
                       ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => UrlUtils.openDocumentation(
+                      'guides/connection-security/',
+                    ),
+                    icon: const Icon(Icons.menu_book_outlined, size: 18),
+                    label: const Text('Connection security guide'),
+                  ),
                 ),
                 // Only worth explaining where someone would otherwise reach for
                 // a certificate: it says nothing useful about an unencrypted
                 // connection over a private network.
-                if (!supportsCustomCertificate && _selectedSecurity.usesTls) ...[
+                if (!supportsCustomCertificate &&
+                    _selectedSecurity.usesTls) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Self-signed certificates cannot be loaded in a browser. Trust the certificate in the browser first by opening the server address, or use a server with a publicly trusted certificate.',

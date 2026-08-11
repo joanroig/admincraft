@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/utils/url_utils.dart';
 import 'package:admincraft/views/control_tab_view.dart';
 import 'package:admincraft/views/settings_tab_view.dart';
 import 'package:admincraft/views/terminal_tab_view.dart';
@@ -143,6 +144,11 @@ class _TabsState extends State<Tabs> with SingleTickerProviderStateMixin {
       appBar: AppBar(
         title: _buildServerSelector(context, model, connectionController),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: 'Open documentation',
+            onPressed: () => UrlUtils.openDocumentation(),
+          ),
           Row(
             children: [
               Padding(

@@ -1,6 +1,6 @@
 ## ![Admincraft logo](variants/dirt.png) Logo Design
 
-The [variants](variants) folder contains the Admincraft logo and its alternative versions. The official logo can be found at [variants/dirt.png](variants/dirt.png).
+The `variants` folder contains the Admincraft logo and its alternative versions. The official logo can be found at [variants/dirt.png](variants/dirt.png).
 
 ### Specification
 
@@ -21,7 +21,7 @@ The [variants](variants) folder contains the Admincraft logo and its alternative
 
 3. **Add the Logo to the Project**:
 
-   - Create a new folder in [/docs/logo](/docs/logo) with the desired icon name. Inside this folder, place the logo file with the name **logo.png**.
+   - Create a new folder under `docs/logo` with the desired icon name. Inside this folder, place the logo file with the name **logo.png**.
 
 4. **Apply Your Logo**:
 
