@@ -2,13 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
+import 'package:admincraft/services/config_file.dart';
+import 'package:admincraft/services/config_transfer.dart';
+import 'package:admincraft/services/websocket_connector.dart';
+import 'package:admincraft/utils/dialog_utils.dart';
+import 'package:admincraft/utils/toast_utils.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Import for package info
 import 'package:provider/provider.dart';
 
@@ -37,6 +44,7 @@ class _SettingsTabState extends State<SettingsTab> {
   String _buildNumber = '';
   bool _isSecretVisible = false;
   String _certificateContent = '';
+  ConnectionSecurity _selectedSecurity = ConnectionSecurity.privateNetwork;
 
   @override
   void initState() {
@@ -55,6 +63,12 @@ class _SettingsTabState extends State<SettingsTab> {
     _portController.text = _model.port.toString();
     _secretKeyController.text = _model.secretKey;
     _certificateContent = _model.certificate;
+    _selectedSecurity = _model.connectionSecurity;
+    // A setting saved on another platform can name a mode this one cannot
+    // offer, which would leave the dropdown without a matching entry.
+    if (!_securityOptions.contains(_selectedSecurity)) {
+      _selectedSecurity = ConnectionSecurity.trustedCertificate;
+    }
     _selectedThemeMode = _model.themeMode;
     _fontSizeController.text = _model.fontSize.toString();
     _maxOutLinesController.text = _model.maxOutLines.toString();
@@ -70,10 +84,157 @@ class _SettingsTabState extends State<SettingsTab> {
 
   void _updateCertificateMessage() {
     if (_certificateContent.isNotEmpty) {
-      _certificateController.text = 'Certificate Loaded and SSL Enabled';
+      _certificateController.text = 'Certificate Loaded';
     } else {
-      _certificateController.text = 'SSL Disabled, Load a Server Certificate to Enable SSL';
+      _certificateController.text = 'No Certificate Loaded';
     }
+  }
+
+  /// Pinning a certificate needs a trust store the app controls, which the
+  /// browser does not expose, so that mode is hidden on web.
+  List<ConnectionSecurity> get _securityOptions => ConnectionSecurity.values
+      .where((security) =>
+          supportsCustomCertificate || !security.requiresCertificate)
+      .toList();
+
+  /// Key derivation is deliberately slow, so the buttons are disabled while it
+  /// runs rather than letting a second tap queue up behind the first.
+  bool _busy = false;
+
+  Future<void> _export({required bool toClipboard}) async {
+    final passphrase = await DialogUtils.promptForPassphrase(
+      context,
+      title: 'Export servers',
+      message:
+          'Choose a passphrase. You will need the same one to import this on another device.',
+      confirm: true,
+    );
+    if (passphrase == null || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final blob = await ConfigTransfer.export(_model.servers, passphrase);
+
+      if (toClipboard) {
+        await Clipboard.setData(ClipboardData(text: blob));
+        ToastUtils.showToastSuccess(
+            'Config copied. Paste it on your other device.');
+      } else {
+        final path = await saveConfigFile(ConfigTransfer.fileName(), blob);
+        if (path != null) ToastUtils.showToastSuccess('Saved to $path');
+      }
+    } catch (e) {
+      ToastUtils.showToastError('Export failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _importFromClipboard() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final blob = data?.text;
+      if (blob == null || blob.trim().isEmpty) {
+        ToastUtils.showToastError('The clipboard is empty.');
+        return;
+      }
+      await _import(blob);
+    } catch (e) {
+      ToastUtils.showToastError('Could not read the clipboard: $e');
+    }
+  }
+
+  Future<void> _importFromFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['json'],
+        // Needed on web, where there is no path to read from afterwards.
+        withData: true,
+      );
+      if (result == null) return;
+
+      final file = result.files.single;
+      final blob = file.bytes != null
+          ? utf8.decode(file.bytes!)
+          : await File(file.path!).readAsString();
+
+      await _import(blob);
+    } catch (e) {
+      ToastUtils.showToastError('Could not read the config file: $e');
+    }
+  }
+
+  Future<void> _import(String blob) async {
+    if (!mounted) return;
+    final passphrase = await DialogUtils.promptForPassphrase(
+      context,
+      title: 'Import servers',
+      message: 'Enter the passphrase this config was exported with.',
+      confirm: false,
+    );
+    if (passphrase == null || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final servers = await ConfigTransfer.import(blob, passphrase);
+      if (servers.isEmpty) {
+        throw const ConfigTransferException(
+            'This config does not contain any servers.');
+      }
+      if (!mounted) return;
+
+      final confirmed = await DialogUtils.confirmAction(
+        context,
+        title: 'Import ${servers.length} server(s)?',
+        message:
+            'Profiles with matching IDs will be updated. Your other saved servers will stay.',
+        confirmLabel: 'Import',
+      );
+      if (!confirmed || !mounted) return;
+
+      final selectedBefore = _model.selectedServer.toJson();
+      final result = await _model.importServers(servers);
+      ToastUtils.showToastSuccess(
+        'Imported ${result.added} new and updated ${result.updated} server(s).',
+      );
+      if (mounted) {
+        _loadSettings();
+        if (!mapEquals(selectedBefore, _model.selectedServer.toJson())) {
+          widget.onSettingsSaved();
+        }
+      }
+    } on ConfigTransferException catch (e) {
+      ToastUtils.showToastError(e.message);
+    } catch (e) {
+      ToastUtils.showToastError('Import failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _deleteServer() async {
+    final server = _model.selectedServer;
+    final confirmed = await DialogUtils.confirmAction(
+      context,
+      title: 'Delete Server',
+      message:
+          'Remove "${server.alias}" and its saved secret key from this device?',
+      confirmLabel: 'Delete',
+    );
+    if (!confirmed) return;
+
+    await _model.deleteServer(server.id);
+    if (!mounted) return;
+    widget.onSettingsSaved();
+  }
+
+  String _connectionPreview() {
+    final scheme = _selectedSecurity.usesTls ? 'wss' : 'ws';
+    final host = _ipController.text.trim().isEmpty ? '<ip>' : _ipController.text.trim();
+    final port = _portController.text.trim().isEmpty ? '<port>' : _portController.text.trim();
+    final suffix = _selectedSecurity.usesTls ? '' : '  (not encrypted)';
+    return '$scheme://$host:$port$suffix';
   }
 
   Future<void> _pickCertificateFile() async {
@@ -105,9 +266,23 @@ class _SettingsTabState extends State<SettingsTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Server Settings Header
-          Text(
-            'Server Settings',
-            style: Theme.of(context).textTheme.headlineMedium,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Server Settings',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+              ),
+              // Hidden rather than disabled when only one server is left:
+              // there always has to be a selected server to connect with.
+              if (_model.servers.length > 1)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Delete this server',
+                  onPressed: _deleteServer,
+                ),
+            ],
           ),
           const SizedBox(height: 16),
 
@@ -128,6 +303,7 @@ class _SettingsTabState extends State<SettingsTab> {
               labelText: 'IP / Hostname',
               border: OutlineInputBorder(),
             ),
+            onChanged: (_) => setState(() {}), // Keep the connection preview in sync
           ),
           const SizedBox(height: 10),
 
@@ -139,6 +315,7 @@ class _SettingsTabState extends State<SettingsTab> {
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}), // Keep the connection preview in sync
           ),
           const SizedBox(height: 10),
 
@@ -164,36 +341,95 @@ class _SettingsTabState extends State<SettingsTab> {
             autocorrect: false,
           ),
           const SizedBox(height: 10),
-          // Certificate File Input
-          TextField(
-            controller: _certificateController,
-            decoration: InputDecoration(
-              labelText: 'Server Certificate',
-              border: const OutlineInputBorder(),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.folder_open),
-                    onPressed: _pickCertificateFile,
-                  ),
-                  if (_certificateContent.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        setState(() {
-                          _certificateController.clear();
-                          _certificateContent = '';
-                          _updateCertificateMessage(); // Update message when clearing the certificate
-                        });
-                      },
-                    ),
-                ],
-              ),
+
+          // Connection Security Dropdown
+          DropdownButtonFormField<ConnectionSecurity>(
+            initialValue: _selectedSecurity,
+            decoration: const InputDecoration(
+              labelText: 'Connection Security',
+              border: OutlineInputBorder(),
             ),
-            readOnly: true,
+            items: _securityOptions
+                .map((security) => DropdownMenuItem(
+                      value: security,
+                      child: Text(security.label),
+                    ))
+                .toList(),
+            onChanged: (ConnectionSecurity? security) {
+              if (security != null) {
+                setState(() {
+                  _selectedSecurity = security;
+                });
+              }
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 12, right: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _selectedSecurity.description,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 4),
+                // Showing the resulting address makes the difference between
+                // an encrypted and an unencrypted connection visible before
+                // saving, rather than after something goes wrong.
+                Text(
+                  _connectionPreview(),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: _selectedSecurity.usesTls ? null : Theme.of(context).colorScheme.error,
+                      ),
+                ),
+                // Only worth explaining where someone would otherwise reach for
+                // a certificate: it says nothing useful about an unencrypted
+                // connection over a private network.
+                if (!supportsCustomCertificate && _selectedSecurity.usesTls) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Self-signed certificates cannot be loaded in a browser. Trust the certificate in the browser first by opening the server address, or use a server with a publicly trusted certificate.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 10),
+
+          // Certificate File Input, only relevant when pinning a certificate
+          if (_selectedSecurity.requiresCertificate) ...[
+            TextField(
+              controller: _certificateController,
+              decoration: InputDecoration(
+                labelText: 'Server Certificate',
+                border: const OutlineInputBorder(),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.folder_open),
+                      onPressed: _pickCertificateFile,
+                    ),
+                    if (_certificateContent.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _certificateController.clear();
+                            _certificateContent = '';
+                            _updateCertificateMessage(); // Update message when clearing the certificate
+                          });
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              readOnly: true,
+            ),
+            const SizedBox(height: 10),
+          ],
 
           // Max Output Lines Input
           TextField(
@@ -236,6 +472,19 @@ class _SettingsTabState extends State<SettingsTab> {
                 return; // Prevent saving if not a valid number
               }
 
+              // A pinned certificate is the only trust anchor in that mode, so
+              // saving without one would leave the connection unable to verify
+              // anything at all.
+              if (_selectedSecurity.requiresCertificate && _certificateContent.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Load a server certificate, or pick another connection security option.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
               // Proceed with saving if validation passes
               await _model.setConnectionDetails(
                 alias: _aliasController.text,
@@ -243,12 +492,69 @@ class _SettingsTabState extends State<SettingsTab> {
                 secretKey: _secretKeyController.text,
                 certificate: _certificateContent,
                 port: int.parse(_portController.text),
+                connectionSecurity: _selectedSecurity,
               );
               await _model.setMaxOutputLines(maxOutLines); // Save maxOutLines
               widget.onSettingsSaved();
             },
             child: const Text('Save Settings'),
           ),
+
+          const SizedBox(height: 20),
+
+          // Transfer Header
+          Text(
+            'Backup & Transfer',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Move your saved servers to another device. Exports are encrypted with a passphrase, '
+            'because they contain the secret keys that control your servers.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => UrlUtils.openDocumentation(
+                'guides/backup-transfer/',
+              ),
+              icon: const Icon(Icons.menu_book_outlined, size: 18),
+              label: const Text('Backup and transfer guide'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _export(toClipboard: true),
+                icon: const Icon(Icons.copy_all),
+                label: const Text('Copy config'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _importFromClipboard,
+                icon: const Icon(Icons.content_paste),
+                label: const Text('Paste config'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _export(toClipboard: false),
+                icon: const Icon(Icons.save_alt),
+                label: const Text('Export file'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _importFromFile,
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Import file'),
+              ),
+            ],
+          ),
+          if (_busy)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: LinearProgressIndicator(),
+            ),
 
           const SizedBox(height: 20),
 

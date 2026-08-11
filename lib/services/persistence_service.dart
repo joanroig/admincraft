@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +11,10 @@ class PersistenceService {
   static const _portKey = 'port';
   static const _secretKeyKey = 'secretKey';
   static const _certificateKey = 'certificateKey';
+  static const _connectionSecurityKey = 'connectionSecurity';
+  static const _serversKey = 'servers';
+  static const _selectedServerKey = 'selectedServer';
+  static const _commandUsageKey = 'commandUsage';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
   static const _fontKey = 'font';
@@ -32,22 +40,6 @@ class PersistenceService {
     } else {
       throw ArgumentError('Unsupported type: ${value.runtimeType}');
     }
-  }
-
-  Future<void> saveConnectionDetails({
-    required String alias,
-    required String ip,
-    required int port,
-    required String secretKey,
-    required String certificate,
-  }) async {
-    await Future.wait([
-      _set(_aliasKey, alias),
-      _set(_ipKey, ip),
-      _set(_portKey, port),
-      _set(_secretKeyKey, secretKey),
-      _set(_certificateKey, certificate),
-    ]);
   }
 
   Future<void> saveMaxOutLines(int lines) async {
@@ -79,6 +71,76 @@ class PersistenceService {
   int get port => _prefs.getInt(_portKey) ?? 8080;
   String get secretKey => _prefs.getString(_secretKeyKey) ?? '';
   String get certificate => _prefs.getString(_certificateKey) ?? '';
+
+  ConnectionSecurity get connectionSecurity {
+    final stored = _prefs.getString(_connectionSecurityKey);
+    if (stored == null) return _legacyConnectionSecurity;
+    return ConnectionSecurity.values.firstWhere(
+      (security) => security.name == stored,
+      orElse: () => _legacyConnectionSecurity,
+    );
+  }
+
+  /// Before this setting existed, TLS was enabled exactly when a certificate
+  /// had been loaded. Keep users on the behaviour they already had.
+  ConnectionSecurity get _legacyConnectionSecurity =>
+      certificate.isEmpty ? ConnectionSecurity.privateNetwork : ConnectionSecurity.customCertificate;
+
+  // ---------------------------------------------------------------------------
+  // Server profiles
+  // ---------------------------------------------------------------------------
+
+  /// Saved servers.
+  ///
+  /// When nothing has been stored yet the single set of connection details
+  /// from before multi-server support is promoted to the first profile, so an
+  /// existing install keeps its server instead of starting empty.
+  List<ServerProfile> get servers {
+    final stored = _prefs.getStringList(_serversKey);
+    if (stored != null) {
+      return stored
+          .map((entry) => ServerProfile.fromJson(jsonDecode(entry) as Map<String, dynamic>))
+          .toList();
+    }
+
+    return [
+      ServerProfile(
+        id: 'default',
+        alias: alias,
+        ip: ip,
+        port: port,
+        secretKey: secretKey,
+        certificate: certificate,
+        security: connectionSecurity,
+      )
+    ];
+  }
+
+  Future<void> saveServers(List<ServerProfile> servers) async {
+    await _set(
+      _serversKey,
+      servers.map((server) => jsonEncode(server.toJson())).toList(),
+    );
+  }
+
+  /// How often each command has been sent, used to order completions so the
+  /// commands someone actually reaches for come first.
+  Map<String, int> get commandUsage {
+    final stored = _prefs.getString(_commandUsageKey);
+    if (stored == null) return {};
+    final decoded = jsonDecode(stored) as Map<String, dynamic>;
+    return decoded.map((key, value) => MapEntry(key, value as int));
+  }
+
+  Future<void> saveCommandUsage(Map<String, int> usage) async {
+    await _set(_commandUsageKey, jsonEncode(usage));
+  }
+
+  String? get selectedServerId => _prefs.getString(_selectedServerKey);
+
+  Future<void> saveSelectedServerId(String id) async {
+    await _set(_selectedServerKey, id);
+  }
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
   ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';

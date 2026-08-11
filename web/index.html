@@ -18,12 +18,15 @@
 
     <meta charset="UTF-8" />
     <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
-    <meta name="description" content="A new Flutter project." />
+    <meta name="description" content="Manage your Minecraft Bedrock server from the browser." />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
-    <!-- iOS meta tags & icons -->
+    <!-- Web app meta tags & icons. The apple-prefixed tag is deprecated but
+         kept for older iOS versions, which ignore the standard one. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <meta name="apple-mobile-web-app-title" content="admincraft" />
+    <meta name="apple-mobile-web-app-title" content="Admincraft" />
     <link rel="apple-touch-icon" href="icons/Icon-192.png" />
 
     <!-- Favicon -->
@@ -31,8 +34,92 @@
 
     <title>Admincraft</title>
     <link rel="manifest" href="manifest.json" />
+
+    <style>
+      /* Shown until Flutter paints its first frame. Without it the page is
+         blank for the whole engine download, which reads as a broken app. */
+      body {
+        margin: 0;
+        background: #ffffff;
+      }
+
+      #loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #3c3c3c;
+        background: #ffffff;
+      }
+
+      #loading img {
+        width: 96px;
+        height: 96px;
+        image-rendering: pixelated;
+      }
+
+      #loading .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(128, 128, 128, 0.3);
+        border-top-color: #6750a4;
+        border-radius: 50%;
+        animation: spin 0.9s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body,
+        #loading {
+          background: #121212;
+          color: #e6e6e6;
+        }
+      }
+
+      /* Respect users who ask for less motion: keep the indicator, drop the
+         continuous spin. */
+      @media (prefers-reduced-motion: reduce) {
+        #loading .spinner {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="loading">
+      <img src="icons/Icon-192.png" alt="" />
+      <div class="spinner"></div>
+      <div>Loading Admincraft...</div>
+    </div>
+
+    <script>
+      // Flutter fires this once it has painted, which is the point the splash
+      // is actually covered by real UI.
+      window.addEventListener("flutter-first-frame", function () {
+        var loading = document.getElementById("loading");
+        if (loading) loading.remove();
+      });
+
+      // Caches the engine and assets so repeat visits do not download them
+      // again. Registered after load so it never competes with the first
+      // paint. Failure is non-fatal: the app works without it.
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function (error) {
+            console.warn("Service worker registration failed:", error);
+          });
+        });
+      }
+    </script>
     <script src="flutter_bootstrap.js" async></script>
   </body>
 </html>

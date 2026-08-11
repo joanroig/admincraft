@@ -1,0 +1,129 @@
+name: Build and Release App
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type"
+        required: true
+        default: "release"
+        type: choice
+        options:
+          - release
+          - prerelease
+  workflow_run:
+    workflows: ["Bump Version & Release"]
+    types:
+      - completed
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      prerelease: ${{ steps.get_version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(cat pubspec.yaml | grep version: | awk '{print $2}')
+          VERSION="v$VERSION"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.release_type }}" == "prerelease" ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+  build:
+    needs: get-version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - platform: android
+            os: ubuntu-latest
+            build_cmd: flutter build apk --release
+            output: build/app/outputs/flutter-apk/app-release.apk
+            ext: apk
+          - platform: windows
+            os: windows-latest
+            build_cmd: flutter build windows --release
+            output: build/windows/x64/runner/Release/admincraft.zip
+            ext: zip
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Install zip (Windows only)
+        if: matrix.platform == 'windows'
+        run: choco install zip -y
+      - name: Build ${{ matrix.platform }}
+        run: ${{ matrix.build_cmd }}
+      - name: Prepare Windows zip
+        if: matrix.platform == 'windows'
+        shell: bash
+        run: |
+          cd build/windows/x64/runner/Release
+          zip -r admincraft.zip *
+      - name: Move output to build dir with version
+        shell: bash
+        run: |
+          mkdir -p dist
+          mv ${{ matrix.output }} dist/admincraft-${{ matrix.platform }}-${{ needs.get-version.outputs.version }}.${{ matrix.ext }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: admincraft-${{ matrix.platform }}-${{ needs.get-version.outputs.version }}
+          path: dist/admincraft-${{ matrix.platform }}-${{ needs.get-version.outputs.version }}.${{ matrix.ext }}
+  release:
+    needs: [get-version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Collect built files
+        run: |
+          mkdir -p dist
+      - name: Download android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: admincraft-android-${{ needs.get-version.outputs.version }}
+          path: dist
+      - name: Download windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: admincraft-windows-${{ needs.get-version.outputs.version }}
+          path: dist
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.get-version.outputs.version }}
+          name: Release ${{ needs.get-version.outputs.version }}
+          prerelease: ${{ needs.get-version.outputs.prerelease }}
+          generate_release_notes: true
+          files: |
+            dist/admincraft-android-${{ needs.get-version.outputs.version }}.apk
+            dist/admincraft-windows-${{ needs.get-version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete build artifacts from GitHub
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: |
+            admincraft-android-${{ needs.get-version.outputs.version }}
+            admincraft-windows-${{ needs.get-version.outputs.version }}

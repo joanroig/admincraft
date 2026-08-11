@@ -1,29 +1,426 @@
 import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/data/bedrock_gamerules.dart';
+import 'package:admincraft/data/bedrock_ids.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/models/world_state.dart';
+import 'package:admincraft/utils/command_utils.dart';
+import 'package:admincraft/utils/dialog_utils.dart';
+import 'package:admincraft/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class ControlTab extends StatelessWidget {
+/// A command that needs one value from the user before it can be sent.
+class _PromptedAction {
+  final String label;
+  final IconData icon;
+  final String placeholder;
+  final String Function(String value) build;
+
+  const _PromptedAction(this.label, this.icon, this.placeholder, this.build);
+}
+
+/// One selectable value, such as a time of day or a weather type.
+class _Choice {
+  final String label;
+  final IconData icon;
+  final String value;
+
+  const _Choice(this.label, this.icon, this.value);
+}
+
+class ControlTab extends StatefulWidget {
   final bool isEnabled;
   const ControlTab({super.key, required this.isEnabled});
 
   @override
-  Widget build(BuildContext context) {
-    final model = Provider.of<Model>(context);
-    final connection = Provider.of<ConnectionController>(context);
+  State<ControlTab> createState() => _ControlTabState();
+}
 
-    if (!isEnabled) {
-      return const Center(
-        child: Text('Connect to enable the Control Panel'),
-      );
+class _ControlTabState extends State<ControlTab> {
+  String? _lastCommand;
+  bool _loadingRules = false;
+  bool _refreshedOnce = false;
+
+  static final List<_PromptedAction> _promptedActions = [
+    _PromptedAction('Whitelist', Icons.person_add, 'player', (p) => 'whitelist add $p'),
+    _PromptedAction('Unwhitelist', Icons.person_remove, 'player', (p) => 'whitelist remove $p'),
+    _PromptedAction('Kick', Icons.logout, 'player', (p) => 'kick $p'),
+    _PromptedAction('Announce', Icons.campaign, 'message', (m) => 'say $m'),
+  ];
+
+  static const List<_Choice> _times = [
+    _Choice('Sunrise', Icons.wb_twilight, 'sunrise'),
+    _Choice('Day', Icons.wb_sunny, 'day'),
+    _Choice('Noon', Icons.light_mode, 'noon'),
+    _Choice('Sunset', Icons.wb_twilight, 'sunset'),
+    _Choice('Night', Icons.nightlight_round, 'night'),
+    _Choice('Midnight', Icons.bedtime, 'midnight'),
+  ];
+
+  static const List<_Choice> _weathers = [
+    _Choice('Clear', Icons.wb_sunny, 'clear'),
+    _Choice('Rain', Icons.water_drop, 'rain'),
+    _Choice('Thunder', Icons.thunderstorm, 'thunder'),
+  ];
+
+  static const List<_Choice> _difficulties = [
+    _Choice('Peaceful', Icons.spa, 'peaceful'),
+    _Choice('Easy', Icons.sentiment_satisfied, 'easy'),
+    _Choice('Normal', Icons.sentiment_neutral, 'normal'),
+    _Choice('Hard', Icons.local_fire_department, 'hard'),
+  ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pull the state the server can report as soon as the panel first becomes
+    // usable, so it does not open showing "Unknown" everywhere.
+    if (widget.isEnabled && !_refreshedOnce) {
+      _refreshedOnce = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshWorld());
+    }
+  }
+
+  ConnectionController get _connection => Provider.of<ConnectionController>(context, listen: false);
+  Model get _model => Provider.of<Model>(context, listen: false);
+
+  Future<void> _send(String command) async {
+    if (!CommandUtils.isAccepted(command)) {
+      ToastUtils.showToastError(CommandUtils.rejectionMessage);
+      return;
+    }
+    await _connection.executeMinecraftCommand(_model, command);
+    if (!mounted) return;
+    setState(() => _lastCommand = command);
+    ToastUtils.showToastSuccess('Sent: $command');
+  }
+
+  Future<void> _refreshWorld() async {
+    await _connection.sendQuietly('time query daytime');
+    await Future.delayed(const Duration(milliseconds: 300));
+    await _connection.sendQuietly('list');
+  }
+
+  /// Queries every game rule. Spaced out because the WebSocket server rate
+  /// limits to five messages a second and would start rejecting them.
+  Future<void> _loadGamerules() async {
+    setState(() => _loadingRules = true);
+    for (final rule in BedrockIds.gamerules) {
+      if (!mounted) return;
+      await _connection.sendQuietly('gamerule $rule');
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    if (mounted) setState(() => _loadingRules = false);
+  }
+
+  Future<void> _setTime(String value) async {
+    await _send('time set $value');
+    await Future.delayed(const Duration(milliseconds: 400));
+    await _connection.sendQuietly('time query daytime');
+  }
+
+  Future<void> _promptAndSend(_PromptedAction action) async {
+    final value = await DialogUtils.promptForInput(context, action.placeholder);
+    if (value == null || !mounted) return;
+    await _send(action.build(value.trim()));
+  }
+
+  Future<void> _restartServer() async {
+    final confirmed = await DialogUtils.confirmAction(
+      context,
+      title: 'Restart Server',
+      message: 'Everyone currently playing will be disconnected while the server restarts. Continue?',
+      confirmLabel: 'Restart',
+    );
+    if (!confirmed || !mounted) return;
+    await _connection.restartServer(_model);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Building blocks
+  // ---------------------------------------------------------------------------
+
+  Widget _card({required String title, Widget? trailing, required Widget child}) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+                if (trailing != null) trailing,
+              ],
+            ),
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// A row of choices where the active one is filled in, so the current value
+  /// is visible rather than only settable.
+  Widget _choiceRow(List<_Choice> choices, String? selected, Future<void> Function(String) onPick) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: choices.map((choice) {
+        final isSelected = selected == choice.value;
+        return ChoiceChip(
+          avatar: Icon(choice.icon, size: 18),
+          label: Text(choice.label),
+          selected: isSelected,
+          onSelected: (_) => onPick(choice.value),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _timeCard(WorldState world) {
+    return _card(
+      title: 'Time',
+      trailing: IconButton(
+        icon: const Icon(Icons.refresh),
+        tooltip: 'Refresh from server',
+        onPressed: () => _connection.sendQuietly('time query daytime'),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                world.timeIcon,
+                size: 44,
+                color: world.daytime == null
+                    ? Theme.of(context).disabledColor
+                    : (world.isDay ? Colors.amber : Colors.indigo.shade200),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(world.timeLabel, style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    world.daytime == null
+                        ? 'Not queried yet'
+                        : '${world.clock}  ·  tick ${world.daytime}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _choiceRow(_times, null, _setTime),
+        ],
+      ),
+    );
+  }
+
+  Widget _playersCard(Model model) {
+    final world = model.world;
+    final names = model.onlinePlayers.toList()..sort();
+
+    return _card(
+      title: 'Players',
+      trailing: IconButton(
+        icon: const Icon(Icons.refresh),
+        tooltip: 'Refresh player list',
+        onPressed: () => _connection.sendQuietly('list'),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            world.playersOnline == null
+                ? 'Not queried yet'
+                : '${world.playersOnline} of ${world.playerLimit} online',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          if (names.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: names
+                  .map((name) => Chip(
+                        avatar: const Icon(Icons.person, size: 16),
+                        label: Text(name),
+                      ))
+                  .toList(),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _promptedActions
+                .map((action) => ActionChip(
+                      avatar: Icon(action.icon, size: 18),
+                      label: Text(action.label),
+                      onPressed: () => _promptAndSend(action),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _gamerulesCard(WorldState world) {
+    final known = world.gamerules;
+
+    return _card(
+      title: 'Game rules',
+      trailing: _loadingRules
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Load current values',
+              onPressed: _loadGamerules,
+            ),
+      child: known.isEmpty
+          ? Text(
+              _loadingRules
+                  ? 'Reading rules from the server...'
+                  : 'Load the current values to switch rules on and off.',
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          : Column(
+              children: known.entries.where((e) => e.value == 'true' || e.value == 'false').map((entry) {
+                final info = BedrockGamerules.forName(entry.key);
+                return SwitchListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(info.label, style: Theme.of(context).textTheme.bodyMedium),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (info.description.isNotEmpty)
+                        Text(info.description, style: Theme.of(context).textTheme.bodySmall),
+                      // The raw name still matters: it is what you type into a
+                      // command, and what the server reports back.
+                      Text(
+                        entry.key,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontFamily: 'Monocraft',
+                              color: Theme.of(context).hintColor,
+                            ),
+                      ),
+                    ],
+                  ),
+                  isThreeLine: info.description.isNotEmpty,
+                  value: entry.value == 'true',
+                  onChanged: (next) => _send('gamerule ${entry.key} $next'),
+                );
+              }).toList(),
+            ),
+    );
+  }
+
+  Widget _responseCard(Model model) {
+    final lines = model.output.split('\n').where((line) => line.trim().isNotEmpty).toList();
+    final tail = lines.length <= 5 ? lines : lines.sublist(lines.length - 5);
+
+    return _card(
+      title: 'Server response',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_lastCommand != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                'Last sent: $_lastCommand',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+            ),
+          if (tail.isEmpty)
+            Text('Waiting for output...', style: Theme.of(context).textTheme.bodySmall)
+          else
+            ...tail.map((line) => Text(line, style: Theme.of(context).textTheme.bodySmall)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.isEnabled) {
+      return const Center(child: Text('Connect to enable the Control Panel'));
     }
 
-    return Center(
-      child: ElevatedButton(
-        onPressed: () async {
-          await connection.restartServer(model);
-        },
-        child: const Text('Restart Server'),
+    // Watched, not read: the cards follow the server log as it arrives.
+    final model = Provider.of<Model>(context);
+    final world = model.world;
+
+    // The response stays pinned below the scrolling cards: it is the feedback
+    // for whatever was just tapped, and scrolling away from it would hide the
+    // result of the action.
+    return Column(
+      children: [
+        Expanded(child: _buildCards(model, world)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: _responseCard(model),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCards(Model model, WorldState world) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _timeCard(world),
+          _card(
+            title: 'Weather',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _choiceRow(_weathers, world.lastWeather, (value) async {
+                  await _send('weather $value');
+                  _model.recordWeather(value);
+                }),
+                if (world.lastWeather == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'The server cannot report the current weather, so this shows what was last set from here.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          _card(
+            title: 'Difficulty',
+            child: _choiceRow(_difficulties, world.lastDifficulty, (value) async {
+              await _send('difficulty $value');
+              _model.recordDifficulty(value);
+            }),
+          ),
+          _playersCard(model),
+          _gamerulesCard(world),
+          _card(
+            title: 'Server',
+            child: ElevatedButton.icon(
+              onPressed: _restartServer,
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Restart Server'),
+            ),
+          ),
+        ],
       ),
     );
   }

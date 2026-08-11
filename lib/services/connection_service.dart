@@ -1,50 +1,34 @@
 import 'dart:async';
-import 'dart:io'; // For SecurityContext
 
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/websocket_connector.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
-import 'package:flutter/services.dart';
-import 'package:web_socket_channel/io.dart'; // For IOWebSocketChannel
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class ConnectionService {
-  IOWebSocketChannel? _channel;
+  WebSocketChannel? _channel;
   StreamSubscription? _subscription;
   Function? onConnectionLost; // Callback to handle connection loss
   ConnectionStatus _status = ConnectionStatus.disconnected;
   ConnectionStatus get status => _status;
-  SecurityContext? _context;
-
-// Initialize SecurityContext for custom certificate
-  Future<void> _initSecurityContext(String certificateData) async {
-    _context = SecurityContext(withTrustedRoots: false);
-    try {
-      // Convert the certificate string to bytes
-      _context!.setTrustedCertificatesBytes(Uint8List.fromList(certificateData.codeUnits));
-    } catch (e) {
-      print('Error loading certificate: $e');
-    }
-  }
 
   Future<void> connect(Model model, {bool reconnect = false}) async {
     _status = ConnectionStatus.connecting;
     String jwtToken = createJwt('Admincraft', model.secretKey);
 
     // Determine protocol and URI
-    final useWss = model.certificate.isNotEmpty;
-    final protocol = useWss ? 'wss' : 'ws';
+    final security = model.connectionSecurity;
+    final protocol = security.usesTls ? 'wss' : 'ws';
     final uri = Uri.parse('$protocol://${model.ip}:${model.port}?token=$jwtToken');
 
-    // Initialize security context if using wss
-    if (useWss && _context == null) {
-      await _initSecurityContext(model.certificate);
-    }
-
-    // Connect using the appropriate protocol
+    // Connect using whichever WebSocket the platform provides
     try {
-      _channel = IOWebSocketChannel.connect(
-        uri,
-        customClient: useWss ? HttpClient(context: _context) : null,
+      _channel = connectWebSocket(
+        uri: uri,
+        security: security,
+        certificate: model.certificate,
       );
 
       // Listen for incoming messages
