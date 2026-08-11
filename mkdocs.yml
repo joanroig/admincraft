@@ -46,6 +46,7 @@ nav:
       - Connection security: guides/connection-security.md
       - Server profiles: guides/server-profiles.md
       - Backup and transfer: guides/backup-transfer.md
+      - Google Drive sync: guides/google-drive-sync.md
       - Using the web app: guides/web-app.md
   - Troubleshooting: troubleshooting.md
   - Development:

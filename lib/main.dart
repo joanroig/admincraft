@@ -1,4 +1,5 @@
 import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/controllers/google_drive_sync_controller.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (context) => ConnectionController(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => GoogleDriveSyncController(prefs),
         ),
       ],
       child: const Admincraft(),

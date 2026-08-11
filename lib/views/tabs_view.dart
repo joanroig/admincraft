@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/controllers/google_drive_sync_controller.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/utils/url_utils.dart';
@@ -82,6 +83,10 @@ class _TabsState extends State<Tabs> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final model = context.read<Model>();
+      final driveSync = context.read<GoogleDriveSyncController>();
+      unawaited(
+        driveSync.initialize(model, onRemoteApplied: _serversImported),
+      );
       if (model.selectedServer.isComplete) {
         context
             .read<ConnectionController>()
@@ -126,6 +131,9 @@ class _TabsState extends State<Tabs> {
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
     }
+    if (mounted) {
+      context.read<GoogleDriveSyncController>().scheduleSync(model);
+    }
   }
 
   Future<void> _serverDeleted() async {
@@ -137,6 +145,9 @@ class _TabsState extends State<Tabs> {
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
     }
+    if (mounted) {
+      context.read<GoogleDriveSyncController>().scheduleSync(model);
+    }
   }
 
   Future<void> _serversImported() async {
@@ -145,6 +156,9 @@ class _TabsState extends State<Tabs> {
     await connection.disconnect(model);
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
+    }
+    if (mounted) {
+      context.read<GoogleDriveSyncController>().scheduleSync(model);
     }
   }
 

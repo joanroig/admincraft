@@ -1,4 +1,5 @@
 import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/controllers/google_drive_sync_controller.dart';
 import 'package:admincraft/main.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/persistence_service.dart';
@@ -23,6 +24,9 @@ void main() {
             create: (_) => Model(PersistenceService(prefs)),
           ),
           ChangeNotifierProvider(create: (_) => ConnectionController()),
+          ChangeNotifierProvider(
+            create: (_) => GoogleDriveSyncController(prefs),
+          ),
         ],
         child: const Admincraft(),
       ),
@@ -38,7 +42,7 @@ void main() {
     expect(find.text('Data & Sync'), findsOneWidget);
     expect(find.text('Configuration'), findsOneWidget);
     expect(find.text('Docs'), findsOneWidget);
-    expect(find.text('Automatic cloud sync'), findsNothing);
+    expect(find.text('Google Drive sync'), findsNothing);
     expect(tester.widget<Image>(find.byType(Image).first).width, 32);
     expect(
       tester.widget<Text>(find.text('Admincraft')).style?.fontWeight,
@@ -48,7 +52,8 @@ void main() {
     await tester.tap(find.text('Data & Sync'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Automatic cloud sync'), findsOneWidget);
+    expect(find.text('Google Drive sync'), findsOneWidget);
+    expect(find.text('Setup required'), findsOneWidget);
     expect(find.text('Back up and transfer application data'), findsOneWidget);
     expect(find.text('Bedrock Edition'), findsOneWidget);
 
@@ -56,7 +61,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Data & Sync'), findsWidgets);
-    expect(find.text('Automatic cloud sync'), findsOneWidget);
+    expect(find.text('Google Drive sync'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

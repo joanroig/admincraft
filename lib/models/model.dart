@@ -19,6 +19,7 @@ class Model with ChangeNotifier {
   String get output => _output;
 
   List<ServerProfile> get servers => List.unmodifiable(_servers);
+  DateTime? get serversUpdatedAt => _persistenceService.serversUpdatedAt;
   String get selectedServerId => _selectedServerId;
 
   /// The server the app is configured against. Every connection getter reads
@@ -128,6 +129,18 @@ class Model with ChangeNotifier {
     _servers = merged;
     await _persistServers();
     return (added: added, updated: updated);
+  }
+
+  /// Replaces the local profile set with an already decrypted cloud copy.
+  Future<void> replaceServers(List<ServerProfile> incoming) async {
+    if (incoming.isEmpty) return;
+    _servers = [...incoming];
+    if (!_servers.any((server) => server.id == _selectedServerId)) {
+      _selectedServerId = _servers.first.id;
+      await _persistenceService.saveSelectedServerId(_selectedServerId);
+    }
+    _resetSession();
+    await _persistServers();
   }
 
   Future<void> _updatePersistenceService(

@@ -14,6 +14,7 @@ class PersistenceService {
   static const _certificateKey = 'certificateKey';
   static const _connectionSecurityKey = 'connectionSecurity';
   static const _serversKey = 'servers';
+  static const _serversUpdatedAtKey = 'serversUpdatedAt';
   static const _selectedServerKey = 'selectedServer';
   static const _commandUsageKey = 'commandUsage';
   static const _maxOutLinesKey = 'maxOutLines';
@@ -129,6 +130,17 @@ class PersistenceService {
       _serversKey,
       servers.map((server) => jsonEncode(server.toJson())).toList(),
     );
+    await _set(
+      _serversUpdatedAtKey,
+      DateTime.now().toUtc().millisecondsSinceEpoch,
+    );
+  }
+
+  DateTime? get serversUpdatedAt {
+    final value = _prefs.getInt(_serversUpdatedAtKey);
+    return value == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);
   }
 
   /// How often each command has been sent, used to order completions so the
