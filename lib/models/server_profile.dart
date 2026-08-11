@@ -1,4 +1,5 @@
 import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/minecraft_edition.dart';
 
 /// One saved server, with everything needed to connect to it.
 class ServerProfile {
@@ -10,6 +11,7 @@ class ServerProfile {
   final String secretKey;
   final String certificate;
   final ConnectionSecurity security;
+  final MinecraftEdition edition;
 
   const ServerProfile({
     required this.id,
@@ -19,6 +21,7 @@ class ServerProfile {
     required this.secretKey,
     required this.certificate,
     required this.security,
+    this.edition = MinecraftEdition.bedrock,
   });
 
   factory ServerProfile.empty(String id) => ServerProfile(
@@ -29,6 +32,7 @@ class ServerProfile {
         secretKey: '',
         certificate: '',
         security: ConnectionSecurity.privateNetwork,
+        edition: MinecraftEdition.bedrock,
       );
 
   ServerProfile copyWith({
@@ -38,6 +42,7 @@ class ServerProfile {
     String? secretKey,
     String? certificate,
     ConnectionSecurity? security,
+    MinecraftEdition? edition,
   }) {
     return ServerProfile(
       id: id,
@@ -47,6 +52,7 @@ class ServerProfile {
       secretKey: secretKey ?? this.secretKey,
       certificate: certificate ?? this.certificate,
       security: security ?? this.security,
+      edition: edition ?? this.edition,
     );
   }
 
@@ -61,6 +67,7 @@ class ServerProfile {
         'secretKey': secretKey,
         'certificate': certificate,
         'security': security.name,
+        'edition': edition.name,
       };
 
   factory ServerProfile.fromJson(Map<String, dynamic> json) {
@@ -77,6 +84,11 @@ class ServerProfile {
         orElse: () => (json['certificate'] as String? ?? '').isEmpty
             ? ConnectionSecurity.privateNetwork
             : ConnectionSecurity.customCertificate,
+      ),
+      // Profiles saved before Java support were always Bedrock profiles.
+      edition: MinecraftEdition.values.firstWhere(
+        (value) => value.name == json['edition'],
+        orElse: () => MinecraftEdition.bedrock,
       ),
     );
   }

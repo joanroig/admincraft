@@ -1,5 +1,5 @@
 import 'package:admincraft/models/model.dart';
-import 'package:admincraft/data/bedrock_commands.dart';
+import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +26,9 @@ class DialogUtils {
     final base = theme.textTheme.bodyMedium;
     return RichText(
       text: TextSpan(children: [
-        TextSpan(text: command.name, style: base?.copyWith(fontWeight: FontWeight.bold)),
+        TextSpan(
+            text: command.name,
+            style: base?.copyWith(fontWeight: FontWeight.bold)),
         for (final arg in command.args)
           TextSpan(
             text: ' ${arg.hint}',
@@ -38,16 +40,20 @@ class DialogUtils {
 
   /// Browsable command reference, grouped by category and searchable by name
   /// or description.
-  static void showDefaultCommandsPopup(BuildContext context, Function(String) onCommandSelected) {
+  static void showDefaultCommandsPopup(
+      BuildContext context, Function(String) onCommandSelected) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         final theme = Theme.of(context);
+        final edition =
+            Provider.of<Model>(context, listen: false).minecraftEdition;
+        final commands = MinecraftCommands.all(edition);
         var query = '';
 
         return StatefulBuilder(
           builder: (context, setState) {
-            final matches = BedrockCommands.all.where((command) {
+            final matches = commands.where((command) {
               if (query.isEmpty) return true;
               final needle = query.toLowerCase();
               return command.name.contains(needle) ||
@@ -56,7 +62,8 @@ class DialogUtils {
             }).toList();
 
             // Grouped so the list reads as sections rather than one long run.
-            final categories = matches.map((command) => command.category).toSet().toList();
+            final categories =
+                matches.map((command) => command.category).toSet().toList();
 
             return AlertDialog(
               title: Row(
@@ -96,22 +103,26 @@ class DialogUtils {
                               children: [
                                 for (final category in categories) ...[
                                   Padding(
-                                    padding: const EdgeInsets.fromLTRB(4, 10, 4, 6),
+                                    padding:
+                                        const EdgeInsets.fromLTRB(4, 10, 4, 6),
                                     child: Row(
                                       children: [
                                         Icon(_categoryIcon(category),
-                                            size: 16, color: theme.colorScheme.primary),
+                                            size: 16,
+                                            color: theme.colorScheme.primary),
                                         const SizedBox(width: 6),
                                         Text(
                                           category.toUpperCase(),
                                           style: theme.textTheme.labelSmall
-                                              ?.copyWith(color: theme.colorScheme.primary),
+                                              ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme.primary),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  for (final command
-                                      in matches.where((c) => c.category == category))
+                                  for (final command in matches
+                                      .where((c) => c.category == category))
                                     InkWell(
                                       onTap: () {
                                         Navigator.of(context).pop();
@@ -123,12 +134,14 @@ class DialogUtils {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 8),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             _syntax(command, theme),
                                             const SizedBox(height: 2),
                                             Text(command.description,
-                                                style: theme.textTheme.bodySmall),
+                                                style:
+                                                    theme.textTheme.bodySmall),
                                           ],
                                         ),
                                       ),
@@ -265,7 +278,8 @@ class DialogUtils {
     return confirmed ?? false;
   }
 
-  static Future<String?> promptForInput(BuildContext context, String placeholder) {
+  static Future<String?> promptForInput(
+      BuildContext context, String placeholder) {
     final TextEditingController inputController = TextEditingController();
     final FocusNode focusNode = FocusNode();
 
@@ -297,7 +311,8 @@ class DialogUtils {
                 TextButton(
                   onPressed: inputController.text.trim().isNotEmpty
                       ? () {
-                          Navigator.of(context).pop(inputController.text.trim());
+                          Navigator.of(context)
+                              .pop(inputController.text.trim());
                         }
                       : null,
                   child: const Text('OK'),
@@ -316,13 +331,15 @@ class DialogUtils {
     );
   }
 
-  static void showClearHistoryDialog(BuildContext context, Function resetHistoryIndex) {
+  static void showClearHistoryDialog(
+      BuildContext context, Function resetHistoryIndex) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Clear Command History'),
-          content: const Text('Are you sure you want to clear all command history?'),
+          content:
+              const Text('Are you sure you want to clear all command history?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -332,7 +349,8 @@ class DialogUtils {
             ),
             TextButton(
               onPressed: () {
-                Provider.of<Model>(context, listen: false).clearCommandHistory();
+                Provider.of<Model>(context, listen: false)
+                    .clearCommandHistory();
                 resetHistoryIndex(); // Call resetHistoryIndex after clearing history
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
@@ -345,7 +363,11 @@ class DialogUtils {
     );
   }
 
-  static void showHistoryPopup(BuildContext context, TextEditingController commandController, Function resetHistoryIndex, Function setCursorToEnd) {
+  static void showHistoryPopup(
+      BuildContext context,
+      TextEditingController commandController,
+      Function resetHistoryIndex,
+      Function setCursorToEnd) {
     final model = Provider.of<Model>(context, listen: false);
     showDialog(
       context: context,
@@ -399,7 +421,8 @@ class DialogUtils {
                     ),
                     TextButton(
                       onPressed: () {
-                        showClearHistoryDialog(context, resetHistoryIndex); // Pass resetHistoryIndex as an argument
+                        showClearHistoryDialog(context,
+                            resetHistoryIndex); // Pass resetHistoryIndex as an argument
                       },
                       child: const Text('Clear All'),
                     ),

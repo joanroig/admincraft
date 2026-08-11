@@ -1,6 +1,8 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/data/bedrock_gamerules.dart';
 import 'package:admincraft/data/bedrock_ids.dart';
+import 'package:admincraft/data/java_ids.dart';
+import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/world_state.dart';
 import 'package:admincraft/utils/command_utils.dart';
@@ -42,17 +44,26 @@ class _ControlTabState extends State<ControlTab> {
   bool _refreshedOnce = false;
 
   static final List<_PromptedAction> _promptedActions = [
-    _PromptedAction('Whitelist', Icons.person_add, 'player', (p) => 'whitelist add $p'),
-    _PromptedAction('Unwhitelist', Icons.person_remove, 'player', (p) => 'whitelist remove $p'),
+    _PromptedAction(
+        'Whitelist', Icons.person_add, 'player', (p) => 'whitelist add $p'),
+    _PromptedAction('Unwhitelist', Icons.person_remove, 'player',
+        (p) => 'whitelist remove $p'),
     _PromptedAction('Kick', Icons.logout, 'player', (p) => 'kick $p'),
     _PromptedAction('Announce', Icons.campaign, 'message', (m) => 'say $m'),
   ];
 
-  static const List<_Choice> _times = [
+  static const List<_Choice> _bedrockTimes = [
     _Choice('Sunrise', Icons.wb_twilight, 'sunrise'),
     _Choice('Day', Icons.wb_sunny, 'day'),
     _Choice('Noon', Icons.light_mode, 'noon'),
     _Choice('Sunset', Icons.wb_twilight, 'sunset'),
+    _Choice('Night', Icons.nightlight_round, 'night'),
+    _Choice('Midnight', Icons.bedtime, 'midnight'),
+  ];
+
+  static const List<_Choice> _javaTimes = [
+    _Choice('Day', Icons.wb_sunny, 'day'),
+    _Choice('Noon', Icons.light_mode, 'noon'),
     _Choice('Night', Icons.nightlight_round, 'night'),
     _Choice('Midnight', Icons.bedtime, 'midnight'),
   ];
@@ -81,7 +92,8 @@ class _ControlTabState extends State<ControlTab> {
     }
   }
 
-  ConnectionController get _connection => Provider.of<ConnectionController>(context, listen: false);
+  ConnectionController get _connection =>
+      Provider.of<ConnectionController>(context, listen: false);
   Model get _model => Provider.of<Model>(context, listen: false);
 
   Future<void> _send(String command) async {
@@ -105,7 +117,10 @@ class _ControlTabState extends State<ControlTab> {
   /// limits to five messages a second and would start rejecting them.
   Future<void> _loadGamerules() async {
     setState(() => _loadingRules = true);
-    for (final rule in BedrockIds.gamerules) {
+    final rules = _model.minecraftEdition == MinecraftEdition.java
+        ? JavaIds.gamerules
+        : BedrockIds.gamerules;
+    for (final rule in rules) {
       if (!mounted) return;
       await _connection.sendQuietly('gamerule $rule');
       await Future.delayed(const Duration(milliseconds: 300));
@@ -129,7 +144,8 @@ class _ControlTabState extends State<ControlTab> {
     final confirmed = await DialogUtils.confirmAction(
       context,
       title: 'Restart Server',
-      message: 'Everyone currently playing will be disconnected while the server restarts. Continue?',
+      message:
+          'Everyone currently playing will be disconnected while the server restarts. Continue?',
       confirmLabel: 'Restart',
     );
     if (!confirmed || !mounted) return;
@@ -140,7 +156,8 @@ class _ControlTabState extends State<ControlTab> {
   // Building blocks
   // ---------------------------------------------------------------------------
 
-  Widget _card({required String title, Widget? trailing, required Widget child}) {
+  Widget _card(
+      {required String title, Widget? trailing, required Widget child}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -150,7 +167,9 @@ class _ControlTabState extends State<ControlTab> {
           children: [
             Row(
               children: [
-                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+                Expanded(
+                    child: Text(title,
+                        style: Theme.of(context).textTheme.titleMedium)),
                 if (trailing != null) trailing,
               ],
             ),
@@ -164,7 +183,8 @@ class _ControlTabState extends State<ControlTab> {
 
   /// A row of choices where the active one is filled in, so the current value
   /// is visible rather than only settable.
-  Widget _choiceRow(List<_Choice> choices, String? selected, Future<void> Function(String) onPick) {
+  Widget _choiceRow(List<_Choice> choices, String? selected,
+      Future<void> Function(String) onPick) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -204,7 +224,8 @@ class _ControlTabState extends State<ControlTab> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(world.timeLabel, style: Theme.of(context).textTheme.titleLarge),
+                  Text(world.timeLabel,
+                      style: Theme.of(context).textTheme.titleLarge),
                   Text(
                     world.daytime == null
                         ? 'Not queried yet'
@@ -216,7 +237,13 @@ class _ControlTabState extends State<ControlTab> {
             ],
           ),
           const SizedBox(height: 12),
-          _choiceRow(_times, null, _setTime),
+          _choiceRow(
+            _model.minecraftEdition == MinecraftEdition.java
+                ? _javaTimes
+                : _bedrockTimes,
+            null,
+            _setTime,
+          ),
         ],
       ),
     );
@@ -278,7 +305,10 @@ class _ControlTabState extends State<ControlTab> {
     return _card(
       title: 'Game rules',
       trailing: _loadingRules
-          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2))
           : IconButton(
               icon: const Icon(Icons.download),
               tooltip: 'Load current values',
@@ -292,17 +322,21 @@ class _ControlTabState extends State<ControlTab> {
               style: Theme.of(context).textTheme.bodySmall,
             )
           : Column(
-              children: known.entries.where((e) => e.value == 'true' || e.value == 'false').map((entry) {
+              children: known.entries
+                  .where((e) => e.value == 'true' || e.value == 'false')
+                  .map((entry) {
                 final info = BedrockGamerules.forName(entry.key);
                 return SwitchListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  title: Text(info.label, style: Theme.of(context).textTheme.bodyMedium),
+                  title: Text(info.label,
+                      style: Theme.of(context).textTheme.bodyMedium),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (info.description.isNotEmpty)
-                        Text(info.description, style: Theme.of(context).textTheme.bodySmall),
+                        Text(info.description,
+                            style: Theme.of(context).textTheme.bodySmall),
                       // The raw name still matters: it is what you type into a
                       // command, and what the server reports back.
                       Text(
@@ -324,7 +358,10 @@ class _ControlTabState extends State<ControlTab> {
   }
 
   Widget _responseCard(Model model) {
-    final lines = model.output.split('\n').where((line) => line.trim().isNotEmpty).toList();
+    final lines = model.output
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
     final tail = lines.length <= 5 ? lines : lines.sublist(lines.length - 5);
 
     return _card(
@@ -344,9 +381,11 @@ class _ControlTabState extends State<ControlTab> {
               ),
             ),
           if (tail.isEmpty)
-            Text('Waiting for output...', style: Theme.of(context).textTheme.bodySmall)
+            Text('Waiting for output...',
+                style: Theme.of(context).textTheme.bodySmall)
           else
-            ...tail.map((line) => Text(line, style: Theme.of(context).textTheme.bodySmall)),
+            ...tail.map((line) =>
+                Text(line, style: Theme.of(context).textTheme.bodySmall)),
         ],
       ),
     );
@@ -405,7 +444,8 @@ class _ControlTabState extends State<ControlTab> {
           ),
           _card(
             title: 'Difficulty',
-            child: _choiceRow(_difficulties, world.lastDifficulty, (value) async {
+            child:
+                _choiceRow(_difficulties, world.lastDifficulty, (value) async {
               await _send('difficulty $value');
               _model.recordDifficulty(value);
             }),

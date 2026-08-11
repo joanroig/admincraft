@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/models/world_state.dart';
 import 'package:admincraft/services/console_parser.dart';
@@ -32,21 +33,26 @@ class Model with ChangeNotifier {
   String get secretKey => selectedServer.secretKey;
   String get certificate => selectedServer.certificate;
   ConnectionSecurity get connectionSecurity => selectedServer.security;
+  MinecraftEdition get minecraftEdition => selectedServer.edition;
   int get maxOutLines => _persistenceService.maxOutLines;
   ThemeMode get themeMode => _persistenceService.themeMode;
   String get font => _persistenceService.font;
   double get fontSize => _persistenceService.fontSize;
 
   // Provide read-only access to collections
-  Set<String> get userCommands => Set.unmodifiable(_persistenceService.userCommands);
-  List<String> get commandHistory => List.unmodifiable(_persistenceService.commandHistory);
+  Set<String> get userCommands =>
+      Set.unmodifiable(_persistenceService.userCommands);
+  List<String> get commandHistory =>
+      List.unmodifiable(_persistenceService.commandHistory);
 
   Model(this._persistenceService) {
     _servers = _persistenceService.servers;
     if (_servers.isEmpty) _servers = [ServerProfile.empty(_newId())];
 
     final stored = _persistenceService.selectedServerId;
-    _selectedServerId = _servers.any((server) => server.id == stored) ? stored! : _servers.first.id;
+    _selectedServerId = _servers.any((server) => server.id == stored)
+        ? stored!
+        : _servers.first.id;
 
     _commandUsage = _persistenceService.commandUsage;
   }
@@ -136,6 +142,7 @@ class Model with ChangeNotifier {
     required String secretKey,
     required String certificate,
     required ConnectionSecurity connectionSecurity,
+    required MinecraftEdition minecraftEdition,
   }) async {
     _servers = _servers
         .map((server) => server.id == _selectedServerId
@@ -146,6 +153,7 @@ class Model with ChangeNotifier {
                 secretKey: secretKey,
                 certificate: certificate,
                 security: connectionSecurity,
+                edition: minecraftEdition,
               )
             : server)
         .toList();
@@ -153,11 +161,13 @@ class Model with ChangeNotifier {
   }
 
   Future<void> setMaxOutputLines(int lines) async {
-    await _updatePersistenceService(() => _persistenceService.saveMaxOutLines(lines));
+    await _updatePersistenceService(
+        () => _persistenceService.saveMaxOutLines(lines));
   }
 
   Future<void> setThemeMode(ThemeMode themeMode) async {
-    await _updatePersistenceService(() => _persistenceService.saveThemeMode(themeMode));
+    await _updatePersistenceService(
+        () => _persistenceService.saveThemeMode(themeMode));
   }
 
   Future<void> setFont(String font) async {
@@ -165,11 +175,13 @@ class Model with ChangeNotifier {
   }
 
   Future<void> setFontSize(double fontSize) async {
-    await _updatePersistenceService(() => _persistenceService.saveFontSize(fontSize));
+    await _updatePersistenceService(
+        () => _persistenceService.saveFontSize(fontSize));
   }
 
   Future<void> setCommandHistory(List<String> history) async {
-    await _updatePersistenceService(() => _persistenceService.saveCommandHistory(history));
+    await _updatePersistenceService(
+        () => _persistenceService.saveCommandHistory(history));
   }
 
   Map<String, int> _commandUsage = {};
@@ -186,11 +198,13 @@ class Model with ChangeNotifier {
   }
 
   Future<void> addUserCommand(String command) async {
-    await _updatePersistenceService(() => _persistenceService.addUserCommand(command));
+    await _updatePersistenceService(
+        () => _persistenceService.addUserCommand(command));
   }
 
   Future<void> removeUserCommand(String command) async {
-    await _updatePersistenceService(() => _persistenceService.removeUserCommand(command));
+    await _updatePersistenceService(
+        () => _persistenceService.removeUserCommand(command));
   }
 
   /// Players currently connected, tracked from the server log so that command
@@ -228,17 +242,28 @@ class Model with ChangeNotifier {
   bool _expectingPlayerNames = false;
 
   void _trackPlayers(String chunk) {
-    for (final (name, joined) in ConsoleParser.playerChanges(chunk)) {
+    for (final (name, joined) in ConsoleParser.playerChanges(
+      chunk,
+      edition: minecraftEdition,
+    )) {
       joined ? _onlinePlayers.add(name) : _onlinePlayers.remove(name);
     }
 
     for (final line in chunk.split('\n')) {
-      final count = ConsoleParser.playerCountHeader(line);
+      final count = ConsoleParser.playerCountHeader(
+        line,
+        edition: minecraftEdition,
+      );
       if (count != null) {
         // A `list` reply is authoritative, so it replaces what was tracked
         // from connect and disconnect lines rather than adding to it.
         _onlinePlayers.clear();
-        _expectingPlayerNames = count > 0;
+        final inlineNames = ConsoleParser.namesFromPlayerCountHeader(
+          line,
+          edition: minecraftEdition,
+        );
+        _onlinePlayers.addAll(inlineNames);
+        _expectingPlayerNames = count > 0 && inlineNames.isEmpty;
         continue;
       }
 
@@ -251,28 +276,38 @@ class Model with ChangeNotifier {
 
   void appendOutputCommand(String command) {
     _trackPlayers(command);
-    _world = ConsoleParser.apply(_world, command);
+    _world = ConsoleParser.apply(
+      _world,
+      command,
+      edition: minecraftEdition,
+    );
     _output += "$command\n";
     final lines = _output.split('\n');
     if (lines.length > _persistenceService.maxOutLines) {
-      _output = lines.sublist(lines.length - _persistenceService.maxOutLines).join('\n');
+      _output = lines
+          .sublist(lines.length - _persistenceService.maxOutLines)
+          .join('\n');
     }
     notifyListeners();
   }
 
   Future<void> addCommandToHistory(String command) async {
-    await _updatePersistenceService(() => _persistenceService.addCommandToHistory(command));
+    await _updatePersistenceService(
+        () => _persistenceService.addCommandToHistory(command));
   }
 
   Future<void> removeCommandFromHistory(int index) async {
-    await _updatePersistenceService(() => _persistenceService.removeCommandFromHistory(index));
+    await _updatePersistenceService(
+        () => _persistenceService.removeCommandFromHistory(index));
   }
 
   Future<void> clearCommandHistory() async {
-    await _updatePersistenceService(() => _persistenceService.clearCommandHistory());
+    await _updatePersistenceService(
+        () => _persistenceService.clearCommandHistory());
   }
 
   Future<void> clearUserCommands() async {
-    await _updatePersistenceService(() => _persistenceService.clearUserCommands());
+    await _updatePersistenceService(
+        () => _persistenceService.clearUserCommands());
   }
 }

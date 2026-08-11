@@ -1,5 +1,5 @@
 import 'package:admincraft/controllers/terminal_controller.dart';
-import 'package:admincraft/data/bedrock_commands.dart';
+import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/utils/command_completion.dart';
@@ -39,6 +39,7 @@ class _TerminalTabState extends State<TerminalTab> {
         _commandController.text,
         onlinePlayers: _model.onlinePlayers,
         usage: _model.commandUsage,
+        edition: _model.minecraftEdition,
       );
     });
   }
@@ -85,6 +86,7 @@ class _TerminalTabState extends State<TerminalTab> {
       '',
       onlinePlayers: _model.onlinePlayers,
       usage: _model.commandUsage,
+      edition: _model.minecraftEdition,
     );
   }
 
@@ -113,7 +115,8 @@ class _TerminalTabState extends State<TerminalTab> {
                     ? _buildLoadingAnimation()
                     : ListView(
                         controller: _scrollController,
-                        children: _formatOutput(_model.output, _model.userCommands),
+                        children:
+                            _formatOutput(_model.output, _model.userCommands),
                       ),
               ),
               const SizedBox(height: 10),
@@ -153,7 +156,9 @@ class _TerminalTabState extends State<TerminalTab> {
         final isUserCommand = userCommands.contains(line);
         widgets.add(
           MouseRegion(
-            cursor: isUserCommand ? SystemMouseCursors.click : SystemMouseCursors.basic,
+            cursor: isUserCommand
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
             child: GestureDetector(
               onTap: isUserCommand
                   ? () {
@@ -165,9 +170,14 @@ class _TerminalTabState extends State<TerminalTab> {
                 child: Text(
                   line,
                   style: TextStyle(
-                    fontWeight: isUserCommand ? FontWeight.bold : FontWeight.normal,
-                    color: isUserCommand ? Colors.blue : Theme.of(context).textTheme.bodyMedium?.color,
-                    decoration: isUserCommand ? TextDecoration.underline : TextDecoration.none,
+                    fontWeight:
+                        isUserCommand ? FontWeight.bold : FontWeight.normal,
+                    color: isUserCommand
+                        ? Colors.blue
+                        : Theme.of(context).textTheme.bodyMedium?.color,
+                    decoration: isUserCommand
+                        ? TextDecoration.underline
+                        : TextDecoration.none,
                   ),
                 ),
               ),
@@ -204,7 +214,9 @@ class _TerminalTabState extends State<TerminalTab> {
         ),
         IconButton(
           icon: const Icon(Icons.arrow_downward),
-          onPressed: _historyIndex < _model.commandHistory.length ? _navigateCommandHistoryDown : null,
+          onPressed: _historyIndex < _model.commandHistory.length
+              ? _navigateCommandHistoryDown
+              : null,
         ),
         IconButton(
           icon: const Icon(Icons.history),
@@ -267,7 +279,10 @@ class _TerminalTabState extends State<TerminalTab> {
 
           // Command names have no argument type; they are recognised by
           // category instead so the strip is still readable at a glance.
-          final command = suggestion.type == null ? BedrockCommands.byName[suggestion.value] : null;
+          final command = suggestion.type == null
+              ? MinecraftCommands.byName(
+                  _model.minecraftEdition)[suggestion.value]
+              : null;
 
           // Items get their real pixel artwork; everything else keeps a
           // symbolic icon, since there is no artwork for a game rule.
@@ -276,7 +291,8 @@ class _TerminalTabState extends State<TerminalTab> {
               : Icon(
                   command != null
                       ? _categoryIcon(command.category)
-                      : CompletionIcons.forType(suggestion.type, suggestion.value),
+                      : CompletionIcons.forType(
+                          suggestion.type, suggestion.value),
                   size: 18,
                   color: color,
                 );
@@ -301,8 +317,12 @@ class _TerminalTabState extends State<TerminalTab> {
   /// typing rather than only in the command list.
   Widget _buildSyntaxHint() {
     final text = _commandController.text;
-    final command = CommandCompletion.commandFor(text);
-    final rejected = text.trim().isNotEmpty && !CommandUtils.isAccepted(text.trim());
+    final command = CommandCompletion.commandFor(
+      text,
+      edition: _model.minecraftEdition,
+    );
+    final rejected =
+        text.trim().isNotEmpty && !CommandUtils.isAccepted(text.trim());
 
     if (command == null && !rejected) return const SizedBox.shrink();
 
@@ -313,9 +333,11 @@ class _TerminalTabState extends State<TerminalTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (command != null) _syntaxLine(command, CommandCompletion.activeArgIndex(text), base),
           if (command != null)
-            Text(command.description, style: base?.copyWith(fontStyle: FontStyle.italic)),
+            _syntaxLine(command, CommandCompletion.activeArgIndex(text), base),
+          if (command != null)
+            Text(command.description,
+                style: base?.copyWith(fontStyle: FontStyle.italic)),
           if (rejected)
             Text(
               CommandUtils.rejectionMessage,
@@ -328,7 +350,9 @@ class _TerminalTabState extends State<TerminalTab> {
 
   Widget _syntaxLine(BedrockCommand command, int activeIndex, TextStyle? base) {
     final spans = <TextSpan>[
-      TextSpan(text: command.name, style: base?.copyWith(fontWeight: FontWeight.bold)),
+      TextSpan(
+          text: command.name,
+          style: base?.copyWith(fontWeight: FontWeight.bold)),
     ];
 
     for (var i = 0; i < command.args.length; i++) {
@@ -337,7 +361,9 @@ class _TerminalTabState extends State<TerminalTab> {
         text: ' ${command.args[i].hint}',
         style: base?.copyWith(
           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          color: isActive ? Theme.of(context).colorScheme.primary : base.color?.withValues(alpha: 0.6),
+          color: isActive
+              ? Theme.of(context).colorScheme.primary
+              : base.color?.withValues(alpha: 0.6),
         ),
       ));
     }
@@ -352,29 +378,35 @@ class _TerminalTabState extends State<TerminalTab> {
           // Tab is the conventional completion key in a console, and Flutter
           // would otherwise consume it to move focus out of the field.
           child: Shortcuts(
-            shortcuts: const {SingleActivator(LogicalKeyboardKey.tab): _AcceptCompletionIntent()},
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.tab): _AcceptCompletionIntent()
+            },
             child: Actions(
               actions: {
-                _AcceptCompletionIntent: CallbackAction<_AcceptCompletionIntent>(
+                _AcceptCompletionIntent:
+                    CallbackAction<_AcceptCompletionIntent>(
                   onInvoke: (_) {
-                    if (_suggestions.isNotEmpty) _applySuggestion(_suggestions.first.value);
+                    if (_suggestions.isNotEmpty) {
+                      _applySuggestion(_suggestions.first.value);
+                    }
                     return null;
                   },
                 ),
               },
               child: TextField(
-            controller: _commandController,
-            focusNode: _focusNode,
-            decoration: const InputDecoration(
-              labelText: 'Enter command',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (_) => _refreshSuggestions(),
-            onSubmitted: (command) async {
-              await _terminalController.executeCommand(command, _commandController);
-              _resetHistoryIndex();
-              _setText('');
-            },
+                controller: _commandController,
+                focusNode: _focusNode,
+                decoration: const InputDecoration(
+                  labelText: 'Enter command',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => _refreshSuggestions(),
+                onSubmitted: (command) async {
+                  await _terminalController.executeCommand(
+                      command, _commandController);
+                  _resetHistoryIndex();
+                  _setText('');
+                },
               ),
             ),
           ),
@@ -383,7 +415,8 @@ class _TerminalTabState extends State<TerminalTab> {
         IconButton(
           icon: const Icon(Icons.play_arrow, color: Colors.white),
           onPressed: () async {
-            await _terminalController.executeCommand(_commandController.text, _commandController);
+            await _terminalController.executeCommand(
+                _commandController.text, _commandController);
             _resetHistoryIndex();
             _focusNode.requestFocus();
           },
