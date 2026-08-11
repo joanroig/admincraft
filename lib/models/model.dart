@@ -92,7 +92,38 @@ class Model with ChangeNotifier {
     await _persistServers();
   }
 
-  Future<void> _updatePersistenceService(Future<void> Function() updateAction) async {
+  /// Adds imported servers, replacing any whose id already exists.
+  ///
+  /// Matching on id means re-importing an updated config updates the servers
+  /// already here instead of leaving two copies of the same profile. Profiles
+  /// with different ids are appended.
+  ///
+  /// Returns how many were added and how many were updated, since the user
+  /// otherwise has no way to tell what an import actually did.
+  Future<({int added, int updated})> importServers(
+      List<ServerProfile> incoming) async {
+    var added = 0;
+    var updated = 0;
+
+    final merged = [..._servers];
+    for (final server in incoming) {
+      final index = merged.indexWhere((existing) => existing.id == server.id);
+      if (index >= 0) {
+        merged[index] = server;
+        updated++;
+      } else {
+        merged.add(server);
+        added++;
+      }
+    }
+
+    _servers = merged;
+    await _persistServers();
+    return (added: added, updated: updated);
+  }
+
+  Future<void> _updatePersistenceService(
+      Future<void> Function() updateAction) async {
     await updateAction();
     notifyListeners();
   }

@@ -5,13 +5,17 @@ import 'dart:io';
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
+import 'package:admincraft/services/config_file.dart';
+import 'package:admincraft/services/config_transfer.dart';
 import 'package:admincraft/services/websocket_connector.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
+import 'package:admincraft/utils/toast_utils.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Import for package info
 import 'package:provider/provider.dart';
 
@@ -89,15 +93,133 @@ class _SettingsTabState extends State<SettingsTab> {
   /// Pinning a certificate needs a trust store the app controls, which the
   /// browser does not expose, so that mode is hidden on web.
   List<ConnectionSecurity> get _securityOptions => ConnectionSecurity.values
-      .where((security) => supportsCustomCertificate || !security.requiresCertificate)
+      .where((security) =>
+          supportsCustomCertificate || !security.requiresCertificate)
       .toList();
+
+  /// Key derivation is deliberately slow, so the buttons are disabled while it
+  /// runs rather than letting a second tap queue up behind the first.
+  bool _busy = false;
+
+  Future<void> _export({required bool toClipboard}) async {
+    final passphrase = await DialogUtils.promptForPassphrase(
+      context,
+      title: 'Export servers',
+      message:
+          'Choose a passphrase. You will need the same one to import this on another device.',
+      confirm: true,
+    );
+    if (passphrase == null || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final blob = await ConfigTransfer.export(_model.servers, passphrase);
+
+      if (toClipboard) {
+        await Clipboard.setData(ClipboardData(text: blob));
+        ToastUtils.showToastSuccess(
+            'Config copied. Paste it on your other device.');
+      } else {
+        final path = await saveConfigFile(ConfigTransfer.fileName(), blob);
+        if (path != null) ToastUtils.showToastSuccess('Saved to $path');
+      }
+    } catch (e) {
+      ToastUtils.showToastError('Export failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _importFromClipboard() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final blob = data?.text;
+      if (blob == null || blob.trim().isEmpty) {
+        ToastUtils.showToastError('The clipboard is empty.');
+        return;
+      }
+      await _import(blob);
+    } catch (e) {
+      ToastUtils.showToastError('Could not read the clipboard: $e');
+    }
+  }
+
+  Future<void> _importFromFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['json'],
+        // Needed on web, where there is no path to read from afterwards.
+        withData: true,
+      );
+      if (result == null) return;
+
+      final file = result.files.single;
+      final blob = file.bytes != null
+          ? utf8.decode(file.bytes!)
+          : await File(file.path!).readAsString();
+
+      await _import(blob);
+    } catch (e) {
+      ToastUtils.showToastError('Could not read the config file: $e');
+    }
+  }
+
+  Future<void> _import(String blob) async {
+    if (!mounted) return;
+    final passphrase = await DialogUtils.promptForPassphrase(
+      context,
+      title: 'Import servers',
+      message: 'Enter the passphrase this config was exported with.',
+      confirm: false,
+    );
+    if (passphrase == null || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final servers = await ConfigTransfer.import(blob, passphrase);
+      if (servers.isEmpty) {
+        throw const ConfigTransferException(
+            'This config does not contain any servers.');
+      }
+      if (!mounted) return;
+
+      final confirmed = await DialogUtils.confirmAction(
+        context,
+        title: 'Import ${servers.length} server(s)?',
+        message:
+            'Profiles with matching IDs will be updated. Your other saved servers will stay.',
+        confirmLabel: 'Import',
+      );
+      if (!confirmed || !mounted) return;
+
+      final selectedBefore = _model.selectedServer.toJson();
+      final result = await _model.importServers(servers);
+      ToastUtils.showToastSuccess(
+        'Imported ${result.added} new and updated ${result.updated} server(s).',
+      );
+      if (mounted) {
+        _loadSettings();
+        if (!mapEquals(selectedBefore, _model.selectedServer.toJson())) {
+          widget.onSettingsSaved();
+        }
+      }
+    } on ConfigTransferException catch (e) {
+      ToastUtils.showToastError(e.message);
+    } catch (e) {
+      ToastUtils.showToastError('Import failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Future<void> _deleteServer() async {
     final server = _model.selectedServer;
     final confirmed = await DialogUtils.confirmAction(
       context,
       title: 'Delete Server',
-      message: 'Remove "${server.alias}" and its saved secret key from this device?',
+      message:
+          'Remove "${server.alias}" and its saved secret key from this device?',
       confirmLabel: 'Delete',
     );
     if (!confirmed) return;
@@ -377,6 +499,62 @@ class _SettingsTabState extends State<SettingsTab> {
             },
             child: const Text('Save Settings'),
           ),
+
+          const SizedBox(height: 20),
+
+          // Transfer Header
+          Text(
+            'Backup & Transfer',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Move your saved servers to another device. Exports are encrypted with a passphrase, '
+            'because they contain the secret keys that control your servers.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => UrlUtils.openDocumentation(
+                'guides/backup-transfer/',
+              ),
+              icon: const Icon(Icons.menu_book_outlined, size: 18),
+              label: const Text('Backup and transfer guide'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _export(toClipboard: true),
+                icon: const Icon(Icons.copy_all),
+                label: const Text('Copy config'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _importFromClipboard,
+                icon: const Icon(Icons.content_paste),
+                label: const Text('Paste config'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _export(toClipboard: false),
+                icon: const Icon(Icons.save_alt),
+                label: const Text('Export file'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _importFromFile,
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Import file'),
+              ),
+            ],
+          ),
+          if (_busy)
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: LinearProgressIndicator(),
+            ),
 
           const SizedBox(height: 20),
 

@@ -147,6 +147,93 @@ class DialogUtils {
     );
   }
 
+  /// Asks for the passphrase protecting a config transfer.
+  ///
+  /// When [confirm] is set the passphrase is entered twice: a typo on export
+  /// would only surface later, on the device that can no longer read the file.
+  static Future<String?> promptForPassphrase(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required bool confirm,
+  }) {
+    var value = '';
+    var repeated = '';
+    var visible = false;
+
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final matches = !confirm || value == repeated;
+            final canSubmit = value.isNotEmpty && matches;
+
+            return AlertDialog(
+              title: Text(title),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(message, style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 12),
+                  TextField(
+                    autofocus: true,
+                    obscureText: !visible,
+                    enableSuggestions: false,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      labelText: 'Passphrase',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                            visible ? Icons.visibility : Icons.visibility_off),
+                        onPressed: () => setState(() => visible = !visible),
+                      ),
+                    ),
+                    onChanged: (text) => setState(() => value = text),
+                    onSubmitted: (_) {
+                      if (canSubmit) Navigator.of(context).pop(value);
+                    },
+                  ),
+                  if (confirm) ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      obscureText: !visible,
+                      enableSuggestions: false,
+                      autocorrect: false,
+                      decoration: InputDecoration(
+                        labelText: 'Repeat passphrase',
+                        border: const OutlineInputBorder(),
+                        errorText: value.isNotEmpty && !matches
+                            ? 'Does not match'
+                            : null,
+                      ),
+                      onChanged: (text) => setState(() => repeated = text),
+                      onSubmitted: (_) {
+                        if (canSubmit) Navigator.of(context).pop(value);
+                      },
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(null),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed:
+                      canSubmit ? () => Navigator.of(context).pop(value) : null,
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   /// Asks the user to confirm an action that is disruptive or hard to undo,
   /// such as restarting the server while people are playing.
   static Future<bool> confirmAction(
