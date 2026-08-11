@@ -39,7 +39,7 @@ void main() {
     expect(find.text('Configuration'), findsOneWidget);
     expect(find.text('Docs'), findsOneWidget);
     expect(find.text('Automatic cloud sync'), findsNothing);
-    expect(tester.widget<Image>(find.byType(Image).first).width, 38);
+    expect(tester.widget<Image>(find.byType(Image).first).width, 32);
     expect(
       tester.widget<Text>(find.text('Admincraft')).style?.fontWeight,
       FontWeight.w700,
@@ -57,6 +57,39 @@ void main() {
 
     expect(find.text('Data & Sync'), findsWidgets);
     expect(find.text('Automatic cloud sync'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('color theme changes the palette and pixel-art logo',
+      (tester) async {
+    await pumpApp(tester, const Size(1280, 720));
+
+    final initialContext = tester.element(find.text('Admincraft'));
+    final initialPrimary = Theme.of(initialContext).colorScheme.primary;
+    final initialLogo = tester.widget<Image>(find.byType(Image).first);
+    expect(
+      (initialLogo.image as AssetImage).assetName,
+      'docs/logo/variants/dirt.png',
+    );
+
+    await tester.tap(find.text('Preferences'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('app-theme-diamond')));
+    await tester.pumpAndSettle();
+
+    final themedContext = tester.element(find.text('Admincraft'));
+    final themedLogo = tester.widget<Image>(find.byType(Image).first);
+    expect(Theme.of(themedContext).colorScheme.primary, isNot(initialPrimary));
+    expect(
+      (themedLogo.image as AssetImage).assetName,
+      'docs/logo/variants/diamond.png',
+    );
+    expect(themedLogo.width, 32);
+    expect(themedLogo.fit, BoxFit.fill);
+    expect(themedLogo.filterQuality, FilterQuality.none);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('appTheme'), 'diamond');
     expect(tester.takeException(), isNull);
   });
 

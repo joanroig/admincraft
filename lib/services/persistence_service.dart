@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/app_theme.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,7 @@ class PersistenceService {
   static const _commandUsageKey = 'commandUsage';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
+  static const _appThemeKey = 'appTheme';
   static const _fontKey = 'font';
   static const _fontSizeKey = 'fontSize';
   static const _commandHistoryKey = 'commandHistory';
@@ -48,6 +50,10 @@ class PersistenceService {
 
   Future<void> saveThemeMode(ThemeMode themeMode) async {
     await _set(_themeModeKey, themeMode.index);
+  }
+
+  Future<void> saveAppTheme(AppTheme appTheme) async {
+    await _set(_appThemeKey, appTheme.name);
   }
 
   Future<void> saveFont(String font) async {
@@ -83,8 +89,9 @@ class PersistenceService {
 
   /// Before this setting existed, TLS was enabled exactly when a certificate
   /// had been loaded. Keep users on the behaviour they already had.
-  ConnectionSecurity get _legacyConnectionSecurity =>
-      certificate.isEmpty ? ConnectionSecurity.privateNetwork : ConnectionSecurity.customCertificate;
+  ConnectionSecurity get _legacyConnectionSecurity => certificate.isEmpty
+      ? ConnectionSecurity.privateNetwork
+      : ConnectionSecurity.customCertificate;
 
   // ---------------------------------------------------------------------------
   // Server profiles
@@ -99,7 +106,8 @@ class PersistenceService {
     final stored = _prefs.getStringList(_serversKey);
     if (stored != null) {
       return stored
-          .map((entry) => ServerProfile.fromJson(jsonDecode(entry) as Map<String, dynamic>))
+          .map((entry) =>
+              ServerProfile.fromJson(jsonDecode(entry) as Map<String, dynamic>))
           .toList();
     }
 
@@ -141,13 +149,25 @@ class PersistenceService {
   Future<void> saveSelectedServerId(String id) async {
     await _set(_selectedServerKey, id);
   }
+
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
-  ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
+  ThemeMode get themeMode =>
+      ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
+  AppTheme get appTheme {
+    final stored = _prefs.getString(_appThemeKey);
+    return AppTheme.values.firstWhere(
+      (theme) => theme.name == stored,
+      orElse: () => AppTheme.dirt,
+    );
+  }
+
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';
   double get fontSize => _prefs.getDouble(_fontSizeKey) ?? 16;
 
-  List<String> get commandHistory => _prefs.getStringList(_commandHistoryKey) ?? [];
-  Set<String> get userCommands => _prefs.getStringList(_userCommandsKey)?.toSet() ?? {};
+  List<String> get commandHistory =>
+      _prefs.getStringList(_commandHistoryKey) ?? [];
+  Set<String> get userCommands =>
+      _prefs.getStringList(_userCommandsKey)?.toSet() ?? {};
 
   Future<void> addCommandToHistory(String command) async {
     final history = List<String>.from(commandHistory);

@@ -377,13 +377,14 @@ class _WorkspaceSidebar extends StatelessWidget {
                 child: Row(
                   children: [
                     Image.asset(
-                      'assets/logo.png',
-                      width: 38,
-                      height: 38,
+                      model.appTheme.logoAsset,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.fill,
                       filterQuality: FilterQuality.none,
                       isAntiAlias: false,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Admincraft',

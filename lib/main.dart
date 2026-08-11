@@ -35,7 +35,7 @@ class Admincraft extends StatelessWidget {
 
   ThemeData _theme(Model model, Brightness brightness) {
     final scheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF6F523D),
+      seedColor: model.appTheme.seedColor,
       brightness: brightness,
     );
     final base = ThemeData(

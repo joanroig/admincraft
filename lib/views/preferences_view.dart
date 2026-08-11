@@ -1,3 +1,4 @@
+import 'package:admincraft/models/app_theme.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/toast_utils.dart';
@@ -15,6 +16,7 @@ class PreferencesView extends StatefulWidget {
 
 class _PreferencesViewState extends State<PreferencesView> {
   final _maxLinesController = TextEditingController();
+  late AppTheme _appTheme;
   late ThemeMode _themeMode;
   late String _font;
   late double _fontSize;
@@ -26,6 +28,7 @@ class _PreferencesViewState extends State<PreferencesView> {
   void initState() {
     super.initState();
     final model = context.read<Model>();
+    _appTheme = model.appTheme;
     _themeMode = model.themeMode;
     _font = model.font;
     _fontSize = model.fontSize;
@@ -72,9 +75,50 @@ class _PreferencesViewState extends State<PreferencesView> {
                 subtitle: 'Theme and typography across the app.',
                 child: Column(
                   children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Color theme',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final columns = constraints.maxWidth >= 720
+                            ? 5
+                            : constraints.maxWidth >= 440
+                                ? 3
+                                : 2;
+                        const spacing = 8.0;
+                        final width =
+                            (constraints.maxWidth - spacing * (columns - 1)) /
+                                columns;
+                        return Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: [
+                            for (final theme in AppTheme.values)
+                              SizedBox(
+                                width: width,
+                                child: _ThemeChoice(
+                                  theme: theme,
+                                  selected: _appTheme == theme,
+                                  onTap: () {
+                                    setState(() => _appTheme = theme);
+                                    _model.setAppTheme(theme);
+                                  },
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
                     DropdownButtonFormField<ThemeMode>(
                       initialValue: _themeMode,
-                      decoration: const InputDecoration(labelText: 'Theme'),
+                      decoration:
+                          const InputDecoration(labelText: 'Appearance mode'),
                       items: const [
                         DropdownMenuItem(
                             value: ThemeMode.system,
@@ -202,6 +246,60 @@ class _PreferencesViewState extends State<PreferencesView> {
   void dispose() {
     _maxLinesController.dispose();
     super.dispose();
+  }
+}
+
+class _ThemeChoice extends StatelessWidget {
+  final AppTheme theme;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThemeChoice({
+    required this.theme,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: selected ? scheme.primaryContainer : scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: selected ? scheme.primary : scheme.outlineVariant,
+          width: selected ? 2 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: ValueKey('app-theme-${theme.name}'),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Column(
+            children: [
+              Image.asset(
+                theme.logoAsset,
+                width: 32,
+                height: 32,
+                fit: BoxFit.fill,
+                filterQuality: FilterQuality.none,
+                isAntiAlias: false,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                theme.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

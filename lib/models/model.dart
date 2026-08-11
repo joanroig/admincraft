@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/app_theme.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/models/world_state.dart';
@@ -36,6 +37,7 @@ class Model with ChangeNotifier {
   MinecraftEdition get minecraftEdition => selectedServer.edition;
   int get maxOutLines => _persistenceService.maxOutLines;
   ThemeMode get themeMode => _persistenceService.themeMode;
+  AppTheme get appTheme => _persistenceService.appTheme;
   String get font => _persistenceService.font;
   double get fontSize => _persistenceService.fontSize;
 
@@ -168,6 +170,11 @@ class Model with ChangeNotifier {
   Future<void> setThemeMode(ThemeMode themeMode) async {
     await _updatePersistenceService(
         () => _persistenceService.saveThemeMode(themeMode));
+  }
+
+  Future<void> setAppTheme(AppTheme appTheme) async {
+    await _updatePersistenceService(
+        () => _persistenceService.saveAppTheme(appTheme));
   }
 
   Future<void> setFont(String font) async {

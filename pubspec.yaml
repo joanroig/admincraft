@@ -63,6 +63,12 @@ flutter:
     # The app logo, kept in step with the platform icons by
     # docs/logo/change_logo.py.
     - assets/logo.png
+    # Theme logos are 16x16 pixel art and are scaled at integer multiples.
+    - docs/logo/variants/dirt.png
+    - docs/logo/variants/grass.png
+    - docs/logo/variants/creeper.png
+    - docs/logo/variants/diamond.png
+    - docs/logo/variants/obsidian_glow.png
     # Item icons from mcicons (MIT), named after Minecraft identifiers.
     # See the credits in README.md.
     - assets/mcicons/
