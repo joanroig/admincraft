@@ -112,11 +112,6 @@ class OverviewView extends StatelessWidget {
                         icon: const Icon(Icons.tune),
                         label: const Text('Server controls'),
                       ),
-                      OutlinedButton.icon(
-                        onPressed: onEditServer,
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Edit server'),
-                      ),
                     ],
                   ),
                 ],

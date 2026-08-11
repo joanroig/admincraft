@@ -4,12 +4,14 @@ class MoreView extends StatelessWidget {
   final VoidCallback onServers;
   final VoidCallback onDataSync;
   final VoidCallback onPreferences;
+  final VoidCallback onDocumentation;
 
   const MoreView({
     super.key,
     required this.onServers,
     required this.onDataSync,
     required this.onPreferences,
+    required this.onDocumentation,
   });
 
   @override
@@ -20,7 +22,7 @@ class MoreView extends StatelessWidget {
         Text('More', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 4),
         Text(
-          'Manage servers, portable data, and app-wide preferences.',
+          'Manage servers, portable data, preferences, and help.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 16),
@@ -49,6 +51,14 @@ class MoreView extends StatelessWidget {
                 subtitle: const Text('Theme, font, and console behavior'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: onPreferences,
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.help_outline),
+                title: const Text('Documentation'),
+                subtitle: const Text('Setup guides and feature reference'),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: onDocumentation,
               ),
             ],
           ),

@@ -36,6 +36,8 @@ void main() {
 
     expect(find.text('Overview'), findsWidgets);
     expect(find.text('Data & Sync'), findsOneWidget);
+    expect(find.text('Configuration'), findsOneWidget);
+    expect(find.text('Documentation'), findsOneWidget);
     expect(find.text('Automatic cloud sync'), findsNothing);
 
     await tester.tap(find.text('Data & Sync'));
@@ -68,16 +70,23 @@ void main() {
 
     final aliasField = find.widgetWithText(TextFormField, 'Alias');
     await tester.enterText(aliasField, 'Unsaved draft');
-    await tester.tap(find.text('Overview'));
+    await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Edit server'));
-    await tester.tap(find.text('Edit server'));
+    expect(find.text('Documentation'), findsOneWidget);
+    await tester.tap(find.text('Servers'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byTooltip('Edit server'));
+    await tester.tap(find.byTooltip('Edit server'));
     await tester.pumpAndSettle();
 
     expect(
       tester.widget<TextFormField>(aliasField).controller?.text,
       'Unsaved draft',
     );
+
+    await tester.tap(find.byTooltip('Back to Servers'));
+    await tester.pumpAndSettle();
+    expect(find.text('Servers'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

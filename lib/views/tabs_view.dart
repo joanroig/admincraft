@@ -33,7 +33,7 @@ extension on _WorkspaceDestination {
         _WorkspaceDestination.console => 'Console',
         _WorkspaceDestination.controls => 'Controls',
         _WorkspaceDestination.servers => 'Servers',
-        _WorkspaceDestination.serverEditor => 'Edit server',
+        _WorkspaceDestination.serverEditor => 'Configuration',
         _WorkspaceDestination.dataSync => 'Data & Sync',
         _WorkspaceDestination.preferences => 'Preferences',
         _WorkspaceDestination.more => 'More',
@@ -174,6 +174,7 @@ class _TabsState extends State<Tabs> {
           key: ValueKey(model.selectedServerId),
           onSaved: _serverSaved,
           onDeleted: _serverDeleted,
+          onBack: () => _go(_WorkspaceDestination.servers),
         ),
       _WorkspaceDestination.dataSync =>
         DataSyncView(onServersChanged: _serversImported),
@@ -182,6 +183,7 @@ class _TabsState extends State<Tabs> {
           onServers: () => _go(_WorkspaceDestination.servers),
           onDataSync: () => _go(_WorkspaceDestination.dataSync),
           onPreferences: () => _go(_WorkspaceDestination.preferences),
+          onDocumentation: () => UrlUtils.openDocumentation(),
         ),
     };
   }
@@ -249,7 +251,6 @@ class _TabsState extends State<Tabs> {
                   destination: _destination,
                   model: model,
                   connection: connection,
-                  onEditServer: () => _go(_WorkspaceDestination.serverEditor),
                 ),
                 const Divider(height: 1),
                 Expanded(
@@ -279,8 +280,14 @@ class _TabsState extends State<Tabs> {
       appBar: AppBar(
         leading: secondary
             ? IconButton(
-                tooltip: 'Back to More',
-                onPressed: () => _go(_WorkspaceDestination.more),
+                tooltip: _destination == _WorkspaceDestination.serverEditor
+                    ? 'Back to Servers'
+                    : 'Back to More',
+                onPressed: () => _go(
+                  _destination == _WorkspaceDestination.serverEditor
+                      ? _WorkspaceDestination.servers
+                      : _WorkspaceDestination.more,
+                ),
                 icon: const Icon(Icons.arrow_back),
               )
             : null,
@@ -293,14 +300,7 @@ class _TabsState extends State<Tabs> {
                 onSelect: _selectServer,
                 onAdd: _addServer,
               ),
-        actions: [
-          _ConnectionAction(model: model, connection: connection),
-          IconButton(
-            tooltip: 'Documentation',
-            onPressed: () => UrlUtils.openDocumentation(),
-            icon: const Icon(Icons.help_outline),
-          ),
-        ],
+        actions: [_ConnectionAction(model: model, connection: connection)],
       ),
       body: _pageHost(model, connection),
       bottomNavigationBar: NavigationBar(
@@ -416,13 +416,17 @@ class _WorkspaceSidebar extends StatelessWidget {
                 onTap: onDestination,
               ),
               _NavigationTile(
-                destination: _WorkspaceDestination.servers,
-                selected: destination == _WorkspaceDestination.servers ||
-                    destination == _WorkspaceDestination.serverEditor,
+                destination: _WorkspaceDestination.serverEditor,
+                selected: destination == _WorkspaceDestination.serverEditor,
                 onTap: onDestination,
               ),
               const Spacer(),
               const _SectionLabel(label: 'Application'),
+              _NavigationTile(
+                destination: _WorkspaceDestination.servers,
+                selected: destination == _WorkspaceDestination.servers,
+                onTap: onDestination,
+              ),
               _NavigationTile(
                 destination: _WorkspaceDestination.dataSync,
                 selected: destination == _WorkspaceDestination.dataSync,
@@ -432,6 +436,11 @@ class _WorkspaceSidebar extends StatelessWidget {
                 destination: _WorkspaceDestination.preferences,
                 selected: destination == _WorkspaceDestination.preferences,
                 onTap: onDestination,
+              ),
+              _ActionTile(
+                icon: Icons.help_outline,
+                label: 'Documentation',
+                onTap: () => UrlUtils.openDocumentation(),
               ),
             ],
           ),
@@ -445,13 +454,11 @@ class _WorkspaceHeader extends StatelessWidget {
   final _WorkspaceDestination destination;
   final Model model;
   final ConnectionController connection;
-  final VoidCallback onEditServer;
 
   const _WorkspaceHeader({
     required this.destination,
     required this.model,
     required this.connection,
-    required this.onEditServer,
   });
 
   @override
@@ -483,19 +490,7 @@ class _WorkspaceHeader extends StatelessWidget {
             ),
             _StatusLabel(status: connection.status),
             const SizedBox(width: 8),
-            if (destination != _WorkspaceDestination.serverEditor)
-              OutlinedButton.icon(
-                onPressed: onEditServer,
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('Edit server'),
-              ),
-            const SizedBox(width: 8),
             _ConnectionAction(model: model, connection: connection),
-            IconButton(
-              tooltip: 'Documentation',
-              onPressed: () => UrlUtils.openDocumentation(),
-              icon: const Icon(Icons.help_outline),
-            ),
           ],
         ),
       ),
@@ -549,6 +544,37 @@ class _SectionLabel extends StatelessWidget {
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          dense: true,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          leading: Icon(icon, size: 21),
+          title: Text(label),
+          trailing: const Icon(Icons.open_in_new, size: 16),
+          onTap: onTap,
+        ),
       ),
     );
   }

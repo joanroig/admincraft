@@ -16,11 +16,13 @@ import 'package:provider/provider.dart';
 class ServerEditorView extends StatefulWidget {
   final Future<void> Function() onSaved;
   final Future<void> Function() onDeleted;
+  final VoidCallback onBack;
 
   const ServerEditorView({
     super.key,
     required this.onSaved,
     required this.onDeleted,
+    required this.onBack,
   });
 
   @override
@@ -149,6 +151,14 @@ class _ServerEditorViewState extends State<ServerEditorView> {
               children: [
                 Row(
                   children: [
+                    if (MediaQuery.sizeOf(context).width >= 820) ...[
+                      IconButton(
+                        tooltip: 'Back to Servers',
+                        onPressed: widget.onBack,
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
