@@ -1,0 +1,59 @@
+import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/main.dart';
+import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/persistence_service.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  Future<void> pumpApp(WidgetTester tester, Size size) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => Model(PersistenceService(prefs)),
+          ),
+          ChangeNotifierProvider(create: (_) => ConnectionController()),
+        ],
+        child: const Admincraft(),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('desktop workspace renders without layout errors',
+      (tester) async {
+    await pumpApp(tester, const Size(1280, 720));
+
+    expect(find.text('Overview'), findsWidgets);
+    expect(find.text('Data & Sync'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('server switcher exposes add server as its final action',
+      (tester) async {
+    await pumpApp(tester, const Size(390, 844));
+
+    await tester.tap(find.byTooltip('Switch server'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add server'), findsOneWidget);
+    expect(find.text('Create a new server profile'), findsOneWidget);
+
+    await tester.tap(find.text('Add server'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit server'), findsWidgets);
+    expect(find.text('Save changes'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
