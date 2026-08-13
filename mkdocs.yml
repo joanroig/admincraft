@@ -4,7 +4,7 @@ site_url: !ENV [MKDOCS_SITE_URL, "http://127.0.0.1:8000/"]
 repo_url: https://github.com/joanroig/admincraft
 repo_name: joanroig/admincraft
 edit_uri: edit/main/docs/
-copyright: Admincraft is licensed under GPLv3.
+copyright: Admincraft is licensed under PolyForm Shield 1.0.0.
 
 theme:
   name: material
