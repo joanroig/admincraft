@@ -71,8 +71,17 @@ jobs:
       - name: Install zip (Windows only)
         if: matrix.platform == 'windows'
         run: choco install zip -y
-      - name: Build ${{ matrix.platform }}
-        run: ${{ matrix.build_cmd }}
+      - name: Build Android
+        if: matrix.platform == 'android'
+        run: >-
+          flutter build apk --release
+          --dart-define=ADMINCRAFT_GOOGLE_WEB_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_WEB_CLIENT_ID }}
+      - name: Build Windows
+        if: matrix.platform == 'windows'
+        run: >-
+          flutter build windows --release
+          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
+          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET }}
       - name: Prepare Windows zip
         if: matrix.platform == 'windows'
         shell: bash

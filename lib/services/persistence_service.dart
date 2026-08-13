@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/models/app_theme.dart';
+import 'package:admincraft/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,8 +12,14 @@ class PersistenceService {
   static const _portKey = 'port';
   static const _secretKeyKey = 'secretKey';
   static const _certificateKey = 'certificateKey';
+  static const _connectionSecurityKey = 'connectionSecurity';
+  static const _serversKey = 'servers';
+  static const _serversUpdatedAtKey = 'serversUpdatedAt';
+  static const _selectedServerKey = 'selectedServer';
+  static const _commandUsageKey = 'commandUsage';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
+  static const _appThemeKey = 'appTheme';
   static const _fontKey = 'font';
   static const _fontSizeKey = 'fontSize';
   static const _commandHistoryKey = 'commandHistory';
@@ -34,28 +45,16 @@ class PersistenceService {
     }
   }
 
-  Future<void> saveConnectionDetails({
-    required String alias,
-    required String ip,
-    required int port,
-    required String secretKey,
-    required String certificate,
-  }) async {
-    await Future.wait([
-      _set(_aliasKey, alias),
-      _set(_ipKey, ip),
-      _set(_portKey, port),
-      _set(_secretKeyKey, secretKey),
-      _set(_certificateKey, certificate),
-    ]);
-  }
-
   Future<void> saveMaxOutLines(int lines) async {
     await _set(_maxOutLinesKey, lines);
   }
 
   Future<void> saveThemeMode(ThemeMode themeMode) async {
     await _set(_themeModeKey, themeMode.index);
+  }
+
+  Future<void> saveAppTheme(AppTheme appTheme) async {
+    await _set(_appThemeKey, appTheme.name);
   }
 
   Future<void> saveFont(String font) async {
@@ -79,13 +78,108 @@ class PersistenceService {
   int get port => _prefs.getInt(_portKey) ?? 8080;
   String get secretKey => _prefs.getString(_secretKeyKey) ?? '';
   String get certificate => _prefs.getString(_certificateKey) ?? '';
+
+  ConnectionSecurity get connectionSecurity {
+    final stored = _prefs.getString(_connectionSecurityKey);
+    if (stored == null) return _legacyConnectionSecurity;
+    return ConnectionSecurity.values.firstWhere(
+      (security) => security.name == stored,
+      orElse: () => _legacyConnectionSecurity,
+    );
+  }
+
+  /// Before this setting existed, TLS was enabled exactly when a certificate
+  /// had been loaded. Keep users on the behaviour they already had.
+  ConnectionSecurity get _legacyConnectionSecurity => certificate.isEmpty
+      ? ConnectionSecurity.privateNetwork
+      : ConnectionSecurity.customCertificate;
+
+  // ---------------------------------------------------------------------------
+  // Server profiles
+  // ---------------------------------------------------------------------------
+
+  /// Saved servers.
+  ///
+  /// When nothing has been stored yet the single set of connection details
+  /// from before multi-server support is promoted to the first profile, so an
+  /// existing install keeps its server instead of starting empty.
+  List<ServerProfile> get servers {
+    final stored = _prefs.getStringList(_serversKey);
+    if (stored != null) {
+      return stored
+          .map((entry) =>
+              ServerProfile.fromJson(jsonDecode(entry) as Map<String, dynamic>))
+          .toList();
+    }
+
+    return [
+      ServerProfile(
+        id: 'default',
+        alias: alias,
+        ip: ip,
+        port: port,
+        secretKey: secretKey,
+        certificate: certificate,
+        security: connectionSecurity,
+      )
+    ];
+  }
+
+  Future<void> saveServers(List<ServerProfile> servers) async {
+    await _set(
+      _serversKey,
+      servers.map((server) => jsonEncode(server.toJson())).toList(),
+    );
+    await _set(
+      _serversUpdatedAtKey,
+      DateTime.now().toUtc().millisecondsSinceEpoch,
+    );
+  }
+
+  DateTime? get serversUpdatedAt {
+    final value = _prefs.getInt(_serversUpdatedAtKey);
+    return value == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);
+  }
+
+  /// How often each command has been sent, used to order completions so the
+  /// commands someone actually reaches for come first.
+  Map<String, int> get commandUsage {
+    final stored = _prefs.getString(_commandUsageKey);
+    if (stored == null) return {};
+    final decoded = jsonDecode(stored) as Map<String, dynamic>;
+    return decoded.map((key, value) => MapEntry(key, value as int));
+  }
+
+  Future<void> saveCommandUsage(Map<String, int> usage) async {
+    await _set(_commandUsageKey, jsonEncode(usage));
+  }
+
+  String? get selectedServerId => _prefs.getString(_selectedServerKey);
+
+  Future<void> saveSelectedServerId(String id) async {
+    await _set(_selectedServerKey, id);
+  }
+
   int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
-  ThemeMode get themeMode => ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
+  ThemeMode get themeMode =>
+      ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
+  AppTheme get appTheme {
+    final stored = _prefs.getString(_appThemeKey);
+    return AppTheme.values.firstWhere(
+      (theme) => theme.name == stored,
+      orElse: () => AppTheme.dirt,
+    );
+  }
+
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';
   double get fontSize => _prefs.getDouble(_fontSizeKey) ?? 16;
 
-  List<String> get commandHistory => _prefs.getStringList(_commandHistoryKey) ?? [];
-  Set<String> get userCommands => _prefs.getStringList(_userCommandsKey)?.toSet() ?? {};
+  List<String> get commandHistory =>
+      _prefs.getStringList(_commandHistoryKey) ?? [];
+  Set<String> get userCommands =>
+      _prefs.getStringList(_userCommandsKey)?.toSet() ?? {};
 
   Future<void> addCommandToHistory(String command) async {
     final history = List<String>.from(commandHistory);

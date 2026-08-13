@@ -9,7 +9,7 @@
 </h1>
 
 <p align="center">
-  Multiplatform app to control Minecraft Bedrock Dockerized servers, built with Flutter.
+  Multiplatform app to control Minecraft Bedrock and Java servers, built with Flutter.
 </p>
 
 <p align="center">
@@ -19,6 +19,7 @@
   <a href="https://github.com/joanroig/Admincraft/issues"><img src="https://img.shields.io/github/issues-raw/joanroig/admincraft.svg?maxAge=2592000&label=Open%20Issues&style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAMtJREFUOI1j1G5l+M+ABSiJ1GMTZmC++pqBgYGB4bb4NAYGBgYGJqyqSAAsMIbqyywUkzlfQxz2XZQRla8tysDAwMCg/bqOyi5gExNBccl3bTSboS6BhcEvqD7KXYBhIwPEJQw4woAB6lKYOOUugPndMDQSReL8tGUoNhtmRWGVp14sHFu9nIGBgYHhz823DAwMDAx2NTkoCg+1TEHh8woJUccFjGEtdSh5Ad2v6ADmd6rFAqNnUc5/BgaEnz6/e4dXA0zdr1dvqOMCAHUPQJl6c3AoAAAAAElFTkSuQmCC" alt="Open issues" /></a>
   <a href="https://github.com/joanroig/admincraft/blob/main/CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-Welcome-brightgreen.svg?style=flat-square&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAAXNSR0IArs4c6QAAABVQTFRFAAAAMyURd0M1kF5DAZYRvYpy////M94BeAAAAAd0Uk5TAP///////6V/pvsAAAAzSURBVBiVY2BFAww0EmBEAtgF2NhYWECKWVjY2LAJMDODOMzMMBq7ABMTSICJCbcAXjMAV+YEKS5sU08AAAAASUVORK5CYII=" alt="PRs welcome!" /></a>  
   <a href="https://github.com/joanroig/admincraft/actions/workflows/build-and-release-app.yml"><img src="https://img.shields.io/github/actions/workflow/status/joanroig/admincraft/build-and-release-app.yml?style=flat-square&label=Build&logo=github" alt="Build"/></a>
+  <a href="https://joanroig.github.io/admincraft/docs/"><img src="https://img.shields.io/badge/Documentation-805539?style=flat-square&logo=readthedocs&logoColor=white" alt="Documentation"/></a>
 </p>
 
 <p align="center">
@@ -27,18 +28,25 @@
 
 ## ![Admincraft logo](docs/logo/variants/dirt.png) What is Admincraft?
 
-Admincraft is a multiplatform app for managing Minecraft Bedrock servers in Docker containers. Given that RCON isn't available for Bedrock, Admincraft uses the [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) project to interact with the Minecraft server. This approach allows for secure and real-time command execution and server management through a WebSocket connection, providing an intuitive GUI for tasks such as issuing commands, performing server maintenance, and monitoring server logs.
+Admincraft is a multiplatform app for managing Minecraft Bedrock and Java Edition servers. The [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) bridge uses the Bedrock Docker console or Java RCON internally, while the app keeps the same secure WebSocket connection on every platform. It provides an intuitive GUI for issuing commands, performing server maintenance, and monitoring server logs.
+
+[Open Admincraft Web](https://joanroig.github.io/admincraft/) · [Read the documentation](https://joanroig.github.io/admincraft/docs/)
 
 ### Current project status
 
-- Currently optimized for use with Oracle Always Free, using a server created with [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master).
+- Bedrock is optimized for [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master); Java is optimized for [docker-minecraft-server](https://github.com/itzg/docker-minecraft-server).
 - Development is focused on Android and Windows; other platforms may be unstable.
+- Runs in the browser too (`flutter run -d chrome`), with two limitations the browser imposes: self-signed certificates cannot be loaded, because the browser validates TLS itself and exposes no way to add a trust anchor, and a page served over HTTPS cannot open an unencrypted `ws://` connection, so the `Private network` option only works when the app itself is served over `http://` (such as a local build).
 
 ## ![Admincraft logo](docs/logo/variants/pig.png) Getting Started
 
-You need a Minecraft Bedrock server and [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket) running in Docker to use Admincraft. Visit the [server setup guide](docs/server/SERVER_SETUP.md) to set up yours for free!
+You need a Minecraft server and [Admincraft WebSocket](https://github.com/joanroig/admincraft-websocket). Visit the [documentation](https://joanroig.github.io/admincraft/docs/) for installation, connection, backup, and troubleshooting guides. Use the [Bedrock setup guide](docs/server/SERVER_SETUP.md) or the [Java setup guide](docs/getting-started/java-server.md).
 
 Once you have your server ready, [download Admincraft for your platform](https://github.com/joanroig/admincraft/releases), add your server in the app, and you're good to go!
+
+In the app settings, pick the **Connection Security** option matching your setup: `Private network` for Tailscale, a VPN or a LAN, `Public certificate` for a server with a publicly trusted certificate, and `Self-signed certificate` to load your own. The [server setup guide](docs/server/SERVER_SETUP.md#choosing-how-to-connect) walks through each one.
+
+The **Backup & Transfer** section can copy/paste or export/import all saved server profiles. Transfers include server secret keys, so Admincraft always encrypts them with a passphrase you choose.
 
 ## ![Admincraft logo](docs/logo/variants/obsidian.png) Development
 
@@ -54,6 +62,15 @@ Once you have your server ready, [download Admincraft for your platform](https:/
 
 - Run `flutter build windows`.
 - The .exe file with the required files will be available at [build/windows/x64/runner/Release](build/windows/x64/runner/Release).
+
+### Build Web and Documentation
+
+- Install the documentation dependencies with `python -m pip install -r requirements-docs.txt`.
+- Run `flutter build web --release --wasm --base-href /admincraft/`.
+- Run `python -m mkdocs build --strict --site-dir build/web/docs`.
+- The combined GitHub Pages site will be available under `build/web`, with documentation in `build/web/docs`.
+
+Pushes to `main` automatically test, build, and deploy both through the **Deploy web app and docs** workflow. In the repository's Pages settings, the source must be set to **GitHub Actions**.
 
 ### Automatic Builds
 
@@ -73,6 +90,8 @@ The community and team are available in [GitHub Discussions](https://github.com/
 Our [Contribution Guide](https://github.com/joanroig/admincraft/blob/main/CONTRIBUTING.md) describes how to contribute to the codebase and documentation.
 
 ## ![Admincraft logo](docs/logo/variants/enderman.png) Credits
+
+- Item icons from [mcicons](https://github.com/themuhamed/mcicons) by @themuhamed, used under the MIT License.
 
 Docker tools
 

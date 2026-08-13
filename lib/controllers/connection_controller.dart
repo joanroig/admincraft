@@ -74,7 +74,17 @@ class ConnectionController with ChangeNotifier {
 
   Future<void> executeMinecraftCommand(Model model, String command) async {
     model.addUserCommand(command);
+    model.recordCommandUsage(command);
     model.appendOutputCommand(command);
+    connectionService.executeCommand(command);
+  }
+
+  /// Sends a command without echoing it or saving it.
+  ///
+  /// Used for the queries that keep the control panel in sync, which would
+  /// otherwise bury the terminal and the saved-command list under dozens of
+  /// entries the user never typed.
+  Future<void> sendQuietly(String command) async {
     connectionService.executeCommand(command);
   }
 

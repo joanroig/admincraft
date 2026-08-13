@@ -61,7 +61,13 @@ services:
       - 8080:8080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
-      - ./certs:/usr/src/app/certs:ro
+      # Only needed when USE_SSL is "true", see the self-signed SSL alternative
+      # - ./certs:/usr/src/app/certs:ro
     environment:
-      SECRET_KEY: 7VHKHrngbqrAvxrrDM4v4kjMtkhjhqK6RjvuzhTmNH4EaqbesTLBrna82ZGgiYf4
-      USE_SSL: "true" # Change to "false" to disable SSL
+      # Generate your own with: openssl rand -hex 32
+      SECRET_KEY: YOUR_SECRET_KEY_HERE
+      SERVER_TYPE: bedrock
+      # The recommended setup reaches this port over Tailscale, which already
+      # encrypts the traffic. Set to "true" only for the self-signed SSL
+      # alternative, which exposes port 8080 to the internet.
+      USE_SSL: "false"

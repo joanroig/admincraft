@@ -169,6 +169,19 @@ def generate_web_icons(image):
     favicon_path = os.path.join('..', '..', 'web', 'favicon.png')
     save_resized_image(image, favicon_path, 16)
 
+def generate_app_asset(image):
+    """
+    Writes the logo bundled with the app itself, which is shown in the app bar.
+
+    Kept at the source resolution: it is pixel art and Flutter scales it with
+    nearest neighbour, so resizing here would only soften it.
+
+    :param image: PIL.Image instance of the source image.
+    :type image: PIL.Image.Image
+    """
+    output_path = os.path.join('..', '..', 'assets', 'logo.png')
+    image.save(output_path)
+
 def generate_web_maskable_icons(image):
     """
     Generates maskable web icons in various resolutions from the provided image.
@@ -214,6 +227,7 @@ def main():
     generate_web_icons(logo_image)
     generate_web_maskable_icons(logo_image)
     generate_windows_icon(logo_image)
+    generate_app_asset(logo_image)
 
     # Close the image after all operations
     logo_image.close()

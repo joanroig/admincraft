@@ -1,32 +1,19 @@
-// default_commands.dart
+import 'package:admincraft/data/bedrock_commands.dart';
+import 'package:admincraft/data/java_commands.dart';
+import 'package:admincraft/models/minecraft_edition.dart';
+
 class DefaultCommands {
-  static final List<String> commands = [
-    'help',
-    'list',
-    'say <message>',
-    'kick <player>',
-    'ban <player>',
-    'unban <player>',
-    'give <player> <item> [amount] [dataTag]',
-    'tp <player> <destination>',
-    'teleport <player> <x> <y> <z>',
-    'setworldspawn <x> <y> <z>',
-    'spawnpoint <player> [x] [y] [z]',
-    'weather <clear|rain|thunder>',
-    'time set <day|night|<value>>',
-    'difficulty <peaceful|easy|normal|hard>',
-    'gamerule <rule> <value>',
-    'effect <player> <effect> [seconds] [amplifier] [hideParticles]',
-    'fill <x1> <y1> <z1> <x2> <y2> <z2> <block> [dataTag]',
-    'clone <fromX> <fromY> <fromZ> <toX> <toY> <toZ> <destinationX> <destinationY> <destinationZ> [mode]',
-    'say <message>',
-    'me <action>',
-    'scoreboard objectives add <name> <criteria>',
-    'scoreboard players set <player> <objective> <value>',
-    'worldborder <set|add|center|damage|warning> [parameters]',
-    'whitelist add <player>',
-    'whitelist remove <player>',
-    'whitelist list',
-    'whitelist reload'
-  ];
+  /// The browsable command list, derived from the same definitions that drive
+  /// completion so the two can never disagree. Entries carry their full
+  /// syntax, and the `<placeholder>` markers are what the command picker
+  /// prompts for.
+  static final List<String> commands =
+      BedrockCommands.all.map((command) => command.syntax).toList();
+
+  static List<String> forEdition(MinecraftEdition edition) =>
+      (edition == MinecraftEdition.java
+              ? JavaCommands.all
+              : BedrockCommands.all)
+          .map((command) => command.syntax)
+          .toList();
 }
