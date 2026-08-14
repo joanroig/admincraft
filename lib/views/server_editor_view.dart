@@ -201,7 +201,12 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                         initialValue: _edition,
                         isExpanded: true,
                         decoration: const InputDecoration(
-                            labelText: 'Minecraft edition'),
+                          labelText: 'Minecraft edition',
+                          helperMaxLines: 3,
+                          helperText:
+                              'Which server the bridge controls. Java uses RCON, '
+                              'configured on the bridge itself, not here.',
+                        ),
                         items: MinecraftEdition.values
                             .map((value) => DropdownMenuItem(
                                   value: value,
@@ -232,7 +237,10 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                 const SizedBox(height: 14),
                 _SectionCard(
                   title: 'Connection',
-                  subtitle: 'How Admincraft reaches the WebSocket bridge.',
+                  subtitle:
+                      'Every field here describes the Admincraft WebSocket '
+                      'bridge, never the Minecraft server itself. The bridge is '
+                      'what reaches Minecraft, on both editions.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -241,8 +249,13 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           final wide = constraints.maxWidth >= 580;
                           final host = TextFormField(
                             controller: _hostController,
-                            decoration:
-                                const InputDecoration(labelText: 'Host or IP'),
+                            decoration: const InputDecoration(
+                              labelText: 'Host or IP of the bridge',
+                              helperMaxLines: 3,
+                              helperText:
+                                  'Where the websocket container runs. A Tailscale '
+                                  'address, a ts.net hostname, or a public IP.',
+                            ),
                             onChanged: (_) => setState(() {}),
                             validator: (value) =>
                                 value == null || value.trim().isEmpty
@@ -251,8 +264,11 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           );
                           final port = TextFormField(
                             controller: _portController,
-                            decoration:
-                                const InputDecoration(labelText: 'Port'),
+                            decoration: const InputDecoration(
+                              labelText: 'Bridge port',
+                              helperMaxLines: 3,
+                              helperText: '8080 normally. 443 behind Funnel.',
+                            ),
                             keyboardType: TextInputType.number,
                             onChanged: (_) => setState(() {}),
                             validator: (value) {
@@ -282,7 +298,12 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                         enableSuggestions: false,
                         autocorrect: false,
                         decoration: InputDecoration(
-                          labelText: 'Secret key',
+                          labelText: 'Bridge secret key',
+                          helperMaxLines: 3,
+                          helperText:
+                              'SECRET_KEY from the bridge docker-compose.yml. On '
+                              'Java this is still the bridge key, not the RCON '
+                              'password.',
                           suffixIcon: IconButton(
                             tooltip: _secretVisible ? 'Hide key' : 'Show key',
                             icon: Icon(_secretVisible
@@ -333,10 +354,10 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                             ),
                             TextButton.icon(
                               onPressed: () => UrlUtils.openDocumentation(
-                                  'guides/connection-security/'),
+                                  'guides/connection-fields/'),
                               icon: const Icon(Icons.menu_book_outlined,
                                   size: 18),
-                              label: const Text('Connection security guide'),
+                              label: const Text('What do these fields mean?'),
                             ),
                           ],
                         ),
