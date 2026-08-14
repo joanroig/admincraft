@@ -51,6 +51,9 @@ Java goes through RCON on the private Docker network, so the bridge needs the RC
     environment:
       SECRET_KEY: YOUR_SECRET_KEY_HERE
       USE_SSL: "false"
+      # Required: the bridge defaults to Bedrock and refuses a Java profile
+      # with "profile is java, but this bridge is bedrock" without this.
+      SERVER_TYPE: java
       MC_NAME: minecraft
       RCON_HOST: minecraft
       RCON_PORT: "25575"

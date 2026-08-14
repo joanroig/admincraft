@@ -30,10 +30,13 @@ class WelcomeView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Multiple of 16 so the pixel art scales cleanly: an
+                // arbitrary size lands pixels on fractions and looks ragged
+                // even with nearest-neighbour filtering.
                 Image.asset(
                   'assets/logo.png',
-                  width: 72,
-                  height: 72,
+                  width: 128,
+                  height: 128,
                   filterQuality: FilterQuality.none,
                   isAntiAlias: false,
                 ),
