@@ -3,14 +3,21 @@ import 'package:admincraft/controllers/google_drive_sync_controller.dart';
 import 'package:admincraft/main.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/persistence_service.dart';
+import 'package:admincraft/views/welcome_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  Future<void> pumpApp(WidgetTester tester, Size size) async {
-    SharedPreferences.setMockInitialValues({});
+  Future<void> pumpApp(
+    WidgetTester tester,
+    Size size, {
+    bool withServer = true,
+  }) async {
+    SharedPreferences.setMockInitialValues(
+      withServer ? {'onboardingCompleted': true} : {},
+    );
     final prefs = await SharedPreferences.getInstance();
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -137,6 +144,25 @@ void main() {
     await tester.tap(find.byTooltip('Back to Servers'));
     await tester.pumpAndSettle();
     expect(find.text('Servers'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('onboarding replaces the workspace until a server is configured',
+      (tester) async {
+    await pumpApp(tester, const Size(390, 844), withServer: false);
+
+    expect(find.text('Welcome to Admincraft'), findsOneWidget);
+    expect(find.text('Add your first server'), findsOneWidget);
+    // The workspace must not be reachable behind it.
+    expect(find.text('Console'), findsNothing);
+    expect(find.text('Controls'), findsNothing);
+
+    await tester.tap(find.text('Add your first server'));
+    await tester.pumpAndSettle();
+
+    // Asserting the welcome screen is left behind, rather than the editor's
+    // wording, keeps this about the gate rather than the editor's layout.
+    expect(find.byType(WelcomeView), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

@@ -1,5 +1,6 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/data/bedrock_gamerules.dart';
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/data/bedrock_ids.dart';
 import 'package:admincraft/data/java_ids.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
@@ -452,14 +453,26 @@ class _ControlTabState extends State<ControlTab> {
           ),
           _playersCard(model),
           _gamerulesCard(world),
-          _card(
-            title: 'Server',
-            child: ElevatedButton.icon(
-              onPressed: _restartServer,
-              icon: const Icon(Icons.restart_alt),
-              label: const Text('Restart Server'),
+          // Restarting is the bridge's job, so the control is absent rather
+          // than present and broken when connected straight to RCON.
+          if (model.connectionSecurity.supportsServerRestart)
+            _card(
+              title: 'Server',
+              child: ElevatedButton.icon(
+                onPressed: _restartServer,
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Restart Server'),
+              ),
+            )
+          else
+            _card(
+              title: 'Server',
+              child: Text(
+                'Restarting needs the Admincraft bridge. A direct RCON '
+                'connection cannot control the container.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
-          ),
         ],
       ),
     );
