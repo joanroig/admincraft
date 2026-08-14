@@ -8,13 +8,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import 'models/model.dart';
+import 'services/secret_migration.dart';
+import 'services/secure_value_store.dart';
+import 'services/server_secrets.dart';
 import 'views/tabs_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
-  final persistentDataManager = PersistenceService(prefs);
+
+  // Server keys and certificates live in the platform keystore, so they have to
+  // be read before the model, which loads profiles synchronously.
+  final secrets = await ServerSecrets.load(
+    PersistenceService.storedServerIds(prefs),
+    const PlatformSecureValueStore(),
+  );
+  final persistentDataManager = PersistenceService(prefs, secrets);
+
+  // Move any profile still holding its key in plain storage, and only drop the
+  // plain copy once the keystore proves it can hand the key back.
+  await migrateServerSecrets(persistentDataManager, secrets);
 
   runApp(
     MultiProvider(
