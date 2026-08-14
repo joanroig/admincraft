@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Admincraft
+Comment=Manage Minecraft Bedrock and Java servers
+Exec=admincraft
+Icon=admincraft
+Categories=Game;Utility;
+Terminal=false
+StartupWMClass=admincraft
