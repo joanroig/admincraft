@@ -14,13 +14,17 @@ theme:
   icon:
     repo: fontawesome/brands/github
   palette:
+    # Built-in schemes, tinted in stylesheets/extra.css. A custom scheme name
+    # inherits Material's light palette for every variable it does not set, so
+    # the derived text, code and border colours stayed dark on a dark
+    # background and much of the page became unreadable.
     - media: "(prefers-color-scheme: light)"
-      scheme: admincraft-light
+      scheme: default
       toggle:
         icon: material/weather-night
         name: Use dark mode
     - media: "(prefers-color-scheme: dark)"
-      scheme: admincraft-dark
+      scheme: slate
       toggle:
         icon: material/weather-sunny
         name: Use light mode

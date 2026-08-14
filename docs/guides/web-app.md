@@ -14,6 +14,18 @@ The hosted Admincraft page uses HTTPS. Browsers block an HTTPS page from connect
 
 For the hosted web app, **Public certificate** (`wss://`) is the most reliable choice. A private-network connection can work from an Admincraft build served over HTTP, but should never be exposed to the public internet.
 
+### Tailscale in the web app
+
+A Tailscale address such as `100.x.y.z` cannot be used from the hosted page. **Private network** connects over `ws://`, which the browser blocks, and `wss://` is impossible for a tailnet address because no certificate authority will issue a certificate for it.
+
+Use **[Tailscale Funnel](../server/SERVER_SETUP.md#alternative-tailscale-funnel-no-app-on-the-client)** instead. Funnel publishes the WebSocket on a `ts.net` hostname with a certificate that renews itself, which is exactly what the browser requires:
+
+- **IP / Hostname:** the `ts.net` hostname from `tailscale funnel status`
+- **Port:** `443`
+- **Connection security:** `Public certificate`
+
+The private tailnet address still works in the Windows and Android builds, which are not subject to mixed-content rules. So the rule of thumb is Funnel for the browser, tailnet address for the installed app.
+
 ## Self-signed certificates
 
 Web pages cannot install or pin a certificate for a WebSocket connection. The **Self-signed certificate** option is therefore hidden in the web app.
