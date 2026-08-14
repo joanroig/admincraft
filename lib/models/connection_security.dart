@@ -70,15 +70,13 @@ extension ConnectionSecurityInfo on ConnectionSecurity {
   String get hostHint {
     switch (this) {
       case ConnectionSecurity.privateNetwork:
-        return 'The Tailscale address, such as 100.101.102.103, or a LAN address.';
+        return 'Tailscale or LAN address.';
       case ConnectionSecurity.trustedCertificate:
-        // The single most common failure in this mode: certificates are issued
-        // to names, so an address that is only an IP can never validate.
-        return 'A hostname, such as a Tailscale Funnel ts.net name or your own '
-            'domain. A bare IP cannot work here, because certificates are '
-            'issued to names.';
+        // Worth the words: an IP can never validate, and it is the mistake this
+        // mode invites.
+        return 'A hostname, not an IP.';
       case ConnectionSecurity.customCertificate:
-        return 'Must match the certificate loaded below, or the check fails.';
+        return 'Must match the loaded certificate.';
     }
   }
 
@@ -90,11 +88,11 @@ extension ConnectionSecurityInfo on ConnectionSecurity {
   String get portHint {
     switch (this) {
       case ConnectionSecurity.privateNetwork:
-        return 'The bridge port, normally 8080.';
+        return 'Normally 8080.';
       case ConnectionSecurity.trustedCertificate:
-        return 'Usually 443. Funnel also allows 8443 and 10000.';
+        return 'Usually 443.';
       case ConnectionSecurity.customCertificate:
-        return 'Whichever port the bridge is published on.';
+        return 'The published port.';
     }
   }
 
