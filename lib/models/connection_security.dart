@@ -41,6 +41,63 @@ extension ConnectionSecurityInfo on ConnectionSecurity {
     }
   }
 
+  /// How this option reads in the picker: named after the setup someone has,
+  /// not after the mechanism, since the setup is what they know.
+  String get typeLabel {
+    switch (this) {
+      case ConnectionSecurity.privateNetwork:
+        return 'Private network (Tailscale, VPN or LAN)';
+      case ConnectionSecurity.trustedCertificate:
+        return 'Public address, trusted certificate';
+      case ConnectionSecurity.customCertificate:
+        return 'Public address, self-signed certificate';
+    }
+  }
+
+  /// The address field means something different per type, so it is labelled
+  /// per type rather than left as a generic "Host".
+  String get hostLabel {
+    switch (this) {
+      case ConnectionSecurity.privateNetwork:
+        return 'Private address of the bridge';
+      case ConnectionSecurity.trustedCertificate:
+        return 'Public hostname of the bridge';
+      case ConnectionSecurity.customCertificate:
+        return 'Public address of the bridge';
+    }
+  }
+
+  String get hostHint {
+    switch (this) {
+      case ConnectionSecurity.privateNetwork:
+        return 'The Tailscale address, such as 100.101.102.103, or a LAN address.';
+      case ConnectionSecurity.trustedCertificate:
+        // The single most common failure in this mode: certificates are issued
+        // to names, so an address that is only an IP can never validate.
+        return 'A hostname, such as a Tailscale Funnel ts.net name or your own '
+            'domain. A bare IP cannot work here, because certificates are '
+            'issued to names.';
+      case ConnectionSecurity.customCertificate:
+        return 'Must match the certificate loaded below, or the check fails.';
+    }
+  }
+
+  /// Filled in when switching type, so the port matches the new setup instead
+  /// of silently keeping the previous one.
+  int get suggestedPort =>
+      this == ConnectionSecurity.trustedCertificate ? 443 : 8080;
+
+  String get portHint {
+    switch (this) {
+      case ConnectionSecurity.privateNetwork:
+        return 'The bridge port, normally 8080.';
+      case ConnectionSecurity.trustedCertificate:
+        return 'Usually 443. Funnel also allows 8443 and 10000.';
+      case ConnectionSecurity.customCertificate:
+        return 'Whichever port the bridge is published on.';
+    }
+  }
+
   /// Whether the connection is established over TLS (`wss://`).
   bool get usesTls => this != ConnectionSecurity.privateNetwork;
 
