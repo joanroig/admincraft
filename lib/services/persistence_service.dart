@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/app_theme.dart';
 import 'package:admincraft/models/server_profile.dart';
+import 'package:admincraft/services/server_secrets.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -27,7 +28,20 @@ class PersistenceService {
 
   final SharedPreferences _prefs;
 
-  PersistenceService(this._prefs);
+  /// Null only in tests and before the keystore has been read.
+  final ServerSecrets? _secrets;
+
+  PersistenceService(this._prefs, [this._secrets]);
+
+  /// Ids of stored profiles, needed to load their secrets before the model is
+  /// built. Read straight from the entries so it works without a vault.
+  static List<String> storedServerIds(SharedPreferences prefs) {
+    final stored = prefs.getStringList(_serversKey);
+    if (stored == null) return const ['default'];
+    return stored
+        .map((entry) => (jsonDecode(entry) as Map<String, dynamic>)['id'] as String)
+        .toList();
+  }
 
   Future<void> _set<T>(String key, T value) async {
     if (value is String) {
@@ -106,10 +120,21 @@ class PersistenceService {
   List<ServerProfile> get servers {
     final stored = _prefs.getStringList(_serversKey);
     if (stored != null) {
-      return stored
-          .map((entry) =>
-              ServerProfile.fromJson(jsonDecode(entry) as Map<String, dynamic>))
-          .toList();
+      return stored.map((entry) {
+        final json = jsonDecode(entry) as Map<String, dynamic>;
+        final profile = ServerProfile.fromJson(json);
+
+        // Secrets live in the keystore. A profile written before that still
+        // carries them inline, so fall back to whatever the entry itself has
+        // rather than blanking the key and breaking the connection.
+        final secrets = _secrets;
+        if (secrets == null || secrets.isEmptyFor(profile.id)) return profile;
+
+        return profile.copyWith(
+          secretKey: secrets.secretKeyFor(profile.id),
+          certificate: secrets.certificateFor(profile.id),
+        );
+      }).toList();
     }
 
     return [
@@ -126,14 +151,41 @@ class PersistenceService {
   }
 
   Future<void> saveServers(List<ServerProfile> servers) async {
+    final secrets = _secrets;
+
+    // Write the keystore first: a profile saved without its key is unusable,
+    // whereas a key with no profile is merely orphaned.
+    if (secrets != null && secrets.available) {
+      for (final server in servers) {
+        await secrets.write(
+          server.id,
+          secretKey: server.secretKey,
+          certificate: server.certificate,
+        );
+      }
+    }
+
+    // Only omit the secrets from plain storage once they are safely elsewhere.
+    final keepSecretsInline = secrets == null || !secrets.available;
     await _set(
       _serversKey,
-      servers.map((server) => jsonEncode(server.toJson())).toList(),
+      servers
+          .map((server) =>
+              jsonEncode(server.toJson(includeSecrets: keepSecretsInline)))
+          .toList(),
     );
     await _set(
       _serversUpdatedAtKey,
       DateTime.now().toUtc().millisecondsSinceEpoch,
     );
+  }
+
+  /// Forgets the secrets belonging to a deleted profile.
+  ///
+  /// Without this the key outlives the server it belonged to, which is exactly
+  /// the sort of leftover the keystore is meant to avoid.
+  Future<void> forgetServerSecrets(String id) async {
+    await _secrets?.remove(id);
   }
 
   DateTime? get serversUpdatedAt {
