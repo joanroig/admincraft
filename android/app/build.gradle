@@ -1,3 +1,11 @@
+// Release signing details, kept out of the repository. Without them the build
+// falls back to the debug key so local release builds still run.
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withReader("UTF-8") { keystoreProperties.load(it) }
+}
+
 plugins {
     id "com.android.application"
     id "kotlin-android"
@@ -32,11 +40,25 @@ android {
         setProperty("archivesBaseName", "$appName-$versionName-$versionCode")
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile = file(keystoreProperties["storeFile"])
+                storePassword = keystoreProperties["storePassword"]
+                keyAlias = keystoreProperties["keyAlias"]
+                keyPassword = keystoreProperties["keyPassword"]
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.debug
+            // The debug key is regenerated per machine, so builds signed with it
+            // cannot update each other: Android rejects a package whose signature
+            // changed. Released builds must use the stable key.
+            signingConfig = keystorePropertiesFile.exists()
+                ? signingConfigs.release
+                : signingConfigs.debug
         }
     }
 }
