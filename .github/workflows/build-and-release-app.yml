@@ -59,10 +59,7 @@ jobs:
             artifact: windows
           - platform: macos
             os: macos-latest
-            artifact: macos-arm64
-          - platform: macos
-            os: macos-26-intel
-            artifact: macos-x64
+            artifact: macos
           - platform: linux
             os: ubuntu-latest
             artifact: linux-amd64
@@ -82,7 +79,7 @@ jobs:
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev
 
       - name: Install dependencies
         run: flutter pub get
@@ -125,31 +122,38 @@ jobs:
 
       # Portable zip plus an Inno Setup installer, so the download page offers
       # the same pair as every other desktop platform.
+      # PowerShell rather than bash: Git bash rewrites arguments that look like
+      # paths, so ISCC received "//DSourceDir=/d/a/..." and rejected it.
       - name: Package Windows
         if: matrix.platform == 'windows'
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p dist
-          DIST="$PWD/dist"
-          RELEASE_DIR="$PWD/build/windows/x64/runner/Release"
-          ( cd "$RELEASE_DIR" && 7z a -tzip "$DIST/admincraft-${VERSION}-windows-portable.zip" ./* )
+          $version = "${{ needs.get-version.outputs.version }}"
+          $dist = Join-Path $PWD 'dist'
+          $releaseDir = Join-Path $PWD 'build\windows\x64\runner\Release'
+          New-Item -ItemType Directory -Force $dist | Out-Null
+
+          Compress-Archive -Path (Join-Path $releaseDir '*') `
+            -DestinationPath (Join-Path $dist "admincraft-$version-windows-portable.zip")
 
           # Inno Setup ships on the runner image, but the path has moved between
           # image versions, so look for it before falling back to installing it.
-          ISCC=""
-          for candidate in "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "/c/Program Files/Inno Setup 6/ISCC.exe"; do
-            [ -x "$candidate" ] && ISCC="$candidate" && break
-          done
-          if [ -z "$ISCC" ]; then
-            choco install innosetup -y --no-progress
-            ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          fi
-          echo "Using $ISCC"
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
-          "$ISCC" "//DAppVersion=${VERSION#v}" "//DSourceDir=${RELEASE_DIR}" "//DOutputDir=${DIST}" windows/packaging/admincraft.iss
-          mv dist/admincraft-setup.exe "dist/admincraft-${VERSION}-windows-installer.exe"
-        env:
-          VERSION: ${{ needs.get-version.outputs.version }}
+          if (-not $iscc) {
+            choco install innosetup -y --no-progress
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          Write-Host "Using $iscc"
+
+          & $iscc "/DAppVersion=$($version.TrimStart('v'))" "/DSourceDir=$releaseDir" "/DOutputDir=$dist" 'windows\packaging\admincraft.iss'
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+
+          Move-Item (Join-Path $dist 'admincraft-setup.exe') `
+            (Join-Path $dist "admincraft-$version-windows-installer.exe")
 
       # Unsigned: without an Apple Developer certificate Gatekeeper asks the user
       # to allow the app on first launch. Signing would need a MAC_CSC_LINK
@@ -161,6 +165,8 @@ jobs:
           mkdir -p dist
           APP=build/macos/Build/Products/Release/admincraft.app
           BASE="dist/admincraft-${VERSION}-${{ matrix.artifact }}"
+          echo "Architectures in the built binary:"
+          lipo -archs "$APP/Contents/MacOS/admincraft" || true
           ditto -c -k --keepParent "$APP" "${BASE}-portable.zip"
           hdiutil create -volname Admincraft -srcfolder "$APP" -ov -format UDZO "${BASE}-installer.dmg"
         env:
