@@ -18,6 +18,7 @@ class PersistenceService {
   static const _serversUpdatedAtKey = 'serversUpdatedAt';
   static const _selectedServerKey = 'selectedServer';
   static const _commandUsageKey = 'commandUsage';
+  static const _onboardedKey = 'onboardingCompleted';
   static const _maxOutLinesKey = 'maxOutLines';
   static const _themeModeKey = 'themeMode';
   static const _appThemeKey = 'appTheme';
@@ -206,6 +207,16 @@ class PersistenceService {
 
   Future<void> saveCommandUsage(Map<String, int> usage) async {
     await _set(_commandUsageKey, jsonEncode(usage));
+  }
+
+  /// Whether the user has ever got as far as saving or importing a server.
+  ///
+  /// Deliberately a one-time flag rather than a check for a usable profile:
+  /// clearing a field should not throw someone back to a welcome screen.
+  bool get onboardingCompleted => _prefs.getBool(_onboardedKey) ?? false;
+
+  Future<void> markOnboardingCompleted() async {
+    await _set(_onboardedKey, true);
   }
 
   String? get selectedServerId => _prefs.getString(_selectedServerKey);

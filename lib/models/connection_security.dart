@@ -134,6 +134,19 @@ extension ConnectionSecurityInfo on ConnectionSecurity {
   /// bridge, which changes what every other field means.
   bool get isDirectRcon => this == ConnectionSecurity.directRcon;
 
+  /// Whether the server log arrives unprompted.
+  ///
+  /// The bridge streams the container log. RCON only ever answers what it is
+  /// asked, so anything that depends on watching for events has to be polled.
+  bool get streamsServerLog => !isDirectRcon;
+
+  /// Whether the server can be restarted from the app.
+  ///
+  /// Restarting is a container operation performed by the bridge. Direct RCON
+  /// does not go through Docker, so the command has nowhere to land and the
+  /// control is hidden rather than left to fail.
+  bool get supportsServerRestart => !isDirectRcon;
+
   /// Whether the user has to supply a certificate for this mode to work.
   bool get requiresCertificate => this == ConnectionSecurity.customCertificate;
 }

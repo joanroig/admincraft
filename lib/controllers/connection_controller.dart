@@ -14,9 +14,12 @@ class ConnectionController with ChangeNotifier {
   }
 
   Future<void> attemptConnection(Model model, {bool reconnect = false}) async {
-    if (model.ip.isEmpty || model.secretKey.isEmpty) {
+    // A profile missing an address or a key cannot connect, so say so once
+    // rather than letting the transport fail and schedule retries.
+    if (!model.selectedServer.isComplete) {
       if (!reconnect) {
-        ToastUtils.showToastError("Cannot connect, missing connection details.");
+        ToastUtils.showToastError(
+            'This server is not set up yet. Add its address and key first.');
       }
     } else if (status == ConnectionStatus.connected) {
       ToastUtils.showToastError("Already connected!");
