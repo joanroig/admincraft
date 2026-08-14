@@ -44,7 +44,8 @@ nav:
       - Overview: getting-started/index.md
       - Install Admincraft: getting-started/install.md
       - Connect your first server: getting-started/first-server.md
-      - Bedrock server setup: server/SERVER_SETUP.md
+      - Add to an existing server: getting-started/existing-server.md
+      - Bedrock on Oracle free tier: server/SERVER_SETUP.md
       - Java server setup: getting-started/java-server.md
   - Guides:
       - Connection fields explained: guides/connection-fields.md

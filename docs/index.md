@@ -10,7 +10,9 @@ hide:
 
 # Your Minecraft server, under control
 
-Admincraft is a multiplatform control panel for Minecraft Bedrock and Java Edition servers. Connect securely, run commands, manage the world, and carry your saved servers between devices.
+Admincraft is a multiplatform control panel for Minecraft Bedrock and Java Edition servers. Run commands, manage the world, and carry your saved servers between devices.
+
+Built for [itzg's Minecraft containers](https://github.com/itzg/docker-minecraft-bedrock-server), where it gives a live console, world controls and a restart button. It also speaks plain RCON, so an existing Java server can be managed without changing how it runs.
 
 <div class="admincraft-hero__actions">
   <a class="md-button md-button--primary" href="https://joanroig.github.io/admincraft/">Open Admincraft</a>
