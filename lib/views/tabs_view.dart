@@ -12,6 +12,7 @@ import 'package:admincraft/views/overview_view.dart';
 import 'package:admincraft/views/preferences_view.dart';
 import 'package:admincraft/views/server_editor_view.dart';
 import 'package:admincraft/views/servers_view.dart';
+import 'package:admincraft/views/welcome_view.dart';
 import 'package:admincraft/views/terminal_tab_view.dart';
 import 'package:admincraft/views/widgets/server_switcher.dart';
 import 'package:flutter/material.dart';
@@ -114,6 +115,10 @@ class _TabsState extends State<Tabs> {
       await connection.attemptConnection(model);
     }
   }
+
+  /// Edits the blank profile that already exists rather than adding a second
+  /// one, so a first-time setup does not leave an unused server behind.
+  void _startFirstServer() => _go(_WorkspaceDestination.serverEditor);
 
   Future<void> _addServer() async {
     final model = context.read<Model>();
@@ -226,6 +231,20 @@ class _TabsState extends State<Tabs> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        // A blank profile always exists, so dropping into the workspace before
+        // anything is configured shows a server that cannot possibly connect.
+        // Onboard first, and only then reveal the tabs and controls.
+        if (!model.onboardingCompleted &&
+            _destination != _WorkspaceDestination.serverEditor &&
+            _destination != _WorkspaceDestination.dataSync) {
+          return Scaffold(
+            body: WelcomeView(
+              onAddServer: _startFirstServer,
+              onImport: () => _go(_WorkspaceDestination.dataSync),
+            ),
           );
         }
 
@@ -650,9 +669,17 @@ class _ConnectionAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final connected = connection.status == ConnectionStatus.connected;
     final connecting = connection.status == ConnectionStatus.connecting;
+    // An incomplete profile cannot connect, so the control is disabled and says
+    // why, rather than looking available and failing when pressed.
+    final ready = model.selectedServer.isComplete;
+
     return IconButton.filledTonal(
-      tooltip: connected ? 'Disconnect' : 'Connect',
-      onPressed: connecting ? null : () => connection.toggleConnection(model),
+      tooltip: !ready
+          ? 'Finish setting up this server first'
+          : (connected ? 'Disconnect' : 'Connect'),
+      onPressed: connecting || (!ready && !connected)
+          ? null
+          : () => connection.toggleConnection(model),
       icon: connecting
           ? const SizedBox(
               width: 20,

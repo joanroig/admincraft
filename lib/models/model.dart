@@ -24,6 +24,12 @@ class Model with ChangeNotifier {
 
   /// The server the app is configured against. Every connection getter reads
   /// from here, so switching profile switches the whole app over.
+  /// Whether the welcome screen has been left behind.
+  ///
+  /// A blank profile always exists so the connection getters have something to
+  /// read, so this cannot be answered by counting servers.
+  bool get onboardingCompleted => _persistenceService.onboardingCompleted;
+
   ServerProfile get selectedServer => _servers.firstWhere(
         (server) => server.id == _selectedServerId,
         orElse: () => _servers.first,
@@ -128,6 +134,7 @@ class Model with ChangeNotifier {
     }
 
     _servers = merged;
+    await _persistenceService.markOnboardingCompleted();
     await _persistServers();
     return (added: added, updated: updated);
   }
@@ -173,6 +180,7 @@ class Model with ChangeNotifier {
               )
             : server)
         .toList();
+    await _persistenceService.markOnboardingCompleted();
     await _persistServers();
   }
 
