@@ -8,17 +8,23 @@
   --md-accent-fg-color: #658746;
 }
 
-[data-md-color-scheme="admincraft-light"] {
-  color-scheme: light;
+/* Tint Material's own schemes rather than declaring new ones.
+ *
+ * Material derives a lot from each scheme: --md-default-fg-color--light and
+ * --lighter, --md-code-fg-color, table and border colours. Those are only
+ * defined by the built-in schemes, so overriding the background alone leaves
+ * every derived colour at its light-mode value. Extending "slate" keeps its
+ * dark derivatives and changes just the brand colours. */
+[data-md-color-scheme="default"] {
   --md-default-bg-color: #fbf9f4;
   --md-default-fg-color: var(--admincraft-ink);
   --md-code-bg-color: #eee9dd;
 }
 
-[data-md-color-scheme="admincraft-dark"] {
-  color-scheme: dark;
+[data-md-color-scheme="slate"] {
+  /* Warm the neutrals; the foreground colours stay Material's, which is what
+   * keeps text and code readable here. */
   --md-default-bg-color: #171510;
-  --md-default-fg-color: #eee9dd;
   --md-code-bg-color: #242018;
   --md-primary-fg-color: #543824;
   --md-accent-fg-color: #9dbc6f;
