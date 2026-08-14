@@ -74,6 +74,7 @@ flutter:
     - docs/logo/variants/creeper.png
     - docs/logo/variants/diamond.png
     - docs/logo/variants/obsidian_glow.png
+    - docs/logo/variants/pig.png
     # Item icons from mcicons (MIT), named after Minecraft identifiers.
     # See the credits in README.md.
     - assets/mcicons/

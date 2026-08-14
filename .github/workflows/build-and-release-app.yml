@@ -84,16 +84,25 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      # A single timestamp shared by every dart-define below, so all platforms
+      # in one release report the same build time.
+      - name: Stamp build time
+        shell: bash
+        run: echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+
       - name: Build Android
         if: matrix.platform == 'android'
         run: >-
           flutter build apk --release
+          --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
           --dart-define=ADMINCRAFT_GOOGLE_WEB_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_WEB_CLIENT_ID }}
 
       - name: Build Windows
         if: matrix.platform == 'windows'
         run: >-
           flutter build windows --release
+          --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET }}
 
@@ -101,6 +110,7 @@ jobs:
         if: matrix.platform == 'macos'
         run: >-
           flutter build macos --release
+          --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET }}
 
@@ -108,6 +118,7 @@ jobs:
         if: matrix.platform == 'linux'
         run: >-
           flutter build linux --release
+          --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET }}
 
