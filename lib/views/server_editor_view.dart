@@ -70,10 +70,12 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     _certificateController.text = server.certificate.isEmpty
         ? 'No certificate loaded'
         : 'Certificate loaded';
+    // Edition first: _securityOptions reads it to decide whether direct RCON is
+    // offered, so setting _security before it would read an uninitialised field.
+    _edition = server.edition;
     _security = _securityOptions.contains(server.security)
         ? server.security
         : ConnectionSecurity.trustedCertificate;
-    _edition = server.edition;
   }
 
   String get _connectionPreview {
