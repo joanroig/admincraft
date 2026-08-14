@@ -44,6 +44,45 @@ Choose Chrome for the web app, Windows for the desktop app, or a connected Andro
 
 The `/admincraft/` base path matches GitHub Project Pages. Use `/` when deploying to the root of a custom domain.
 
+## Android release signing
+
+Released APKs must be signed with the same key every time. Android identifies an
+app by its package name **and** its signature, so a build signed with a
+different key cannot update an existing install: it fails with "package
+conflicts with an existing package". The debug key is regenerated per machine,
+which makes it unusable for releases.
+
+Generate a keystore once and keep it safe. Losing it means no future build can
+update an existing installation:
+
+```bash
+keytool -genkey -v -keystore admincraft-release.jks   -keyalg RSA -keysize 2048 -validity 10000 -alias admincraft
+```
+
+Then add four repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 admincraft-release.jks` |
+| `ANDROID_KEYSTORE_PASSWORD` | the store password |
+| `ANDROID_KEY_PASSWORD` | the key password |
+| `ANDROID_KEY_ALIAS` | `admincraft` |
+
+The release workflow writes `android/key.properties` from those and signs with
+it. Without them the build still succeeds, but logs a warning and falls back to
+the debug key, producing an APK that cannot update an existing install.
+
+For local release builds, create `android/key.properties` yourself:
+
+```properties
+storeFile=/absolute/path/to/admincraft-release.jks
+storePassword=...
+keyAlias=admincraft
+keyPassword=...
+```
+
+Both that file and `android/app/*.jks` are gitignored.
+
 ## Preview the documentation
 
 ```bash

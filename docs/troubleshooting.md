@@ -37,6 +37,22 @@ This is a browser limitation. The web app cannot pin the certificate. Use the Wi
 
 AES-GCM cannot distinguish a wrong key from modified encrypted data. Retype the original passphrase. If it still fails, transfer the original export again rather than editing the JSON.
 
+## Android refuses the update: "package conflicts with an existing package"
+
+Android will not replace an app whose signing key has changed, and releases up
+to and including v2.1.0 were signed with a throwaway debug key that the build
+machine regenerated each time. Two of those builds are therefore signed by
+different keys, and neither can update the other.
+
+Releases after that use one stable key, so updates install normally. Moving off
+an affected build takes one uninstall:
+
+1. In Admincraft, open **Data & Sync** and export an encrypted backup, or copy
+   the config. Uninstalling removes your saved servers along with the app.
+2. Uninstall Admincraft.
+3. Install the new APK.
+4. Import the backup.
+
 ## Profiles disappeared from the browser
 
 Browser profiles are stored as site data. Clearing that data removes them. Import your latest encrypted backup. Without an export, browser storage cannot be reconstructed by Admincraft.
