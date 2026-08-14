@@ -35,8 +35,11 @@
   background-image: linear-gradient(90deg, #503321, #805539 55%, #5f7f3b);
 }
 
-.md-header__button.md-logo img,
-.md-header__button.md-logo svg {
+/* The logo is 16px pixel art, so it must scale with hard edges. Material renders
+ * it twice, in the header and in the navigation drawer, and targeting only the
+ * header left the drawer copy smoothly interpolated and blurry. */
+.md-logo img,
+.md-logo svg {
   image-rendering: pixelated;
 }
 

@@ -47,10 +47,17 @@ jobs:
       - name: Test app
         run: flutter test
 
+      # A single timestamp shared by every dart-define below, so all platforms
+      # in one release report the same build time.
+      - name: Stamp build time
+        shell: bash
+        run: echo "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Build Admincraft web
         run: >-
           flutter build web --release --wasm
           --base-href "${{ steps.pages.outputs.base_path }}/"
+          --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
           --dart-define=ADMINCRAFT_GOOGLE_WEB_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_WEB_CLIENT_ID }}
 
       - name: Build documentation inside the web app artifact
