@@ -107,4 +107,4 @@ Fonts
 
 ## ![Admincraft logo](docs/logo/variants/cow.png) License
 
-Licensed under the [GPLv3 License](https://github.com/joanroig/admincraft/blob/main/LICENSE.txt).
+Admincraft version 2.0.0 and later is licensed under the [PolyForm Shield License 1.0.0](LICENSE.md). See [LICENSING.md](LICENSING.md) for version details.
