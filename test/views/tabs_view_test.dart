@@ -160,9 +160,10 @@ void main() {
     await tester.tap(find.text('Add your first server'));
     await tester.pumpAndSettle();
 
-    // Asserting the welcome screen is left behind, rather than the editor's
-    // wording, keeps this about the gate rather than the editor's layout.
     expect(find.byType(WelcomeView), findsNothing);
+    // The editor itself, not merely the absence of onboarding: landing on
+    // Overview instead was a real bug that a weaker assertion hid.
+    expect(find.text('Edit server'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

@@ -99,9 +99,26 @@ class _TabsState extends State<Tabs> {
   void _go(_WorkspaceDestination destination) {
     if (_destination == destination) return;
     setState(() => _destination = destination);
+    _syncPage();
+  }
+
+  /// Moves the page host onto the current destination.
+  ///
+  /// The host does not always exist when a destination changes: while the
+  /// welcome screen is showing there is no PageView, so the jump is skipped and
+  /// the view then mounts at the controller's initial page, landing on Overview
+  /// however the destination was set. Retrying after the frame covers that.
+  void _syncPage() {
     if (_pageController.hasClients) {
-      _pageController.jumpToPage(destination.index);
+      _pageController.jumpToPage(_destination.index);
+      return;
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) return;
+      if (_pageController.page?.round() == _destination.index) return;
+      _pageController.jumpToPage(_destination.index);
+    });
   }
 
   Future<void> _selectServer(String id) async {
