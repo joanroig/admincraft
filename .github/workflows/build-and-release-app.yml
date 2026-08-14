@@ -176,7 +176,7 @@ jobs:
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          linux/packaging/build-packages.sh "$VERSION" build/linux/x64/release/bundle dist
+          bash linux/packaging/build-packages.sh "$VERSION" build/linux/x64/release/bundle dist
         env:
           VERSION: ${{ needs.get-version.outputs.version }}
 
