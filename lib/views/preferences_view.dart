@@ -2,6 +2,7 @@ import 'package:admincraft/models/app_theme.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/toast_utils.dart';
+import 'package:admincraft/utils/build_info.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -213,6 +214,17 @@ class _PreferencesViewState extends State<PreferencesView> {
                       Text(_version.isEmpty
                           ? 'Loading version…'
                           : 'Version $_version'),
+                      // Release builds carry the time they were made, so a
+                      // report can identify the exact binary rather than a
+                      // version several builds share.
+                      if (BuildInfo.isKnown)
+                        Tooltip(
+                          message: BuildInfo.description!,
+                          child: Text(
+                            'Build ${BuildInfo.stamp}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
