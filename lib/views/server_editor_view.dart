@@ -202,10 +202,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Minecraft edition',
-                          helperMaxLines: 3,
-                          helperText:
-                              'Which server the bridge controls. Java uses RCON, '
-                              'configured on the bridge itself, not here.',
+                          helperText: 'Java RCON is configured on the bridge.',
                         ),
                         items: MinecraftEdition.values
                             .map((value) => DropdownMenuItem(
@@ -237,94 +234,15 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                 const SizedBox(height: 14),
                 _SectionCard(
                   title: 'Connection',
-                  subtitle:
-                      'Every field here describes the Admincraft WebSocket '
-                      'bridge, never the Minecraft server itself. The bridge is '
-                      'what reaches Minecraft, on both editions.',
+                  subtitle: 'These describe the bridge, not the Minecraft server.',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final wide = constraints.maxWidth >= 580;
-                          final host = TextFormField(
-                            controller: _hostController,
-                            decoration: InputDecoration(
-                              labelText: _security.hostLabel,
-                              helperMaxLines: 4,
-                              helperText: _security.hostHint,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                            validator: (value) =>
-                                value == null || value.trim().isEmpty
-                                    ? 'Enter the server host.'
-                                    : null,
-                          );
-                          final port = TextFormField(
-                            controller: _portController,
-                            decoration: InputDecoration(
-                              labelText: 'Bridge port',
-                              helperMaxLines: 3,
-                              helperText: _security.portHint,
-                            ),
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                            validator: (value) {
-                              final port = int.tryParse(value ?? '');
-                              return port == null || port < 1 || port > 65535
-                                  ? 'Enter a port from 1 to 65535.'
-                                  : null;
-                            },
-                          );
-                          return wide
-                              ? Row(children: [
-                                  Expanded(flex: 3, child: host),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: port),
-                                ])
-                              : Column(children: [
-                                  host,
-                                  const SizedBox(height: 12),
-                                  port
-                                ]);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _secretController,
-                        obscureText: !_secretVisible,
-                        enableSuggestions: false,
-                        autocorrect: false,
-                        decoration: InputDecoration(
-                          labelText: 'Bridge secret key',
-                          helperMaxLines: 3,
-                          helperText:
-                              'SECRET_KEY from the bridge docker-compose.yml. On '
-                              'Java this is still the bridge key, not the RCON '
-                              'password.',
-                          suffixIcon: IconButton(
-                            tooltip: _secretVisible ? 'Hide key' : 'Show key',
-                            icon: Icon(_secretVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility),
-                            onPressed: () => setState(
-                                () => _secretVisible = !_secretVisible),
-                          ),
-                        ),
-                        validator: (value) => value == null || value.isEmpty
-                            ? 'Enter the WebSocket secret key.'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
                       DropdownButtonFormField<ConnectionSecurity>(
                         initialValue: _security,
                         isExpanded: true,
                         decoration: const InputDecoration(
-                            labelText: 'Connection type',
-                            helperMaxLines: 3,
-                            helperText:
-                                'Pick the setup you have. The fields above change '
-                                'to match it.'),
+                            labelText: 'Connection type'),
                         items: _securityOptions
                             .map((value) => DropdownMenuItem(
                                   value: value,
@@ -374,6 +292,72 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           ],
                         ),
                       ),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final wide = constraints.maxWidth >= 580;
+                          final host = TextFormField(
+                            controller: _hostController,
+                            decoration: InputDecoration(
+                              labelText: _security.hostLabel,
+                              helperText: _security.hostHint,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                    ? 'Enter the server host.'
+                                    : null,
+                          );
+                          final port = TextFormField(
+                            controller: _portController,
+                            decoration: InputDecoration(
+                              labelText: 'Bridge port',
+                              helperText: _security.portHint,
+                            ),
+                            keyboardType: TextInputType.number,
+                            onChanged: (_) => setState(() {}),
+                            validator: (value) {
+                              final port = int.tryParse(value ?? '');
+                              return port == null || port < 1 || port > 65535
+                                  ? 'Enter a port from 1 to 65535.'
+                                  : null;
+                            },
+                          );
+                          return wide
+                              ? Row(children: [
+                                  Expanded(flex: 3, child: host),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: port),
+                                ])
+                              : Column(children: [
+                                  host,
+                                  const SizedBox(height: 12),
+                                  port
+                                ]);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _secretController,
+                        obscureText: !_secretVisible,
+                        enableSuggestions: false,
+                        autocorrect: false,
+                        decoration: InputDecoration(
+                          labelText: 'Bridge secret key',
+                          helperText: 'SECRET_KEY, not the RCON password.',
+                          suffixIcon: IconButton(
+                            tooltip: _secretVisible ? 'Hide key' : 'Show key',
+                            icon: Icon(_secretVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility),
+                            onPressed: () => setState(
+                                () => _secretVisible = !_secretVisible),
+                          ),
+                        ),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Enter the WebSocket secret key.'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
                       if (_security.requiresCertificate) ...[
                         const SizedBox(height: 8),
                         TextField(
