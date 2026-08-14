@@ -1,6 +1,8 @@
 # Set up a Java Edition server
 
-Admincraft sends Java commands through RCON, but the RCON port stays inside the Docker network. The app still connects only to Admincraft WebSocket, so the same Android, Windows, and browser clients work for both editions.
+Admincraft sends Java commands through RCON, but the RCON port stays inside the Docker network: the app connects to the Admincraft WebSocket bridge, so the same Android, Windows, and browser clients work for both editions.
+
+If you already have a Java server, or would rather add nothing to it, Admincraft can also [talk to RCON directly](existing-server.md#connect-any-java-server-over-rcon), without this bridge. That trades away the live console and the restart button, and does not work in the browser. The [feature comparison](index.md#what-each-setup-gives-you) shows both.
 
 ## Start the containers
 
