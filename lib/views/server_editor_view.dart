@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/rcon_client.dart';
 import 'package:admincraft/services/websocket_connector.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:admincraft/utils/toast_utils.dart';
@@ -44,9 +45,17 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   bool _secretVisible = false;
   bool _saving = false;
 
-  List<ConnectionSecurity> get _securityOptions => ConnectionSecurity.values
-      .where((value) => supportsCustomCertificate || !value.requiresCertificate)
-      .toList();
+  /// Options depend on the edition and the platform, so the list is rebuilt
+  /// rather than fixed: Bedrock has no RCON at all, and a browser cannot open
+  /// the raw socket RCON needs.
+  List<ConnectionSecurity> get _securityOptions =>
+      ConnectionSecurity.values.where((value) {
+        if (value.requiresCertificate && !supportsCustomCertificate) return false;
+        if (value.isDirectRcon) {
+          return _edition == MinecraftEdition.java && supportsDirectRcon;
+        }
+        return true;
+      }).toList();
 
   @override
   void initState() {
@@ -68,15 +77,21 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   }
 
   String get _connectionPreview {
+    final host = _hostController.text.trim();
+    final port = _portController.text.trim();
+    final shownHost = host.isEmpty ? '<host>' : host;
+    final shownPort = port.isEmpty ? '<port>' : port;
+
+    // RCON is not a URL scheme, so labelling it ws:// would be a lie.
+    if (_security.isDirectRcon) {
+      return 'rcon://$shownHost:$shownPort  (not encrypted)';
+    }
+
     final scheme = _security.usesTls ? 'wss' : 'ws';
-    final host = _hostController.text.trim().isEmpty
-        ? '<host>'
-        : _hostController.text.trim();
-    final port = _portController.text.trim().isEmpty
-        ? '<port>'
-        : _portController.text.trim();
-    return '$scheme://$host:$port';
+    final suffix = _security.usesTls ? '' : '  (not encrypted)';
+    return '$scheme://$shownHost:$shownPort$suffix';
   }
+
 
   Future<void> _pickCertificate() async {
     final result = await FilePicker.platform.pickFiles(
@@ -211,7 +226,15 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                                 ))
                             .toList(),
                         onChanged: (value) {
-                          if (value != null) setState(() => _edition = value);
+                          if (value == null) return;
+                          setState(() {
+                            _edition = value;
+                            if (!_securityOptions.contains(_security)) {
+                              _security = ConnectionSecurity.privateNetwork;
+                              _portController.text =
+                                  _security.suggestedPort.toString();
+                            }
+                          });
                         },
                       );
                       return wide
