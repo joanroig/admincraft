@@ -249,12 +249,10 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           final wide = constraints.maxWidth >= 580;
                           final host = TextFormField(
                             controller: _hostController,
-                            decoration: const InputDecoration(
-                              labelText: 'Host or IP of the bridge',
-                              helperMaxLines: 3,
-                              helperText:
-                                  'Where the websocket container runs. A Tailscale '
-                                  'address, a ts.net hostname, or a public IP.',
+                            decoration: InputDecoration(
+                              labelText: _security.hostLabel,
+                              helperMaxLines: 4,
+                              helperText: _security.hostHint,
                             ),
                             onChanged: (_) => setState(() {}),
                             validator: (value) =>
@@ -264,10 +262,10 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           );
                           final port = TextFormField(
                             controller: _portController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Bridge port',
                               helperMaxLines: 3,
-                              helperText: '8080 normally. 443 behind Funnel.',
+                              helperText: _security.portHint,
                             ),
                             keyboardType: TextInputType.number,
                             onChanged: (_) => setState(() {}),
@@ -322,15 +320,29 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                         initialValue: _security,
                         isExpanded: true,
                         decoration: const InputDecoration(
-                            labelText: 'Connection security'),
+                            labelText: 'Connection type',
+                            helperMaxLines: 3,
+                            helperText:
+                                'Pick the setup you have. The fields above change '
+                                'to match it.'),
                         items: _securityOptions
                             .map((value) => DropdownMenuItem(
                                   value: value,
-                                  child: Text(value.label),
+                                  child: Text(value.typeLabel),
                                 ))
                             .toList(),
                         onChanged: (value) {
-                          if (value != null) setState(() => _security = value);
+                          if (value == null) return;
+                          setState(() {
+                            final previous = _security;
+                            _security = value;
+                            final current = int.tryParse(_portController.text);
+                            final wasADefault = current == null ||
+                                current == previous.suggestedPort;
+                            if (wasADefault) {
+                              _portController.text = value.suggestedPort.toString();
+                            }
+                          });
                         },
                       ),
                       Padding(

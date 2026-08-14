@@ -16,7 +16,7 @@ This is the part that catches people out. A Java server has an RCON port and an 
 | **Host or IP of the bridge** | The machine running the `websocket` container. | Tailscale address, `ts.net` hostname, or public IP. |
 | **Bridge port** | The port the bridge listens on. | `8080` normally, `443` behind Tailscale Funnel. |
 | **Bridge secret key** | The bridge's own key, used to sign the token Admincraft sends. | `SECRET_KEY` in the bridge's `docker-compose.yml`. |
-| **Connection security** | How the app-to-bridge hop is protected. | See [connection security](connection-security.md). |
+| **Connection type** | Which setup you have. The address and port fields relabel themselves to match. | See [connection security](connection-security.md). |
 
 ## Why Java does not ask for RCON details
 
@@ -45,7 +45,7 @@ The setup from the [Bedrock guide](../server/SERVER_SETUP.md#alternative-tailsca
 | Host or IP of the bridge | `my-server.tailnet-name.ts.net` |
 | Bridge port | `443` |
 | Bridge secret key | the `SECRET_KEY` from your compose file |
-| Connection security | `Public certificate` |
+| Connection type | `Public address, trusted certificate` |
 
 The address preview under the dropdown should read `wss://my-server.tailnet-name.ts.net:443`.
 
@@ -57,7 +57,7 @@ The address preview under the dropdown should read `wss://my-server.tailnet-name
 | Host or IP of the bridge | `100.101.102.103` |
 | Bridge port | `8080` |
 | Bridge secret key | the `SECRET_KEY` from your compose file |
-| Connection security | `Private network` |
+| Connection type | `Private network (Tailscale, VPN or LAN)` |
 
 The preview reads `ws://100.101.102.103:8080`. That is unencrypted by design, and safe only because Tailscale already encrypts the route. It will not work from the hosted web app: see [using the web app](web-app.md#tailscale-in-the-web-app).
 
@@ -68,5 +68,5 @@ Work down the chain, since each step rules out everything before it:
 1. **Is the preview the address you expect?** It is shown live under the security dropdown.
 2. **Is the port the bridge's port?** Not `19132` (Bedrock game), not `25575` (Java RCON).
 3. **Is the key the bridge's `SECRET_KEY`?** Not the RCON password, not the Minecraft allowlist.
-4. **Does the security mode match the address?** `Private network` gives `ws://` and only works over a private route. `Public certificate` needs a certificate the device already trusts.
+4. **Does the connection type match the address?** `Private network` gives `ws://` and only works over a private route. A trusted certificate needs a **hostname**: a bare IP can never validate, because certificates are issued to names.
 5. **Can the device reach the host at all?** With Tailscale, both ends must be on the tailnet and connected.

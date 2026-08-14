@@ -59,13 +59,15 @@ class ServerProfile {
   /// True once there is enough here to attempt a connection.
   bool get isComplete => ip.isNotEmpty && secretKey.isNotEmpty;
 
-  Map<String, dynamic> toJson() => {
+  /// [includeSecrets] must stay true for an encrypted export, which is useless
+  /// without the key, and false for plain storage, where the key does not belong.
+  Map<String, dynamic> toJson({bool includeSecrets = true}) => {
         'id': id,
         'alias': alias,
         'ip': ip,
         'port': port,
-        'secretKey': secretKey,
-        'certificate': certificate,
+        if (includeSecrets) 'secretKey': secretKey,
+        if (includeSecrets) 'certificate': certificate,
         'security': security.name,
         'edition': edition.name,
       };

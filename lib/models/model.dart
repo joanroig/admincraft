@@ -93,6 +93,7 @@ class Model with ChangeNotifier {
   Future<void> deleteServer(String id) async {
     if (_servers.length <= 1) return;
     _servers = _servers.where((server) => server.id != id).toList();
+    await _persistenceService.forgetServerSecrets(id);
     if (_selectedServerId == id) {
       _selectedServerId = _servers.first.id;
       _resetSession();
