@@ -430,9 +430,14 @@ class _TerminalTabState extends State<TerminalTab> {
     return Positioned(
       bottom: 120,
       right: 16,
+      // Translucent so the log stays partly visible behind it, but tinted from
+      // the scheme: a fixed black stayed dark in light mode and its icon
+      // disappeared against it.
       child: FloatingActionButton(
         onPressed: _scrollToBottom,
-        backgroundColor: const Color.fromRGBO(0, 0, 0, 0.5),
+        backgroundColor:
+            Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.85),
+        foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
         child: const Icon(Icons.arrow_downward),
       ),
     );
