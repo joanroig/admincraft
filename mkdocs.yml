@@ -47,6 +47,7 @@ nav:
       - Bedrock server setup: server/SERVER_SETUP.md
       - Java server setup: getting-started/java-server.md
   - Guides:
+      - Connection fields explained: guides/connection-fields.md
       - Connection security: guides/connection-security.md
       - Server profiles: guides/server-profiles.md
       - Backup and transfer: guides/backup-transfer.md
