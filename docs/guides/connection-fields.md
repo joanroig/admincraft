@@ -13,7 +13,7 @@ This is the part that catches people out. A Java server has an RCON port and an 
 | --- | --- | --- |
 | **Alias** | A label for your own benefit. Shown in the server picker. | Anything you like. |
 | **Minecraft edition** | Which kind of server the bridge should drive. Bedrock uses the container console; Java uses RCON. | Match your server. |
-| **Host or IP of the bridge** | The machine running the `websocket` container. | Tailscale address, `ts.net` hostname, or public IP. |
+| **Address** | The machine running the `websocket` container. The label changes with the connection type, and names the Minecraft server instead for direct RCON. | Tailscale address, `ts.net` hostname, or public IP. |
 | **Bridge port** | The port the bridge listens on. | `8080` normally, `443` behind Tailscale Funnel. |
 | **Bridge secret key** | The bridge's own key, used to sign the token Admincraft sends. | `SECRET_KEY` in the bridge's `docker-compose.yml`. |
 | **Connection type** | Which setup you have. The address and port fields relabel themselves to match. | See [connection security](connection-security.md), or [direct RCON](#direct-rcon-with-no-bridge). |
@@ -82,7 +82,7 @@ The setup from the [Bedrock guide](../server/SERVER_SETUP.md#alternative-tailsca
 | Field | Value |
 | --- | --- |
 | Minecraft edition | `Bedrock Edition` |
-| Host or IP of the bridge | `my-server.tailnet-name.ts.net` |
+| Address | `my-server.tailnet-name.ts.net` |
 | Bridge port | `443` |
 | Bridge secret key | the `SECRET_KEY` from your compose file |
 | Connection type | `Public address, trusted certificate` |
@@ -94,7 +94,7 @@ The address preview under the dropdown should read `wss://my-server.tailnet-name
 | Field | Value |
 | --- | --- |
 | Minecraft edition | `Java Edition` |
-| Host or IP of the bridge | `100.101.102.103` |
+| Address | `100.101.102.103` |
 | Bridge port | `8080` |
 | Bridge secret key | the `SECRET_KEY` from your compose file |
 | Connection type | `Private network (Tailscale, VPN or LAN)` |
