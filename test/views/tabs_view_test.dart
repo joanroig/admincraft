@@ -198,6 +198,14 @@ void main() {
     final collapsed = tester.widgetList(tiles).length;
     expect(collapsed, lessThan(AppTheme.values.length));
 
+    // Hard against the right edge of the tiles below it. Flexible plus a
+    // Spacer put it halfway across the card, because both default to flex 1
+    // and split the free space.
+    final toggleRight =
+        tester.getRect(find.byKey(const ValueKey('theme-expand-toggle'))).right;
+    final tilesRight = tester.getRect(tiles.last).right;
+    expect((toggleRight - tilesRight).abs(), lessThan(1));
+
     await tester.tap(find.byKey(const ValueKey('theme-expand-toggle')));
     await tester.pumpAndSettle();
     expect(tester.widgetList(tiles).length, AppTheme.values.length);
