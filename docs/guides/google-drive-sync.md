@@ -9,18 +9,17 @@ before upload with the passphrase you choose.
 The passphrase and desktop refresh token are kept in the operating system's
 secure storage. Google never receives the plain server configuration.
 
-!!! warning "Drive sync in the official builds is limited"
+!!! warning "A project in testing only admits its own testers"
 
-    A Google Cloud project stays in **testing** until Google verifies it, and a
-    project in testing only admits accounts its owner has added as testers.
-    The published Admincraft builds carry this project's client IDs, so signing
-    in with any other account is refused with `Error 403: access_denied`, however
-    correctly everything else is set up.
+    A Google Cloud project starts in **testing**, which admits only the accounts
+    its owner listed as testers. Everyone else is refused with
+    `Error 403: access_denied`, however correctly the rest is set up. Publishing
+    the project lifts that, and for this scope it needs no review: see
+    [publish the project](#4-publish-the-project).
 
-    Two ways round it: build Admincraft with [your own client IDs](#google-cloud-setup),
-    which takes about ten minutes and gives you a project you control, or use
-    **Backup file**, which needs no account at all and carries the same
-    encrypted data between devices.
+    Note what the refusal applies to. Signing in still succeeds, because
+    identifying you and granting access to Drive are separate steps and only the
+    second is gated.
 
 ## Google Cloud setup
 
@@ -45,8 +44,8 @@ secure storage. Google never receives the plain server configuration.
    and gives Admincraft access only to its hidden configuration folder—not to
    the user's other Drive files.
 4. During development, keep the app in **Testing** and add each Google account
-   under **Test users**. Testing grants expire after seven days. Publish the app
-   when it is ready for general use.
+   under **Test users**. Testing grants expire after seven days, so a tester is
+   asked to authorise again every week.
 
 ### 3. Create OAuth clients
 
@@ -118,6 +117,24 @@ Desktop applications are public OAuth clients, so an embedded client secret
 cannot be treated as confidential. Keep it out of the repository anyway and
 inject it while building.
 
+### 4. Publish the project
+
+Open **Google Auth Platform → Audience** and select **Publish app**. Any Google
+account can then sign in, the test-user list stops mattering, and grants no
+longer expire every seven days.
+
+There is no review to wait for and nothing to pay. Google only requires its
+verification process for [sensitive and restricted scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth),
+and `drive.appdata` is neither: it is classified as non-sensitive, because it
+reaches only the app's own hidden folder and never the user's files. An app
+requesting nothing beyond that publishes immediately, without the unverified-app
+warning or the hundred-user cap those scopes carry.
+
+Two things would change that, and both are choices rather than accidents:
+adding a wider Drive scope later moves the project into the sensitive tier and
+its review, and showing a name and logo on the consent screen instead of the
+project's own details needs the lighter brand verification.
+
 ## Build with the client IDs
 
 Web development:
@@ -185,11 +202,15 @@ for explicit recovery.
 | --- | --- |
 | This build is not registered in its Google Cloud project | No Android OAuth client matches this package name and signing certificate. Register the fingerprint of the build you are running, as above. |
 | Setup required | The build carries no client IDs. They are compiled in, so a build made without them cannot sign in at all; check the repository secrets and rebuild. |
+| The project is still in testing | Publish it, or add the account under **Test users**. |
 | Sign-in was cancelled | The account chooser was dismissed. |
 
 Two things that look like app faults and are not:
 
-- The account must be listed under **Test users** while the Google Auth
-  Platform app is in testing. Any other account is refused.
+- Signing in and reaching Drive are separate steps. Admincraft asks who you are
+  when it starts, which any account may answer, and asks for the Drive scope
+  only when you sign in from **Data & Sync**. A testing project refuses the
+  second while allowing the first, which looks like an account that signs in
+  and then cannot sync.
 - The Drive API must be enabled in the same project the OAuth clients belong
   to. Sign-in can succeed while every sync then fails.
