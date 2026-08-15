@@ -45,6 +45,27 @@ extension on _WorkspaceDestination {
         _WorkspaceDestination.more => 'Settings',
       };
 
+  /// Whether this page is meaningless without a configured server.
+  ///
+  /// Onboarding is gated on this rather than on a list of pages allowed to
+  /// escape it. That list read as though it named the exceptions, but it
+  /// silently blocked every destination nobody remembered to add: Servers and
+  /// Settings were both missing, so on mobile, where those are the only way
+  /// back, leaving the server editor bounced the user to the welcome screen
+  /// and the settings hub could not be opened at all.
+  bool get needsServer => switch (this) {
+        _WorkspaceDestination.overview ||
+        _WorkspaceDestination.console ||
+        _WorkspaceDestination.controls =>
+          true,
+        _WorkspaceDestination.servers ||
+        _WorkspaceDestination.serverEditor ||
+        _WorkspaceDestination.dataSync ||
+        _WorkspaceDestination.preferences ||
+        _WorkspaceDestination.more =>
+          false,
+      };
+
   IconData get icon => switch (this) {
         _WorkspaceDestination.overview => Icons.dashboard_outlined,
         _WorkspaceDestination.console => Icons.terminal,
@@ -264,10 +285,7 @@ class _TabsState extends State<Tabs> {
         // A blank profile always exists, so dropping into the workspace before
         // anything is configured shows a server that cannot possibly connect.
         // Onboard first, and only then reveal the tabs and controls.
-        if (!model.onboardingCompleted &&
-            _destination != _WorkspaceDestination.serverEditor &&
-            _destination != _WorkspaceDestination.dataSync &&
-            _destination != _WorkspaceDestination.preferences) {
+        if (!model.onboardingCompleted && _destination.needsServer) {
           return Scaffold(
             body: PixelBackdrop(
               child: WelcomeView(
