@@ -5,8 +5,8 @@ Each profile stores everything Admincraft needs to connect to one server:
 - Alias
 - IP address or hostname
 - Port
-- Secret key
-- Connection security mode
+- Bridge secret key, or the RCON password for a direct connection
+- Connection type
 - Pinned certificate, when applicable
 
 ## Add a server
@@ -14,7 +14,7 @@ Each profile stores everything Admincraft needs to connect to one server:
 1. Open the server selector in the app bar.
 2. Choose **Add server**.
 3. Complete the new profile in **Settings**.
-4. Select **Save Settings**.
+4. Select **Save changes**.
 
 ## Switch servers
 
@@ -22,7 +22,7 @@ Open the server selector and choose a profile. Admincraft disconnects the curren
 
 ## Edit or delete a profile
 
-- Edit the selected profile in **Settings**, then select **Save Settings**.
+- Edit the selected profile in **Settings → Servers**, then select **Save changes**.
 - Use the delete icon beside **Server Settings** to remove it.
 - Admincraft always keeps at least one profile so the settings form has a selected server.
 

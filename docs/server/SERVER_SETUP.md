@@ -89,7 +89,7 @@ The WebSocket gives full control of your server, so the connection always has to
 | [Tailscale Funnel](#alternative-tailscale-funnel-no-app-on-the-client) | none | no | yes |
 | [Self-signed SSL](#alternative-public-access-with-self-signed-ssl) | none | yes, and again on every renewal | yes |
 
-Each one maps to a **Connection Security** option in Admincraft's settings: `Private network`, `Public certificate` and `Self-signed certificate`.
+Each one maps to a **Connection type** in Admincraft: `Private network`, `Public address, trusted certificate` and `Public address, self-signed certificate`. Java servers can also skip the bridge entirely with `Direct RCON, no bridge`.
 
 > **_NOTE:_** Running Admincraft in a browser narrows the choice. Self-signed certificates cannot be loaded at all, and if the app itself is served over HTTPS the browser blocks the unencrypted `Private network` option as mixed content. Tailscale Funnel is the option that always works in a browser.
 

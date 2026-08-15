@@ -14,6 +14,7 @@ import 'package:admincraft/views/server_editor_view.dart';
 import 'package:admincraft/views/servers_view.dart';
 import 'package:admincraft/views/welcome_view.dart';
 import 'package:admincraft/views/terminal_tab_view.dart';
+import 'package:admincraft/views/widgets/pixel_backdrop.dart';
 import 'package:admincraft/views/widgets/server_switcher.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -226,6 +227,12 @@ class _TabsState extends State<Tabs> {
   }
 
   Widget _pageHost(Model model, ConnectionController connection) {
+    return PixelBackdrop(
+      child: _pages(model, connection),
+    );
+  }
+
+  Widget _pages(Model model, ConnectionController connection) {
     return PageView.builder(
       key: _pageViewKey,
       controller: _pageController,
@@ -259,10 +266,12 @@ class _TabsState extends State<Tabs> {
             _destination != _WorkspaceDestination.dataSync &&
             _destination != _WorkspaceDestination.preferences) {
           return Scaffold(
-            body: WelcomeView(
-              onAddServer: _startFirstServer,
-              onImport: () => _go(_WorkspaceDestination.dataSync),
-              onPreferences: () => _go(_WorkspaceDestination.preferences),
+            body: PixelBackdrop(
+              child: WelcomeView(
+                onAddServer: _startFirstServer,
+                onImport: () => _go(_WorkspaceDestination.dataSync),
+                onPreferences: () => _go(_WorkspaceDestination.preferences),
+              ),
             ),
           );
         }
