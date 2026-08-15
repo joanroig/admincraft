@@ -85,10 +85,36 @@ class GoogleDriveSyncController with ChangeNotifier {
       notifyListeners();
       return result;
     } catch (error) {
-      _error = 'Google sign-in failed: $error';
+      _error = _signInMessage(error);
       notifyListeners();
       return false;
     }
+  }
+
+  /// Turns a sign-in failure into something the reader can act on.
+  ///
+  /// The plugin's own text describes what the credential layer saw, not what
+  /// is wrong. "Account reauth failed" in particular is what Android reports
+  /// when it cannot match the running app to an OAuth client, which is a
+  /// setup problem in the Google Cloud project rather than anything the user
+  /// did, and is easy to hit after the app's signing key changes.
+  static String _signInMessage(Object error) {
+    final text = error.toString();
+
+    if (text.contains('reauth failed') || text.contains('10:')) {
+      return 'Google refused the sign-in because this build is not '
+          'registered in its Google Cloud project. An Android OAuth client '
+          'is needed for the package name and the signing certificate of this '
+          'exact build. See the Google Drive sync guide in the docs.';
+    }
+    if (text.contains('canceled') || text.contains('cancelled')) {
+      return 'Sign-in was cancelled.';
+    }
+    if (text.contains('network') || text.contains('SocketException')) {
+      return 'Sign-in could not reach Google. Check the connection and try '
+          'again.';
+    }
+    return 'Google sign-in failed: $error';
   }
 
   Future<void> disconnect() async {
