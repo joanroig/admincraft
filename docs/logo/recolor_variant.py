@@ -20,12 +20,20 @@ SOURCE = os.path.join("variants", "dirt.png")
 
 # Darkest and lightest tone of each block. The shades in between are taken from
 # the source's own brightness, which is what keeps the speckle pattern.
+WHITE = (0xFF, 0xFF, 0xFF)
+DARK = (0x1A, 0x14, 0x0A)
+
+# dark tone, light tone, glyph. Pass None for the glyph to have it chosen by
+# contrast, which is the safe default for a new ramp.
 RAMPS = {
     # Gold is a flatter block in game, so its ramp is deliberately short: the
-    # same speckle at full strength reads as sand.
-    "gold": ((0xC2, 0x9E, 0x1A), (0xFA, 0xF0, 0x62)),
-    # Stone is speckled exactly like this, so it takes the full contrast.
-    "stone": ((0x5E, 0x5E, 0x5E), (0xA8, 0xA8, 0xA8)),
+    # same speckle at full strength reads as sand. The glyph is dark because
+    # the white one it inherited from dirt vanished against yellow.
+    "gold": ((0xC2, 0x9E, 0x1A), (0xFA, 0xF0, 0x62), DARK),
+    # Stone is speckled exactly like this, so it takes the full contrast. Its
+    # glyph is white by choice rather than by the contrast rule, which would
+    # pick dark here.
+    "stone": ((0x5E, 0x5E, 0x5E), (0xA8, 0xA8, 0xA8), WHITE),
 }
 
 
@@ -58,14 +66,15 @@ def glyph_color(dark, light):
 def is_texture(pixel):
     """True for block pixels, false for the glyph drawn on top of them.
 
-    The glyph is white or near-grey; every texture tone is saturated, so the
-    spread between the channels separates the two cleanly.
+    The glyph is pure white and nothing else in the source is. Judging by
+    saturation instead looks reasonable and is wrong: dirt has seven near-grey
+    speckles scattered across the block, which are texture, and treating them
+    as glyph left dark flecks all over the recoloured gold.
     """
-    r, g, b = pixel[:3]
-    return max(r, g, b) - min(r, g, b) > 25
+    return tuple(pixel[:3]) != WHITE
 
 
-def recolor(image, dark, light):
+def recolor(image, dark, light, glyph=None):
     # Read through tobytes rather than getdata, which Pillow has deprecated in
     # favour of a method too new to rely on here.
     raw = image.tobytes()
@@ -75,26 +84,13 @@ def recolor(image, dark, light):
     high = max(luminance(p) for p in texture)
     span = high - low or 1
 
-    glyph = glyph_color(dark, light)
-    glyph_low = min(luminance(p) for p in pixels if not is_texture(p))
-    glyph_high = max(luminance(p) for p in pixels if not is_texture(p))
-    glyph_span = glyph_high - glyph_low or 1
+    glyph = glyph or glyph_color(dark, light)
 
     out = []
     for pixel in pixels:
+        # The glyph is one flat tone, so it is replaced rather than mapped.
         if not is_texture(pixel):
-            # The glyph has a lighter body and a darker edge. Both are moved
-            # together so the edge keeps softening the corners as before.
-            t = (luminance(pixel) - glyph_low) / glyph_span
-            edge = tuple(round(c * 0.55 + 128 * 0.45) for c in glyph)
-            out.append(
-                (
-                    round(edge[0] + (glyph[0] - edge[0]) * t),
-                    round(edge[1] + (glyph[1] - edge[1]) * t),
-                    round(edge[2] + (glyph[2] - edge[2]) * t),
-                    pixel[3],
-                )
-            )
+            out.append((*glyph, pixel[3]))
             continue
         t = (luminance(pixel) - low) / span
         out.append(
@@ -113,9 +109,9 @@ def recolor(image, dark, light):
 
 def main():
     source = Image.open(SOURCE).convert("RGBA")
-    for name, (dark, light) in RAMPS.items():
+    for name, (dark, light, glyph) in RAMPS.items():
         path = os.path.join("variants", f"{name}.png")
-        recolor(source, dark, light).save(path)
+        recolor(source, dark, light, glyph).save(path)
         print(f"wrote {path}")
     source.close()
 
