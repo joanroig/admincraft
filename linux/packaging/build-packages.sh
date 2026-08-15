@@ -41,6 +41,9 @@ Maintainer: Joan Roig <joanroig@users.noreply.github.com>
 Depends: libgtk-3-0, libblkid1, liblzma5
 Description: Admincraft
  Manage Minecraft Bedrock and Java servers from a graphical interface.
+ .
+ NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG
+ OR MICROSOFT. Minecraft is a trademark of Mojang Synergies AB.
 CONTROL
 
 dpkg-deb --build --root-owner-group "$DEB" \

@@ -108,3 +108,11 @@ Fonts
 ## ![Admincraft logo](docs/logo/variants/cow.png) License
 
 Admincraft version 2.0.0 and later is licensed under the [PolyForm Shield License 1.0.0](LICENSE.md). See [LICENSING.md](LICENSING.md) for version details.
+
+## ![Admincraft logo](docs/logo/variants/zombie.png) Disclaimer
+
+**NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
+
+Minecraft is a trademark of Mojang Synergies AB. Admincraft is an independent
+project with no affiliation to Mojang, Microsoft, or the maintainers of any
+server image it works with.

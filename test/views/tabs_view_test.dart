@@ -254,6 +254,13 @@ void main() {
           'These settings apply to Admincraft on this device, not to one server.'),
       findsOneWidget,
     );
+    // Mojang's usage guidelines ask for this wording, so it should not be able
+    // to disappear in a refactor of the About card.
+    expect(
+      find.text('NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR '
+          'ASSOCIATED WITH MOJANG OR MICROSOFT.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }
