@@ -64,8 +64,34 @@ package/signature pair and is not passed through `--dart-define`. Android also
 uses the Web client ID created above as its server client ID.
 
 For the debug fingerprint, run `./gradlew signingReport` from `android/` (or
-`gradlew.bat signingReport` on Windows). Configure a real release signing key
-before publishing; the current project release build still uses the debug key.
+`gradlew.bat signingReport` on Windows).
+
+For the release fingerprint, read it from the keystore itself:
+
+```powershell
+keytool -list -v -keystore admincraft-release.jks -alias admincraft
+```
+
+!!! warning "Changing the signing key breaks Drive sign-in"
+
+    Google identifies an Android app by package name **and** signing
+    certificate. A build signed with a different key than the registered
+    Android client matches nothing, and sign-in fails with
+    `[16] Account reauth failed` even though the client IDs are correct.
+    Registering a release key after shipping debug-signed builds, as this
+    project did in v2.2.0, is exactly that situation: the release fingerprint
+    needs its own Android client.
+
+    The fingerprint of an already published build can be read from the APK
+    itself, which is worth doing to confirm what actually shipped:
+
+    ```powershell
+    apksigner verify --print-certs admincraft-v2.2.0-android.apk
+    ```
+
+    `apksigner` comes with the Android SDK build-tools. `keytool -printcert
+    -jarfile` will not do here: it reads only v1 JAR signatures, and these
+    APKs are signed with the v2/v3 schemes alone.
 
 #### Windows client
 
@@ -139,3 +165,18 @@ for explicit recovery.
 !!! warning
     Google cannot recover the encryption passphrase. Keep a manual exported
     backup somewhere safe before relying on sync alone.
+
+## When sign-in fails
+
+| What the app says | What it usually means |
+| --- | --- |
+| This build is not registered in its Google Cloud project | No Android OAuth client matches this package name and signing certificate. Register the fingerprint of the build you are running, as above. |
+| Setup required | The build carries no client IDs. They are compiled in, so a build made without them cannot sign in at all; check the repository secrets and rebuild. |
+| Sign-in was cancelled | The account chooser was dismissed. |
+
+Two things that look like app faults and are not:
+
+- The account must be listed under **Test users** while the Google Auth
+  Platform app is in testing. Any other account is refused.
+- The Drive API must be enabled in the same project the OAuth clients belong
+  to. Sign-in can succeed while every sync then fails.
