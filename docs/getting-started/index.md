@@ -24,11 +24,39 @@ Two arrangements are therefore possible, and the difference matters enough to ch
 
 The two "on refresh" cells are the practical difference: through the bridge the app watches the log and notices things happening, while over RCON it only knows what it last asked.
 
+## Fastest way in
+
+If you have a machine with Docker and want a server running now, one script does
+the whole thing: it writes a compose file, generates the secrets, starts
+Minecraft and the bridge, and prints what to type into Admincraft.
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/joanroig/admincraft/main/docs/server/quickstart.sh
+bash quickstart.sh
+```
+
+Downloaded first rather than piped straight into a shell, so you can read what
+it does before it runs. Pass `--edition java` to skip the prompt. It refuses to
+touch an existing `docker-compose.yml`.
+
+Already running a Minecraft container? Add the bridge without editing anything
+you have, by layering one file on top:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/joanroig/admincraft/main/docs/server/docker-compose.admincraft.yml
+# set SECRET_KEY, and SERVER_TYPE plus the RCON values for Java
+docker compose -f docker-compose.yml -f docker-compose.admincraft.yml up -d
+```
+
+Only the new container starts; Minecraft keeps running. The
+[existing server guide](existing-server.md) explains the fields.
+
 ## Pick your route
 
 | Where you are | Start here |
 | --- | --- |
-| **No server yet** | [Bedrock server on Oracle's free tier](../server/SERVER_SETUP.md) — a whole server, from an empty cloud account to a working world, at no cost |
+| **A machine with Docker** | The [quick start script](#fastest-way-in) above |
+| **No server and no machine** | [Bedrock server on Oracle's free tier](../server/SERVER_SETUP.md) — a whole server, from an empty cloud account to a working world, at no cost |
 | **No server yet, and you want Java** | [Set up a Java Edition server](java-server.md) |
 | **Already running itzg containers** | [Add Admincraft to an existing server](existing-server.md) — no need to recreate anything |
 | **A Java server that is not containerised** | [Connect over direct RCON](existing-server.md#connect-any-java-server-over-rcon) |
