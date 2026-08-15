@@ -127,7 +127,7 @@ void main() {
 
     final aliasField = find.widgetWithText(TextFormField, 'Alias');
     await tester.enterText(aliasField, 'Unsaved draft');
-    await tester.tap(find.text('More'));
+    await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     expect(find.text('Docs'), findsOneWidget);
     await tester.tap(find.text('Servers'));
@@ -164,6 +164,21 @@ void main() {
     // The editor itself, not merely the absence of onboarding: landing on
     // Overview instead was a real bug that a weaker assertion hid.
     expect(find.text('Edit server'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('onboarding still allows reaching preferences', (tester) async {
+    await pumpApp(tester, const Size(390, 844), withServer: false);
+
+    expect(find.text('Welcome to Admincraft'), findsOneWidget);
+
+    // Appearance settings have nothing to do with owning a server, so the
+    // welcome screen must not be a dead end for them.
+    await tester.tap(find.text('Preferences'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WelcomeView), findsNothing);
+    expect(find.text('Preferences'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }
