@@ -13,6 +13,7 @@ typedef DriveApiBuilder = GoogleDriveApi Function(http.Client client);
 
 class GoogleDriveSyncController with ChangeNotifier {
   static const _enabledKey = 'googleDriveSyncEnabled';
+  static const _connectedKey = 'googleDriveConnected';
   static const _lastSyncKey = 'googleDriveLastSync';
   static const _passphraseKey = 'admincraft.google-drive.passphrase';
 
@@ -63,6 +64,14 @@ class GoogleDriveSyncController with ChangeNotifier {
     return _initialization ??= _initialize();
   }
 
+  /// Whether this device has connected Drive sync at some point.
+  ///
+  /// `automaticSyncEnabled` counts too: it is the flag earlier versions set,
+  /// and a device that was syncing before this one existed should still be
+  /// restored rather than asked to sign in again.
+  bool get _everConnected =>
+      (_preferences.getBool(_connectedKey) ?? false) || automaticSyncEnabled;
+
   Future<void> _initialize() async {
     _authSubscription = _auth.authenticationChanges.listen((signedIn) {
       notifyListeners();
@@ -70,7 +79,15 @@ class GoogleDriveSyncController with ChangeNotifier {
         scheduleSync(_model!);
       }
     });
-    await _auth.initialize();
+
+    // Only restore a session that exists. Asking Google to identify the user
+    // is what makes Android raise an account sheet, and doing it on every
+    // start put that in front of people who had never opened Data & Sync,
+    // during onboarding, before anything had offered them sync at all.
+    if (_everConnected) {
+      await _auth.initialize();
+    }
+
     notifyListeners();
     if (signedIn && automaticSyncEnabled && _model != null) {
       scheduleSync(_model!);
@@ -82,6 +99,9 @@ class GoogleDriveSyncController with ChangeNotifier {
     notifyListeners();
     try {
       final result = await _auth.signIn();
+      // Remembered so later starts may restore this session silently. Until
+      // someone signs in here, the app never asks Google anything.
+      if (result) await _preferences.setBool(_connectedKey, true);
       notifyListeners();
       return result;
     } catch (error) {
@@ -128,6 +148,9 @@ class GoogleDriveSyncController with ChangeNotifier {
     await _auth.signOut();
     await _secureValues.delete(_passphraseKey);
     await _preferences.setBool(_enabledKey, false);
+    // Also stops the next start from trying to restore the session that was
+    // just given up.
+    await _preferences.remove(_connectedKey);
     await _preferences.remove(_lastSyncKey);
     _error = null;
     notifyListeners();
