@@ -16,17 +16,23 @@ class PixelBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
 
     return Stack(
       children: [
         Positioned.fill(
           child: IgnorePointer(
             child: CustomPaint(
+              // On a light page the blocks have to be darker than what they sit
+              // on, and the primary alone is too pale to register, so it is
+              // pulled towards the foreground colour first.
               painter: _PixelPainter(
-                base: scheme.surface,
-                tint: scheme.primary,
-                dark: Theme.of(context).brightness == Brightness.dark,
+                tint: dark
+                    ? scheme.primary
+                    : Color.lerp(scheme.primary, scheme.onSurface, 0.45)!,
+                dark: dark,
               ),
             ),
           ),
@@ -38,11 +44,10 @@ class PixelBackdrop extends StatelessWidget {
 }
 
 class _PixelPainter extends CustomPainter {
-  final Color base;
   final Color tint;
   final bool dark;
 
-  const _PixelPainter({required this.base, required this.tint, required this.dark});
+  const _PixelPainter({required this.tint, required this.dark});
 
   /// Cheap deterministic hash. Any stable scatter will do; what matters is that
   /// the same cell always yields the same value.
@@ -54,8 +59,8 @@ class _PixelPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = base);
-
+    // No background is painted: the scaffold already supplies one, and painting
+    // a second copy here would mean keeping the two in step forever.
     final columns = (size.width / PixelBackdrop.cell).ceil();
     final rows = (size.height / PixelBackdrop.cell).ceil();
     final paint = Paint();
@@ -68,9 +73,10 @@ class _PixelPainter extends CustomPainter {
         // pattern rather than as texture, and fights everything on top of it.
         if (value > 22) continue;
 
-        // Kept very low: this sits behind text, and anything stronger competes
-        // with it. Dark themes tolerate slightly more than light ones.
-        final strength = (value % 3 + 1) * (dark ? 0.012 : 0.008);
+        // Kept low: this sits behind text, and anything stronger competes with
+        // it. Light pages need more than dark ones, not less, because a faint
+        // wash over near-white disappears entirely.
+        final strength = (value % 3 + 1) * (dark ? 0.012 : 0.018);
         paint.color = tint.withValues(alpha: strength);
 
         canvas.drawRect(
@@ -87,6 +93,5 @@ class _PixelPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PixelPainter old) =>
-      old.base != base || old.tint != tint || old.dark != dark;
+  bool shouldRepaint(_PixelPainter old) => old.tint != tint || old.dark != dark;
 }

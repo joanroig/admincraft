@@ -424,9 +424,15 @@ class _WorkspaceSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return ColoredBox(
-      color: scheme.surfaceContainerLow,
+      // The rail reads as chrome by sitting away from the page in tone, which
+      // means deeper in light mode and lighter in dark: the page is the lightest
+      // surface in one and the darkest in the other.
+      color: theme.brightness == Brightness.light
+          ? scheme.surfaceContainerHigh
+          : scheme.surfaceContainerLow,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
