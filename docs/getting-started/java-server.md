@@ -25,6 +25,6 @@ Create a server profile with:
 - **IP / Hostname:** the host running Docker
 - **Port:** `8080`
 - **Secret Key:** the bridge `SECRET_KEY`, not the RCON password
-- **Connection Security:** normally Private network when connecting over Tailscale, a VPN, or a trusted LAN
+- **Connection type:** normally Private network when connecting over Tailscale, a VPN, or a trusted LAN
 
 The Java profile enables Java-specific command completion and output parsing. Docker access gives the bridge live logs and restart controls; commands themselves travel from the bridge to the Minecraft server over the internal RCON connection.
