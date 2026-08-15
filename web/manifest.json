@@ -1,11 +1,11 @@
 {
-    "name": "admincraft",
-    "short_name": "admincraft",
+    "name": "Admincraft",
+    "short_name": "Admincraft",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Manage Minecraft Bedrock and Java servers from the browser. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

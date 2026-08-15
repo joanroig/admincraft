@@ -60,3 +60,9 @@ Built for [itzg's Minecraft containers](https://github.com/itzg/docker-minecraft
 !!! warning "Admincraft controls the server"
 
     A saved secret key can execute server commands. Treat exported profiles and server credentials like passwords, even though Admincraft encrypts its transfer files.
+
+!!! info "Not an official Minecraft product"
+
+    **NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
+
+    Minecraft is a trademark of Mojang Synergies AB. Admincraft is an independent project, unaffiliated with Mojang, Microsoft, or the maintainers of any server image it works with.

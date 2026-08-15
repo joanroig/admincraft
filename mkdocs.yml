@@ -4,7 +4,12 @@ site_url: !ENV [MKDOCS_SITE_URL, "http://127.0.0.1:8000/"]
 repo_url: https://github.com/joanroig/admincraft
 repo_name: joanroig/admincraft
 edit_uri: edit/main/docs/
-copyright: Admincraft is licensed under PolyForm Shield 1.0.0.
+# Shown in the footer of every page, which is the only way to state this once
+# and have it reach a reader who arrives on a single guide from a search.
+copyright: >-
+  Admincraft is licensed under PolyForm Shield 1.0.0.
+  NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG
+  OR MICROSOFT. Minecraft is a trademark of Mojang Synergies AB.
 
 theme:
   name: material
