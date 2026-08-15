@@ -107,6 +107,12 @@ class GoogleDriveSyncController with ChangeNotifier {
           'is needed for the package name and the signing certificate of this '
           'exact build. See the Google Drive sync guide in the docs.';
     }
+    if (text.contains('access_denied') || text.contains('verification')) {
+      return 'Google blocked the sign-in because this build\'s Google Cloud '
+          'project is still in testing, so only accounts its owner has added '
+          'as testers may use Drive sync. Build with your own client IDs to '
+          'use your own project, or use Backup file instead.';
+    }
     if (text.contains('canceled') || text.contains('cancelled')) {
       return 'Sign-in was cancelled.';
     }
