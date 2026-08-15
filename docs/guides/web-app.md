@@ -12,7 +12,7 @@ Create an [encrypted export](backup-transfer.md) after adding or changing import
 
 The hosted Admincraft page uses HTTPS. Browsers block an HTTPS page from connecting to an unencrypted `ws://` endpoint as mixed content.
 
-For the hosted web app, **Public certificate** (`wss://`) is the most reliable choice. A private-network connection can work from an Admincraft build served over HTTP, but should never be exposed to the public internet.
+For the hosted web app, a **trusted certificate** type (`wss://`) is the most reliable choice. A private-network connection can work from an Admincraft build served over HTTP, but should never be exposed to the public internet.
 
 ### Tailscale in the web app
 
@@ -22,7 +22,7 @@ Use **[Tailscale Funnel](../server/SERVER_SETUP.md#alternative-tailscale-funnel-
 
 - **IP / Hostname:** the `ts.net` hostname from `tailscale funnel status`
 - **Port:** `443`
-- **Connection security:** `Public certificate`
+- **Connection type:** `Public address, trusted certificate`
 
 The private tailnet address still works in the Windows and Android builds, which are not subject to mixed-content rules. So the rule of thumb is Funnel for the browser, tailnet address for the installed app.
 
