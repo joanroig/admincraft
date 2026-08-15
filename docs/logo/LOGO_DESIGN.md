@@ -37,6 +37,24 @@ The `variants` folder contains the Admincraft logo and its alternative versions.
 
    - App icons for all platforms will be updated and applied the next time the app is built.
 
+### Recoloured Variants
+
+Several Minecraft blocks are the same speckled stone in a different colour, so
+a variant for one of those does not need drawing from scratch.
+[recolor_variant.py](recolor_variant.py) builds one by mapping the brightness of
+`dirt.png`'s texture onto a new pair of colours, leaving the prompt glyph alone.
+`gold.png` and `stone.png` are made this way; add a ramp to `RAMPS` and rerun it
+to add another:
+
+```
+cd docs\logo
+pip install -r requirements.txt
+python recolor_variant.py
+```
+
+Blocks whose pattern differs from dirt, and anything with a face on it, still
+need to be drawn by hand as above.
+
 ### Technical Details
 
 - The Python scripts upscale the logo to ensure suitability for various sizes and formats across platforms, while maintaining the crispness of pixel art.

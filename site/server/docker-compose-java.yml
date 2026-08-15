@@ -1,0 +1,38 @@
+services:
+  minecraft:
+    container_name: minecraft
+    image: itzg/minecraft-server:latest
+    restart: always
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+    expose:
+      # Internal only: do not publish RCON with a host port mapping.
+      - "25575"
+    environment:
+      EULA: "TRUE"
+      TYPE: PAPER
+      RCON_PASSWORD: CHANGE_THIS_RCON_PASSWORD
+    volumes:
+      - ./minecraft-java:/data
+
+  websocket:
+    container_name: websocket
+    image: joanroig/admincraft-websocket:latest
+    restart: always
+    depends_on:
+      minecraft:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      SECRET_KEY: YOUR_SECRET_KEY_HERE
+      USE_SSL: "false"
+      SERVER_TYPE: java
+      MC_NAME: minecraft
+      RCON_HOST: minecraft
+      RCON_PORT: "25575"
+      RCON_PASSWORD: CHANGE_THIS_RCON_PASSWORD
