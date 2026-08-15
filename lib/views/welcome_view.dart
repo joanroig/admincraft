@@ -22,6 +22,7 @@ class WelcomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return SafeArea(
       child: Center(
@@ -56,11 +57,23 @@ class WelcomeView extends StatelessWidget {
                   style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 10),
+                // Two widgets rather than one sentence: what the app is and
+                // what to do next are separate thoughts, and as one paragraph
+                // the break landed wherever the window happened to be wide.
                 Text(
-                  'Admincraft manages Minecraft Bedrock and Java servers. '
+                  'Admincraft manages Minecraft Bedrock and Java servers.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
                   'Add one to get started.',
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Card(

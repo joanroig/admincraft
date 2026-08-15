@@ -63,15 +63,28 @@ class Admincraft extends StatelessWidget {
       colorScheme: scheme,
     );
 
+    // M3's light tones are all within a few percent of white, and the default
+    // arrangement paints the page on `surface` while cards sit on
+    // `surfaceContainerLow`, which is the *darker* of the two. The cards sink
+    // into the page and the whole screen reads as one flat sheet. Light mode
+    // therefore drops the page onto a tinted container and lifts the cards to
+    // white, so they read as raised. Dark mode keeps the usual arrangement,
+    // where the page is already the darkest tone available.
+    final light = brightness == Brightness.light;
+    final pageColor = light ? scheme.surfaceContainer : scheme.surface;
+    final raisedColor =
+        light ? scheme.surfaceContainerLowest : scheme.surfaceContainerLow;
+
     return base.copyWith(
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: pageColor,
+      cardTheme: CardThemeData(color: raisedColor),
       textTheme: ThemeService.textThemeFromStyles(model).apply(
         bodyColor: scheme.onSurface,
         displayColor: scheme.onSurface,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerLowest,
+        fillColor: raisedColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
