@@ -38,7 +38,7 @@ extension on _WorkspaceDestination {
         _WorkspaceDestination.serverEditor => 'Configuration',
         _WorkspaceDestination.dataSync => 'Data & Sync',
         _WorkspaceDestination.preferences => 'Preferences',
-        _WorkspaceDestination.more => 'More',
+        _WorkspaceDestination.more => 'Settings',
       };
 
   IconData get icon => switch (this) {
@@ -48,8 +48,8 @@ extension on _WorkspaceDestination {
         _WorkspaceDestination.servers => Icons.dns_outlined,
         _WorkspaceDestination.serverEditor => Icons.edit_outlined,
         _WorkspaceDestination.dataSync => Icons.sync_outlined,
-        _WorkspaceDestination.preferences => Icons.settings_outlined,
-        _WorkspaceDestination.more => Icons.more_horiz,
+        _WorkspaceDestination.preferences => Icons.palette_outlined,
+        _WorkspaceDestination.more => Icons.settings_outlined,
       };
 }
 
@@ -256,11 +256,13 @@ class _TabsState extends State<Tabs> {
         // Onboard first, and only then reveal the tabs and controls.
         if (!model.onboardingCompleted &&
             _destination != _WorkspaceDestination.serverEditor &&
-            _destination != _WorkspaceDestination.dataSync) {
+            _destination != _WorkspaceDestination.dataSync &&
+            _destination != _WorkspaceDestination.preferences) {
           return Scaffold(
             body: WelcomeView(
               onAddServer: _startFirstServer,
               onImport: () => _go(_WorkspaceDestination.dataSync),
+              onPreferences: () => _go(_WorkspaceDestination.preferences),
             ),
           );
         }
@@ -334,7 +336,7 @@ class _TabsState extends State<Tabs> {
             ? IconButton(
                 tooltip: _destination == _WorkspaceDestination.serverEditor
                     ? 'Back to Servers'
-                    : 'Back to More',
+                    : 'Back to Settings',
                 onPressed: () => _go(
                   _destination == _WorkspaceDestination.serverEditor
                       ? _WorkspaceDestination.servers
@@ -381,7 +383,7 @@ class _TabsState extends State<Tabs> {
           ),
           NavigationDestination(
             icon: Icon(Icons.more_horiz),
-            label: 'More',
+            label: 'Settings',
           ),
         ],
       ),

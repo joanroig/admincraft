@@ -19,7 +19,7 @@ class MoreView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('More', style: Theme.of(context).textTheme.headlineMedium),
+        Text('Settings', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 4),
         Text(
           'Manage servers, portable data, preferences, and help.',
