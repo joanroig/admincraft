@@ -9,6 +9,19 @@ before upload with the passphrase you choose.
 The passphrase and desktop refresh token are kept in the operating system's
 secure storage. Google never receives the plain server configuration.
 
+!!! warning "Drive sync in the official builds is limited"
+
+    A Google Cloud project stays in **testing** until Google verifies it, and a
+    project in testing only admits accounts its owner has added as testers.
+    The published Admincraft builds carry this project's client IDs, so signing
+    in with any other account is refused with `Error 403: access_denied`, however
+    correctly everything else is set up.
+
+    Two ways round it: build Admincraft with [your own client IDs](#google-cloud-setup),
+    which takes about ten minutes and gives you a project you control, or use
+    **Backup file**, which needs no account at all and carries the same
+    encrypted data between devices.
+
 ## Google Cloud setup
 
 ### 1. Create the project and enable Drive
