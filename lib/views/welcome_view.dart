@@ -10,11 +10,13 @@ import 'package:flutter/material.dart';
 class WelcomeView extends StatelessWidget {
   final VoidCallback onAddServer;
   final VoidCallback onImport;
+  final VoidCallback onPreferences;
 
   const WelcomeView({
     super.key,
     required this.onAddServer,
     required this.onImport,
+    required this.onPreferences,
   });
 
   @override
@@ -105,10 +107,23 @@ class WelcomeView extends StatelessWidget {
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 6),
-                TextButton.icon(
-                  onPressed: () => UrlUtils.openDocumentation(),
-                  icon: const Icon(Icons.menu_book_outlined, size: 18),
-                  label: const Text('Read the setup guide'),
+                // Both offered here because neither needs a server: someone
+                // should be able to set the font size or read the guide without
+                // being made to create a profile first.
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => UrlUtils.openDocumentation(),
+                      icon: const Icon(Icons.menu_book_outlined, size: 18),
+                      label: const Text('Read the setup guide'),
+                    ),
+                    TextButton.icon(
+                      onPressed: onPreferences,
+                      icon: const Icon(Icons.palette_outlined, size: 18),
+                      label: const Text('Preferences'),
+                    ),
+                  ],
                 ),
               ],
             ),
