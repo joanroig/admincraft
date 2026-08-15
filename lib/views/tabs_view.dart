@@ -17,6 +17,7 @@ import 'package:admincraft/views/welcome_view.dart';
 import 'package:admincraft/views/terminal_tab_view.dart';
 import 'package:admincraft/views/widgets/pixel_backdrop.dart';
 import 'package:admincraft/views/widgets/server_switcher.dart';
+import 'package:admincraft/views/widgets/theme_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -442,7 +443,6 @@ class _WorkspaceSidebar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _AppTitle(
-                model: model,
                 onTap: () => onDestination(_WorkspaceDestination.preferences),
               ),
               ServerSwitcher(
@@ -598,10 +598,9 @@ class _NavigationTile extends StatelessWidget {
 /// The logo, the app name and a faint version, as one target that opens
 /// Preferences, where the full version and build stamp live.
 class _AppTitle extends StatefulWidget {
-  final Model model;
   final VoidCallback onTap;
 
-  const _AppTitle({required this.model, required this.onTap});
+  const _AppTitle({required this.onTap});
 
   @override
   State<_AppTitle> createState() => _AppTitleState();
@@ -643,31 +642,7 @@ class _AppTitleState extends State<_AppTitle> {
             padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
             child: Row(
               children: [
-                // Switching theme repaints everything at once, and the logo
-                // changing in the same frame reads as a glitch rather than as
-                // a choice taking effect. It is keyed by asset so the switcher
-                // treats a different logo as a new child.
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: ScaleTransition(
-                      scale: Tween<double>(begin: 0.86, end: 1).animate(animation),
-                      child: child,
-                    ),
-                  ),
-                  child: Image.asset(
-                    widget.model.appTheme.logoAsset,
-                    key: ValueKey(widget.model.appTheme),
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.fill,
-                    filterQuality: FilterQuality.none,
-                    isAntiAlias: false,
-                  ),
-                ),
+                const ThemeLogo(),
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
