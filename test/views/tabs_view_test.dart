@@ -185,6 +185,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('onboarding does not trap mobile users on the welcome screen',
+      (tester) async {
+    await pumpApp(tester, const Size(390, 844), withServer: false);
+
+    // Mobile has no sidebar, so the app bar's back arrow is the only way out
+    // of these pages. It used to land on a destination the onboarding gate
+    // blocked, which bounced the user back to the welcome screen.
+    await tester.tap(find.text('Preferences'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Back to Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WelcomeView), findsNothing);
+    expect(find.text('Add, switch, and edit server profiles'), findsOneWidget);
+
+    await tester.tap(find.text('Servers'));
+    await tester.pumpAndSettle();
+    expect(find.byType(WelcomeView), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('leaving the server editor during onboarding reaches Servers',
+      (tester) async {
+    await pumpApp(tester, const Size(390, 844), withServer: false);
+
+    await tester.tap(find.text('Add your first server'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Back to Servers'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WelcomeView), findsNothing);
+    expect(find.text('Servers'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('theme picker stays one row until it is expanded',
       (tester) async {
     await pumpApp(tester, const Size(1280, 720));
