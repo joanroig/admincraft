@@ -37,10 +37,34 @@
 
     <style>
       /* Shown until Flutter paints its first frame. Without it the page is
-         blank for the whole engine download, which reads as a broken app. */
+         blank for the whole engine download, which reads as a broken app.
+
+         The colours are the ones the app itself paints with its default Dirt
+         theme, taken from the generated scheme rather than picked by eye, so
+         the handover to the first real frame is not a change of appearance.
+         Flutter's default palette was the wrong end of the colour wheel from
+         everything the app looks like. */
+      :root {
+        --page: #fbebe1;
+        --ink: #221a14;
+        --muted: #52443b;
+        --accent: #895020;
+        --track: rgba(82, 68, 59, 0.22);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page: #19120d;
+          --ink: #f0dfd6;
+          --muted: #d6c3b7;
+          --accent: #ffb781;
+          --track: rgba(214, 195, 183, 0.18);
+        }
+      }
+
       body {
         margin: 0;
-        background: #ffffff;
+        background: var(--page);
       }
 
       #loading {
@@ -50,23 +74,39 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 20px;
         font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-        color: #3c3c3c;
-        background: #ffffff;
+        color: var(--ink);
+        background: var(--page);
       }
 
       #loading img {
         width: 96px;
         height: 96px;
+        /* 16px pixel art at an exact multiple, so keep the hard edges. */
         image-rendering: pixelated;
       }
 
+      #loading .title {
+        margin-top: 18px;
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+
+      #loading .hint {
+        margin-top: 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      /* Below the text, not above it: the eye should land on the logo, read
+         the line, and only then find the activity indicator. */
       #loading .spinner {
-        width: 28px;
-        height: 28px;
-        border: 3px solid rgba(128, 128, 128, 0.3);
-        border-top-color: #6750a4;
+        margin-top: 20px;
+        width: 22px;
+        height: 22px;
+        border: 2px solid var(--track);
+        border-top-color: var(--accent);
         border-radius: 50%;
         animation: spin 0.9s linear infinite;
       }
@@ -74,14 +114,6 @@
       @keyframes spin {
         to {
           transform: rotate(360deg);
-        }
-      }
-
-      @media (prefers-color-scheme: dark) {
-        body,
-        #loading {
-          background: #121212;
-          color: #e6e6e6;
         }
       }
 
@@ -97,8 +129,9 @@
   <body>
     <div id="loading">
       <img src="icons/Icon-192.png" alt="" />
+      <div class="title">Admincraft</div>
+      <div class="hint">Starting up…</div>
       <div class="spinner"></div>
-      <div>Loading Admincraft...</div>
     </div>
 
     <script>
