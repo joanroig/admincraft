@@ -65,6 +65,43 @@ enum AppTheme {
     seedColor: Color(0xFF7A7A7A),
     logoAsset: 'docs/logo/variants/stone.png',
     variant: DynamicSchemeVariant.neutral,
+  ),
+  // The mob logos, each seeded from the strongest colour in its own art. The
+  // hue wheel was already full by this point, so several of these sit close to
+  // an earlier theme; the logo is what tells them apart in the picker.
+  cow(
+    label: 'Cow',
+    description: 'Rustic and calm',
+    seedColor: Color(0xFF2E2118),
+    logoAsset: 'docs/logo/variants/cow.png',
+    variant: DynamicSchemeVariant.fidelity,
+  ),
+  villager(
+    label: 'Villager',
+    description: 'Pale and papery',
+    seedColor: Color(0xFFBD8A72),
+    logoAsset: 'docs/logo/variants/villager.png',
+    variant: DynamicSchemeVariant.fidelity,
+  ),
+  drowned(
+    label: 'Drowned',
+    description: 'Damp and tidal',
+    seedColor: Color(0xFF4D997F),
+    logoAsset: 'docs/logo/variants/drowned.png',
+  ),
+  zombie(
+    label: 'Zombie',
+    description: 'Murky and mossy',
+    seedColor: Color(0xFF395E29),
+    logoAsset: 'docs/logo/variants/zombie.png',
+    variant: DynamicSchemeVariant.vibrant,
+  ),
+  enderman(
+    label: 'Enderman',
+    description: 'Strange and electric',
+    seedColor: Color(0xFFCC00FA),
+    logoAsset: 'docs/logo/variants/enderman.png',
+    variant: DynamicSchemeVariant.fidelity,
   );
 
   final String label;

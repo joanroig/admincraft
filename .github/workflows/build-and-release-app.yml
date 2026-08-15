@@ -120,14 +120,14 @@ jobs:
         run: >-
           flutter build apk --release
           --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
-          --dart-define=ADMINCRAFT_GOOGLE_WEB_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_WEB_CLIENT_ID }}
+          --dart-define=ADMINCRAFT_GOOGLE_WEB_CLIENT_ID=${{ secrets.ADMINCRAFT_GOOGLE_WEB_CLIENT_ID }}
 
       - name: Build Windows
         if: matrix.platform == 'windows'
         run: >-
           flutter build windows --release
           --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
-          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
+          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET }}
 
       - name: Build macOS
@@ -135,7 +135,7 @@ jobs:
         run: >-
           flutter build macos --release
           --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
-          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
+          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET }}
 
       - name: Build Linux
@@ -143,7 +143,7 @@ jobs:
         run: >-
           flutter build linux --release
           --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
-          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
+          --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID }}
           --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=${{ secrets.ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET }}
 
       - name: Package Android
