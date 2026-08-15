@@ -93,9 +93,12 @@ class _PreferencesViewState extends State<PreferencesView> {
                   children: [
                     Row(
                       children: [
-                        // Flexible, not fixed: the button beside it is wide
-                        // enough to overflow this row on a narrow window.
-                        Flexible(
+                        // Expanded rather than Flexible plus a Spacer: both
+                        // default to flex 1, so they split the free space
+                        // between them and leave the button mid-card instead
+                        // of against the right edge. Taking all of it here
+                        // also lets the label ellipsize rather than overflow.
+                        Expanded(
                           child: Text(
                             'Color theme',
                             maxLines: 1,
@@ -103,7 +106,6 @@ class _PreferencesViewState extends State<PreferencesView> {
                             style: Theme.of(context).textTheme.labelLarge,
                           ),
                         ),
-                        const Spacer(),
                         TextButton.icon(
                           // Not prefixed 'app-theme-', which identifies the
                           // tiles themselves and is counted as such.
