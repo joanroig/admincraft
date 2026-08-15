@@ -108,3 +108,11 @@ Fonts
 ## ![Admincraft logo](docs/logo/variants/cow.png) License
 
 Licensed under the [GPLv3 License](https://github.com/joanroig/admincraft/blob/main/LICENSE.txt).
+
+## ![Admincraft logo](docs/logo/variants/zombie.png) Disclaimer
+
+**NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
+
+Minecraft is a trademark of Mojang Synergies AB. Admincraft is an independent
+project with no affiliation to Mojang, Microsoft, or the maintainers of any
+server image it works with.

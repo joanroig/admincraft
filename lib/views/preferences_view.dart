@@ -287,6 +287,30 @@ class _PreferencesViewState extends State<PreferencesView> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 14),
+                      // Mojang's usage guidelines ask fan projects to say this,
+                      // and the app leans on Minecraft's name and look
+                      // throughout, so it belongs in the app and not only in
+                      // the documentation someone may never read.
+                      Text(
+                        'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR '
+                        'ASSOCIATED WITH MOJANG OR MICROSOFT.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Minecraft is a trademark of Mojang Synergies AB. '
+                        'Admincraft is an independent project.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
                     ],
                   ),
                 ),

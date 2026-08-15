@@ -1,5 +1,5 @@
 name: admincraft
-description: "Multi-platform GUI in Flutter for managing a Docker-hosted Minecraft Bedrock server."
+description: "Multiplatform control panel for Minecraft Bedrock and Java Edition servers. Not an official Minecraft product, and not approved by or associated with Mojang or Microsoft."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
