@@ -22,8 +22,23 @@ class _PreferencesViewState extends State<PreferencesView> {
   late String _font;
   late double _fontSize;
   String _version = '';
+  bool _themesExpanded = false;
 
   Model get _model => context.read<Model>();
+
+  /// The themes to draw: one row of them until the picker is expanded.
+  ///
+  /// The selected theme is always among them. Without that it can sit in a
+  /// hidden row, and the collapsed picker then shows no selection at all,
+  /// which reads as though nothing is chosen.
+  List<AppTheme> _visibleThemes(int columns) {
+    if (_themesExpanded || AppTheme.values.length <= columns) {
+      return AppTheme.values;
+    }
+    final row = AppTheme.values.take(columns).toList();
+    if (!row.contains(_appTheme)) row[row.length - 1] = _appTheme;
+    return row;
+  }
 
   @override
   void initState() {
@@ -76,12 +91,33 @@ class _PreferencesViewState extends State<PreferencesView> {
                 subtitle: 'Theme and typography across the app.',
                 child: Column(
                   children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Color theme',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
+                    Row(
+                      children: [
+                        // Flexible, not fixed: the button beside it is wide
+                        // enough to overflow this row on a narrow window.
+                        Flexible(
+                          child: Text(
+                            'Color theme',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          // Not prefixed 'app-theme-', which identifies the
+                          // tiles themselves and is counted as such.
+                          key: const ValueKey('theme-expand-toggle'),
+                          onPressed: () =>
+                              setState(() => _themesExpanded = !_themesExpanded),
+                          icon: Icon(_themesExpanded
+                              ? Icons.expand_less
+                              : Icons.expand_more),
+                          label: Text(_themesExpanded
+                              ? 'Show less'
+                              : 'All ${AppTheme.values.length}'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     LayoutBuilder(
@@ -105,7 +141,7 @@ class _PreferencesViewState extends State<PreferencesView> {
                           spacing: spacing,
                           runSpacing: spacing,
                           children: [
-                            for (final theme in AppTheme.values)
+                            for (final theme in _visibleThemes(columns))
                               SizedBox(
                                 width: width,
                                 child: _ThemeChoice(

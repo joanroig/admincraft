@@ -58,7 +58,7 @@ jobs:
           flutter build web --release --wasm
           --base-href "${{ steps.pages.outputs.base_path }}/"
           --dart-define=ADMINCRAFT_BUILD_TIME=${{ env.BUILD_TIME }}
-          --dart-define=ADMINCRAFT_GOOGLE_WEB_CLIENT_ID=${{ vars.ADMINCRAFT_GOOGLE_WEB_CLIENT_ID }}
+          --dart-define=ADMINCRAFT_GOOGLE_WEB_CLIENT_ID=${{ secrets.ADMINCRAFT_GOOGLE_WEB_CLIENT_ID }}
 
       - name: Build documentation inside the web app artifact
         run: python -m mkdocs build --strict --site-dir build/web/docs
