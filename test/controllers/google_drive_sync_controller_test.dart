@@ -36,6 +36,61 @@ const remoteServer = ServerProfile(
 );
 
 void main() {
+  // Identifying the user is what makes Android raise an account sheet, so a
+  // device that has never connected Drive must not ask at all: the prompt
+  // otherwise appears on every launch, including during onboarding, before
+  // anything has offered the feature.
+  test('startup does not touch Google until sync has been connected',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(prefs));
+    final auth = _FakeAuth(MockClient((_) async => http.Response('{}', 200)),
+        signedInValue: false);
+    final controller = GoogleDriveSyncController(prefs, auth: auth);
+
+    await controller.initialize(model);
+    expect(auth.initializeCalls, 0);
+
+    // Signing in is the point at which the user has asked for it.
+    await controller.signIn();
+    expect(auth.signInCalls, 1);
+  });
+
+  test('startup restores a session once sync has been connected', () async {
+    SharedPreferences.setMockInitialValues({'googleDriveConnected': true});
+    final prefs = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(prefs));
+    final auth = _FakeAuth(MockClient((_) async => http.Response('{}', 200)));
+    final controller = GoogleDriveSyncController(prefs, auth: auth);
+
+    await controller.initialize(model);
+
+    expect(auth.initializeCalls, 1);
+  });
+
+  test('disconnecting stops the next start from restoring', () async {
+    SharedPreferences.setMockInitialValues({'googleDriveConnected': true});
+    final prefs = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(prefs));
+    final auth = _FakeAuth(MockClient((_) async => http.Response('{}', 200)));
+
+    await GoogleDriveSyncController(
+      prefs,
+      auth: auth,
+      secureValues: _MemorySecureValues(),
+    ).disconnect();
+
+    final next = _FakeAuth(MockClient((_) async => http.Response('{}', 200)));
+    await GoogleDriveSyncController(
+      prefs,
+      auth: next,
+      secureValues: _MemorySecureValues(),
+    ).initialize(model);
+
+    expect(next.initializeCalls, 0);
+  });
+
   test('first upload enables automatic sync and stores only ciphertext',
       () async {
     SharedPreferences.setMockInitialValues({
@@ -175,14 +230,17 @@ void main() {
 
 class _FakeAuth implements GoogleAuthProvider {
   final http.Client client;
+  final bool signedInValue;
+  int initializeCalls = 0;
+  int signInCalls = 0;
 
-  _FakeAuth(this.client);
+  _FakeAuth(this.client, {this.signedInValue = true});
 
   @override
   bool get configured => true;
 
   @override
-  bool get signedIn => true;
+  bool get signedIn => signedInValue;
 
   @override
   String? get email => 'test@example.com';
@@ -191,10 +249,13 @@ class _FakeAuth implements GoogleAuthProvider {
   Stream<bool> get authenticationChanges => const Stream.empty();
 
   @override
-  Future<void> initialize() async {}
+  Future<void> initialize() async => initializeCalls++;
 
   @override
-  Future<bool> signIn() async => true;
+  Future<bool> signIn() async {
+    signInCalls++;
+    return true;
+  }
 
   @override
   Widget? buildSignInButton() => null;
