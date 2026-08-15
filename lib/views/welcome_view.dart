@@ -1,4 +1,5 @@
 import 'package:admincraft/utils/url_utils.dart';
+import 'package:admincraft/views/widgets/theme_logo.dart';
 import 'package:flutter/material.dart';
 
 /// Shown when no server has been configured yet.
@@ -36,20 +37,7 @@ class WelcomeView extends StatelessWidget {
                 // Centred because the column stretches its children, which
                 // would otherwise force the image to the full width and
                 // distort it once a fit is set.
-                Center(
-                  // BoxFit.fill is required, not cosmetic: the default is
-                  // scaleDown, which never enlarges, so the 16px source
-                  // rendered at 16px however large the box was asked to be.
-                  // A multiple of 16 keeps the pixel grid exact.
-                  child: Image.asset(
-                    'assets/logo.png',
-                    width: 96,
-                    height: 96,
-                    fit: BoxFit.fill,
-                    filterQuality: FilterQuality.none,
-                    isAntiAlias: false,
-                  ),
-                ),
+                const Center(child: ThemeLogo(size: 96)),
                 const SizedBox(height: 20),
                 Text(
                   'Welcome to Admincraft',

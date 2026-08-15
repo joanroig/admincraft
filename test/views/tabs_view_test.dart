@@ -15,10 +15,12 @@ void main() {
     WidgetTester tester,
     Size size, {
     bool withServer = true,
+    Map<String, Object> extraPrefs = const {},
   }) async {
-    SharedPreferences.setMockInitialValues(
-      withServer ? {'onboardingCompleted': true} : {},
-    );
+    SharedPreferences.setMockInitialValues({
+      if (withServer) 'onboardingCompleted': true,
+      ...extraPrefs,
+    });
     final prefs = await SharedPreferences.getInstance();
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -209,6 +211,27 @@ void main() {
 
     expect(tester.widgetList(tiles).length, collapsed);
     expect(find.byKey(const ValueKey('app-theme-enderman')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the welcome logo follows the chosen theme', (tester) async {
+    // Someone who changes theme during setup should see it there too: the
+    // welcome screen used to show a fixed copy of the dirt logo.
+    await pumpApp(
+      tester,
+      const Size(390, 844),
+      withServer: false,
+      extraPrefs: {'appTheme': 'creeper'},
+    );
+
+    expect(find.byType(WelcomeView), findsOneWidget);
+    final logo = tester.widget<Image>(
+      find.descendant(of: find.byType(WelcomeView), matching: find.byType(Image)),
+    );
+    expect((logo.image as AssetImage).assetName,
+        'docs/logo/variants/creeper.png');
+    expect(logo.width, 96);
+    expect(logo.filterQuality, FilterQuality.none);
     expect(tester.takeException(), isNull);
   });
 
