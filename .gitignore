@@ -45,3 +45,6 @@ app.*.map.json
 # Android release signing material, never committed
 android/key.properties
 android/app/*.jks
+
+# MkDocs build output.
+/site/
