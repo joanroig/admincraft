@@ -7,20 +7,22 @@ enum AppTheme {
     seedColor: Color(0xFF6F523D),
     logoAsset: 'docs/logo/variants/dirt.png',
   ),
-  // Grass and Creeper were nine degrees apart in hue, which Material's tonal
-  // mapping flattened into near-identical schemes. Grass now leans olive and
-  // Creeper toward a vivid spring green, far enough apart to tell at a glance.
+  // Two greens can only differ so much by hue, and the default tonalSpot
+  // variant throws the seed's chroma away, so shifting saturation alone
+  // changed nothing. These differ in hue and in variant: Grass stays a muted
+  // yellow-green, Creeper is pushed to a vivid one.
   grass(
     label: 'Grass',
-    description: 'Olive and outdoorsy',
-    seedColor: Color(0xFF6F8F1E),
+    description: 'Muted and outdoorsy',
+    seedColor: Color(0xFF7CB342),
     logoAsset: 'docs/logo/variants/grass.png',
   ),
   creeper(
     label: 'Creeper',
-    description: 'Bright and energetic',
-    seedColor: Color(0xFF16A34A),
+    description: 'Electric and energetic',
+    seedColor: Color(0xFF00C853),
     logoAsset: 'docs/logo/variants/creeper.png',
+    variant: DynamicSchemeVariant.vibrant,
   ),
   diamond(
     label: 'Diamond',
@@ -48,10 +50,19 @@ enum AppTheme {
   final Color seedColor;
   final String logoAsset;
 
+  /// How Material turns the seed into a palette.
+  ///
+  /// tonalSpot, the default, pins chroma to a constant and keeps only the hue,
+  /// which is why two seeds of the same hue family look alike however
+  /// differently they are saturated. Choosing another variant is the only way
+  /// to make one theme read as vivid and another as muted.
+  final DynamicSchemeVariant variant;
+
   const AppTheme({
     required this.label,
     required this.description,
     required this.seedColor,
     required this.logoAsset,
+    this.variant = DynamicSchemeVariant.tonalSpot,
   });
 }
