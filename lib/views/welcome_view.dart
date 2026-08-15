@@ -40,8 +40,8 @@ class WelcomeView extends StatelessWidget {
                   // A multiple of 16 keeps the pixel grid exact.
                   child: Image.asset(
                     'assets/logo.png',
-                    width: 128,
-                    height: 128,
+                    width: 96,
+                    height: 96,
                     fit: BoxFit.fill,
                     filterQuality: FilterQuality.none,
                     isAntiAlias: false,
