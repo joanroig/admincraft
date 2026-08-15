@@ -1,6 +1,7 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/controllers/google_drive_sync_controller.dart';
 import 'package:admincraft/main.dart';
+import 'package:admincraft/models/app_theme.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:admincraft/views/welcome_view.dart';
@@ -179,6 +180,49 @@ void main() {
 
     expect(find.byType(WelcomeView), findsNothing);
     expect(find.text('Preferences'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('theme picker stays one row until it is expanded',
+      (tester) async {
+    await pumpApp(tester, const Size(1280, 720));
+    await tester.tap(find.text('Preferences'));
+    await tester.pumpAndSettle();
+
+    final tiles = find.byWidgetPredicate((widget) =>
+        widget.key is ValueKey<String> &&
+        (widget.key! as ValueKey<String>).value.startsWith('app-theme-'));
+
+    final collapsed = tester.widgetList(tiles).length;
+    expect(collapsed, lessThan(AppTheme.values.length));
+
+    await tester.tap(find.byKey(const ValueKey('theme-expand-toggle')));
+    await tester.pumpAndSettle();
+    expect(tester.widgetList(tiles).length, AppTheme.values.length);
+
+    // A theme from a hidden row stays on screen once chosen, or collapsing
+    // would leave the picker showing no selection at all.
+    await tester.tap(find.byKey(const ValueKey('app-theme-enderman')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('theme-expand-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(tester.widgetList(tiles).length, collapsed);
+    expect(find.byKey(const ValueKey('app-theme-enderman')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the app title opens preferences', (tester) async {
+    await pumpApp(tester, const Size(1280, 720));
+
+    await tester.tap(find.byKey(const ValueKey('app-title')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+          'These settings apply to Admincraft on this device, not to one server.'),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

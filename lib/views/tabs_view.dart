@@ -4,6 +4,7 @@ import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/controllers/google_drive_sync_controller.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/utils/build_info.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:admincraft/views/control_tab_view.dart';
 import 'package:admincraft/views/data_sync_view.dart';
@@ -17,6 +18,7 @@ import 'package:admincraft/views/terminal_tab_view.dart';
 import 'package:admincraft/views/widgets/pixel_backdrop.dart';
 import 'package:admincraft/views/widgets/server_switcher.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 enum _WorkspaceDestination {
@@ -439,32 +441,9 @@ class _WorkspaceSidebar extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(6, 0, 6, 14),
-                child: Row(
-                  children: [
-                    Image.asset(
-                      model.appTheme.logoAsset,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.fill,
-                      filterQuality: FilterQuality.none,
-                      isAntiAlias: false,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Admincraft',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.4,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
+              _AppTitle(
+                model: model,
+                onTap: () => onDestination(_WorkspaceDestination.preferences),
               ),
               ServerSwitcher(
                 model: model,
@@ -610,6 +589,115 @@ class _NavigationTile extends StatelessWidget {
           leading: Icon(destination.icon, size: 21),
           title: Text(destination.label),
           onTap: () => onTap(destination),
+        ),
+      ),
+    );
+  }
+}
+
+/// The logo, the app name and a faint version, as one target that opens
+/// Preferences, where the full version and build stamp live.
+class _AppTitle extends StatefulWidget {
+  final Model model;
+  final VoidCallback onTap;
+
+  const _AppTitle({required this.model, required this.onTap});
+
+  @override
+  State<_AppTitle> createState() => _AppTitleState();
+}
+
+class _AppTitleState extends State<_AppTitle> {
+  String _version = '';
+  String _tooltip = 'Preferences';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() {
+      _version = info.version;
+      _tooltip = 'Admincraft ${info.version}+${info.buildNumber}'
+          '${BuildInfo.isKnown ? '\n${BuildInfo.description}' : ''}';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Tooltip(
+        message: _tooltip,
+        child: InkWell(
+          key: const ValueKey('app-title'),
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+            child: Row(
+              children: [
+                // Switching theme repaints everything at once, and the logo
+                // changing in the same frame reads as a glitch rather than as
+                // a choice taking effect. It is keyed by asset so the switcher
+                // treats a different logo as a new child.
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.86, end: 1).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: Image.asset(
+                    widget.model.appTheme.logoAsset,
+                    key: ValueKey(widget.model.appTheme),
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.none,
+                    isAntiAlias: false,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    'Admincraft',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                ),
+                if (_version.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  // Deliberately faint: useful when reporting a problem,
+                  // noise the rest of the time.
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      _version,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant
+                            .withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -78,6 +78,11 @@ flutter:
     # Recoloured from dirt.png by docs/logo/recolor_variant.py.
     - docs/logo/variants/gold.png
     - docs/logo/variants/stone.png
+    - docs/logo/variants/cow.png
+    - docs/logo/variants/villager.png
+    - docs/logo/variants/drowned.png
+    - docs/logo/variants/zombie.png
+    - docs/logo/variants/enderman.png
     # Item icons from mcicons (MIT), named after Minecraft identifiers.
     # See the credits in README.md.
     - assets/mcicons/

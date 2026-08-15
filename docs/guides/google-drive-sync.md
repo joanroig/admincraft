@@ -110,11 +110,15 @@ flutter build windows --release `
   --dart-define=ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET=YOUR_DESKTOP_CLIENT_SECRET
 ```
 
-For this repository's GitHub Actions, configure:
+For this repository's GitHub Actions, add three **repository secrets**:
 
-- Repository variable `ADMINCRAFT_GOOGLE_WEB_CLIENT_ID`
-- Repository variable `ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID`
-- Repository secret `ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET`
+- `ADMINCRAFT_GOOGLE_WEB_CLIENT_ID`
+- `ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID`
+- `ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET`
+
+Secrets, not variables. The two client IDs are not confidential and either
+store would work, but the workflows read all three from `secrets`, and a name
+stored in the other place resolves to an empty string with no warning.
 
 The workflows inject them into the relevant builds. Builds without these
 values still work, but Data & Sync shows **Setup required** and disables Google
