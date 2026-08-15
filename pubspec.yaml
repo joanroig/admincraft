@@ -75,6 +75,9 @@ flutter:
     - docs/logo/variants/diamond.png
     - docs/logo/variants/obsidian_glow.png
     - docs/logo/variants/pig.png
+    # Recoloured from dirt.png by docs/logo/recolor_variant.py.
+    - docs/logo/variants/gold.png
+    - docs/logo/variants/stone.png
     # Item icons from mcicons (MIT), named after Minecraft identifiers.
     # See the credits in README.md.
     - assets/mcicons/

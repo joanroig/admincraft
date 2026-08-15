@@ -43,6 +43,28 @@ enum AppTheme {
     description: 'Soft and rosy',
     seedColor: Color(0xFFD2536B),
     logoAsset: 'docs/logo/variants/pig.png',
+  ),
+  // The last warm hue with room left. It is nearer yellow than the metal
+  // usually is, because a redder gold collapses into Dirt once Material
+  // darkens it for light mode, and it takes the vibrant variant for the same
+  // reason Creeper does.
+  gold(
+    label: 'Gold',
+    description: 'Bright and precious',
+    seedColor: Color(0xFFF9EC4E),
+    logoAsset: 'docs/logo/variants/gold.png',
+    variant: DynamicSchemeVariant.vibrant,
+  ),
+  // Distinct by having no hue at all rather than by finding a free one, which
+  // is also the point of it: something quiet to work against. Blue was the
+  // obvious alternative and does not work, because Diamond and Obsidian sit
+  // either side of it and leave no room.
+  stone(
+    label: 'Stone',
+    description: 'Quiet and neutral',
+    seedColor: Color(0xFF7A7A7A),
+    logoAsset: 'docs/logo/variants/stone.png',
+    variant: DynamicSchemeVariant.neutral,
   );
 
   final String label;
