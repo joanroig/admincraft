@@ -6,6 +6,17 @@ Nothing here recreates your world or restarts Minecraft unnecessarily. Pick the 
 
 This is the arrangement Admincraft is built for, and it needs one extra container beside the one you have. Minecraft itself is untouched.
 
+!!! tip "Skip the copying"
+    [`docker-compose.admincraft.yml`](../server/docker-compose.admincraft.yml) is the
+    service below, ready to layer on top of your own file so you never edit it:
+
+    ```bash
+    curl -fsSLO https://raw.githubusercontent.com/joanroig/admincraft/main/docs/server/docker-compose.admincraft.yml
+    docker compose -f docker-compose.yml -f docker-compose.admincraft.yml up -d
+    ```
+
+    Set `SECRET_KEY` first, and for Java also `SERVER_TYPE: java` and the RCON values.
+
 ### Bedrock
 
 The bridge reads the server console through the Docker socket, so it needs the container name and a secret of its own. Add this service to your existing `docker-compose.yml`:
