@@ -1,0 +1,28 @@
+containers:
+  bedrock:
+    # Backup the world "Moaiworld" on the "minecraft" docker container
+    - name: minecraft
+      # Tells the backup service that this container is accessible
+      # using the mc-server-runner SSH functionality.
+      # passwordFile should point to the .remote-console.yaml file in the container
+      ssh: minecraft:2222
+      passwordFile: /minecraft/.remote-console.yaml
+      worlds:
+        - /minecraft/worlds/Moaiworld
+schedule:
+  # This will perform a backup every 6 hours.
+  # At most this will generate 4 backups a day.
+  interval: 6h
+  startupDelay: 1m
+  # Take a backup whenever the service starts, so every restart (including the
+  # nightly update job) leaves a fresh snapshot behind.
+  # Bedrockifier made this opt-in in v1.4.0; older versions always did it.
+  runInitialBackup: true
+trim:
+  # Keep all backups for the last two days (today and yesterday)
+  # Keep at least one backup for the last 14 days
+  # Keep at least two backups per world
+  trimDays: 2
+  keepDays: 14
+  minKeep: 2
+backupPath: "/backups"

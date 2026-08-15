@@ -86,11 +86,17 @@ class _PreferencesViewState extends State<PreferencesView> {
                     const SizedBox(height: 8),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final columns = constraints.maxWidth >= 720
-                            ? 5
-                            : constraints.maxWidth >= 440
-                                ? 3
-                                : 2;
+                        // Every breakpoint keeps a tile at roughly 100px or
+                        // more, which is what the longest label needs. The
+                        // icon stays 32px: it is 16x16 pixel art, so only
+                        // multiples of 16 scale without blurring it.
+                        final columns = constraints.maxWidth >= 880
+                            ? 8
+                            : constraints.maxWidth >= 720
+                                ? 6
+                                : constraints.maxWidth >= 440
+                                    ? 4
+                                    : 3;
                         const spacing = 8.0;
                         final width =
                             (constraints.maxWidth - spacing * (columns - 1)) /
@@ -289,23 +295,24 @@ class _ThemeChoice extends StatelessWidget {
         key: ValueKey('app-theme-${theme.name}'),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
           child: Column(
             children: [
               Image.asset(
                 theme.logoAsset,
+                // A multiple of 16 keeps the pixel grid exact.
                 width: 32,
                 height: 32,
                 fit: BoxFit.fill,
                 filterQuality: FilterQuality.none,
                 isAntiAlias: false,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text(
                 theme.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge,
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ],
           ),

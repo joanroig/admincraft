@@ -1,0 +1,2342 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Set up, use, back up, and troubleshoot Admincraft.">
+      
+      
+      
+        <link rel="canonical" href="http://127.0.0.1:8000/server/SERVER_SETUP/">
+      
+      
+        <link rel="prev" href="../../getting-started/existing-server/">
+      
+      
+        <link rel="next" href="../../getting-started/java-server/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../logo/variants/dirt.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Bedrock on Oracle free tier - Admincraft Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#minecraft-bedrock-server-on-oracle-cloud-always-free" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Admincraft Docs" class="md-header__button md-logo" aria-label="Admincraft Docs" data-md-component="logo">
+      
+  <img src="../../logo/variants/dirt.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Admincraft Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Bedrock on Oracle free tier
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Use dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Use dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Use light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Use light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joanroig/admincraft" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joanroig/admincraft
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../getting-started/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Getting started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/connection-fields/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../troubleshooting/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Troubleshooting
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../development/building/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Development
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joanroig.github.io/admincraft/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Open Admincraft ↗
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Admincraft Docs" class="md-nav__button md-logo" aria-label="Admincraft Docs" data-md-component="logo">
+      
+  <img src="../../logo/variants/dirt.png" alt="logo">
+
+    </a>
+    Admincraft Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joanroig/admincraft" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joanroig/admincraft
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../getting-started/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install Admincraft
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/first-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect your first server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/existing-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Add to an existing server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bedrock on Oracle free tier
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bedrock on Oracle free tier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setup-a-vm-on-oracle-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup a VM on Oracle Cloud
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup a VM on Oracle Cloud">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minecraft-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minecraft port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#admincraft-websocket-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Admincraft WebSocket port
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-the-minecraft-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup the Minecraft server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-how-to-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing how to connect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connect-admincraft-with-tailscale-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect Admincraft with Tailscale (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternative-tailscale-funnel-no-app-on-the-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: Tailscale Funnel (no app on the client)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternative-public-access-with-self-signed-ssl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: public access with self-signed SSL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keeping-the-server-updated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping the Server Updated
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Keeping the Server Updated">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automatic-nightly-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic nightly update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backups
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-server-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Server Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Server Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-containers-in-the-background-detached-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run containers in the background (detached mode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-containers-in-the-foreground-for-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run containers in the foreground (for debugging)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop containers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restart-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart containers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-containers-the-world-will-not-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all containers (the world will not be lost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-containers-and-volumes-the-world-will-not-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all containers and volumes (the world will not be lost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-images-the-world-will-not-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all images (the world will not be lost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-server-data-the-world-will-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all server data (the world WILL BE LOST!)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#see-logs-interactively" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See logs interactively
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#see-x-log-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See X log lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#see-logs-interactively-for-a-specific-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See logs interactively for a specific container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#send-minecraft-commands-from-outside-the-container-this-is-exactly-how-admincraft-controls-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Send minecraft commands from outside the container (this is exactly how Admincraft controls the server)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-into-the-containers-command-line-do-not-exit-with-ctrl-c-use-ctrl-p-ctrl-q" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go into the container's command line (do not exit with CTRL-C! Use CTRL-P CTRL-Q)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Go into the container&#39;s command line (do not exit with CTRL-C! Use CTRL-P CTRL-Q)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#some-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Some examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-into-the-containers-shell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go into the container's shell
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credits-and-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credits and sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/java-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Java server setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connection-fields/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connection fields explained
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/connection-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connection security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/server-profiles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Server profiles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/backup-transfer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backup and transfer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/google-drive-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Google Drive sync
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the web app
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Development
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Build from source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logo/LOGO_DESIGN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logo design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joanroig.github.io/admincraft/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Open Admincraft ↗
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#setup-a-vm-on-oracle-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup a VM on Oracle Cloud
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup a VM on Oracle Cloud">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#minecraft-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minecraft port
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#admincraft-websocket-port" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Admincraft WebSocket port
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup-the-minecraft-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup the Minecraft server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-how-to-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing how to connect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connect-admincraft-with-tailscale-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connect Admincraft with Tailscale (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternative-tailscale-funnel-no-app-on-the-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: Tailscale Funnel (no app on the client)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternative-public-access-with-self-signed-ssl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative: public access with self-signed SSL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keeping-the-server-updated" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping the Server Updated
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Keeping the Server Updated">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual update
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#automatic-nightly-update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Automatic nightly update
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backups
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-server-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Server Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Server Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-containers-in-the-background-detached-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run containers in the background (detached mode)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-containers-in-the-foreground-for-debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run containers in the foreground (for debugging)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stop containers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restart-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart containers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-containers-the-world-will-not-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all containers (the world will not be lost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-containers-and-volumes-the-world-will-not-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all containers and volumes (the world will not be lost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-images-the-world-will-not-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all images (the world will not be lost)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remove-all-server-data-the-world-will-be-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remove all server data (the world WILL BE LOST!)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#see-logs-interactively" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See logs interactively
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#see-x-log-lines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See X log lines
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#see-logs-interactively-for-a-specific-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See logs interactively for a specific container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#send-minecraft-commands-from-outside-the-container-this-is-exactly-how-admincraft-controls-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Send minecraft commands from outside the container (this is exactly how Admincraft controls the server)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-into-the-containers-command-line-do-not-exit-with-ctrl-c-use-ctrl-p-ctrl-q" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go into the container's command line (do not exit with CTRL-C! Use CTRL-P CTRL-Q)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Go into the container&#39;s command line (do not exit with CTRL-C! Use CTRL-P CTRL-Q)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#some-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Some examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#go-into-the-containers-shell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Go into the container's shell
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#credits-and-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Credits and sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="minecraft-bedrock-server-on-oracle-cloud-always-free"><img alt="Admincraft logo" src="../../logo/variants/enderman.png" /> Minecraft Bedrock Server on Oracle Cloud (Always Free)</h1>
+<p>This guide provides instructions for setting up a Minecraft Bedrock server on <a href="https://www.oracle.com/cloud/free/">Oracle Cloud's Always Free tier</a>. It covers everything from creating a virtual machine (VM) on Oracle Cloud Infrastructure to configuring the server with Docker and managing the server using common commands. After finishing this guide, you'll be able to control your server with Admincraft!</p>
+<h2 id="setup-a-vm-on-oracle-cloud">Setup a VM on Oracle Cloud</h2>
+<ul>
+<li>Create a new instance with those settings:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Placement
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>- Availability domain: AD-1
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Image and shape
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>- Image: Canonical Ubuntu 22.04
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>- Image build: 2024.06.26-0 (or any newer one)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>- Shape: VM.Standard.A1.Flex
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>- OCPU count: 2
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>- Network bandwidth (Gbps): 2
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>- Memory (GB): 12
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>Primary VNIC information
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>- Virtual cloud network -&gt; Choose one or create for later editing
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>- Subnet -&gt; Choose one or create for later editing
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>Add SSH keys
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>Generate a key pair for me -&gt; Download and store safely!
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>Boot volume
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>- Use in-transit encryption
+</code></pre></div>
+<ul>
+<li>
+<p>Once created, take a note of the server IP, you will need it to connect to your server.</p>
+</li>
+<li>
+<p>In <code>Networking &gt; Virtual cloud networks &gt; your network &gt; Subnet Details</code>, select <code>Security List Details</code> and press <code>Add Ingress Rules</code>:</p>
+</li>
+</ul>
+<h3 id="minecraft-port">Minecraft port</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>- Source CIDR: 0.0.0.0/0
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>- IP Protocol: UDP
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>- Destination Port Range: 19132
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>- Description: Minecraft port
+</code></pre></div>
+<h3 id="admincraft-websocket-port">Admincraft WebSocket port</h3>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> Only needed if you follow the <a href="#alternative-public-access-with-self-signed-ssl">self-signed SSL alternative</a>. The recommended Tailscale setup reaches the WebSocket over a private network, so this port stays closed to the internet.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>- Source CIDR: 0.0.0.0/0
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>- IP Protocol: TCP
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>- Destination Port Range: 8080
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>- Description: Admincraft WebSocket port
+</code></pre></div>
+<h2 id="setup-the-minecraft-server">Setup the Minecraft server</h2>
+<ol>
+<li>Login via <a href="https://mobaxterm.mobatek.net/download.html">MobaXterm</a> or the tool of your choice by using the IP, SSH Keys and username (ubuntu if you choose an Ubuntu image).</li>
+<li>Once connected, execute those commands to open the Minecraft port:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>sudo iptables -I INPUT 6 -m state --state NEW -p udp --dport 19132 -j ACCEPT
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>sudo netfilter-persistent save
+</code></pre></div>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> Only add the WebSocket port if you follow the <a href="#alternative-public-access-with-self-signed-ssl">self-signed SSL alternative</a>:
+<code>sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT</code></p>
+</blockquote>
+<ol>
+<li>
+<p>Edit the <a href="../docker-compose.yml">docker-compose.yml</a> file:</p>
+</li>
+<li>
+<p>Change the <code>services.websocket.environment.SECRET_KEY</code> variable for a strong password you will use to control the server with Admincraft. Generate one with <code>openssl rand -hex 32</code> and keep it out of any public repository: anyone holding it can run commands on your server.</p>
+</li>
+<li>
+<p>Change any other variables you like in <code>services.minecraft</code>, like the <code>LEVEL_NAME</code> or <code>LEVEL_SEED</code>, you can see a full list <a href="https://github.com/itzg/docker-minecraft-bedrock-server?tab=readme-ov-file#server-properties">here</a>.</p>
+</li>
+<li>
+<p>Make sure to edit the <a href="../backups-config/config.yml">backups-config/config.yml</a> file, the <code>worlds</code> setting should match the one you have introduced in the setting <code>LEVEL_NAME</code> in the <a href="../docker-compose.yml">docker-compose.yml</a>. You can also change the backups frequency as you like.</p>
+</li>
+<li>
+<p>Upload the <a href="../docker-compose.yml">docker-compose.yml</a> file, the <a href="https://github.com/joanroig/admincraft/tree/main/docs/server/backups-config"><code>backups-config</code></a> folder and the <a href="../update-server.sh">update-server.sh</a> script to the home folder of your server.</p>
+</li>
+<li>Run <code>sudo docker compose up -d</code> to start your server for the first time.</li>
+<li>You should now be able to connect to your server with Minecraft. To connect with Admincraft, continue with the next chapter.</li>
+</ol>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> If you enabled the setting <code>ALLOW_LIST = true</code> in the <a href="../docker-compose.yml">docker-compose.yml</a>, you will need to whitelist the users you want to be able to connect with the command <code>whitelist add username</code>.</p>
+</blockquote>
+<h2 id="choosing-how-to-connect">Choosing how to connect</h2>
+<p>The WebSocket gives full control of your server, so the connection always has to be encrypted by something: either the network it travels over, or TLS. Pick the option that fits you and follow its chapter below.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>App on the client</th>
+<th>Certificate to copy</th>
+<th>Reachable from the internet</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#connect-admincraft-with-tailscale-recommended">Tailscale</a> (recommended)</td>
+<td>Tailscale</td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td><a href="#alternative-tailscale-funnel-no-app-on-the-client">Tailscale Funnel</a></td>
+<td>none</td>
+<td>no</td>
+<td>yes</td>
+</tr>
+<tr>
+<td><a href="#alternative-public-access-with-self-signed-ssl">Self-signed SSL</a></td>
+<td>none</td>
+<td>yes, and again on every renewal</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>Each one maps to a <strong>Connection type</strong> in Admincraft: <code>Private network</code>, <code>Public address, trusted certificate</code> and <code>Public address, self-signed certificate</code>. Java servers can also skip the bridge entirely with <code>Direct RCON, no bridge</code>.</p>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> Running Admincraft in a browser narrows the choice. Self-signed certificates cannot be loaded at all, and if the app itself is served over HTTPS the browser blocks the unencrypted <code>Private network</code> option as mixed content. Tailscale Funnel is the option that always works in a browser.</p>
+</blockquote>
+<h2 id="connect-admincraft-with-tailscale-recommended">Connect Admincraft with Tailscale (recommended)</h2>
+<p>The WebSocket gives full control of your server, so it should never be exposed to the internet without protection. <a href="https://tailscale.com">Tailscale</a> puts your phone and your server on a private encrypted network, so the WebSocket port stays invisible to everyone else. It is free for personal use, needs no certificates and nothing ever expires.</p>
+<ol>
+<li>Install Tailscale on the server:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>curl -fsSL https://tailscale.com/install.sh | sh
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>sudo tailscale up
+</code></pre></div>
+<p>The command prints a login link. Open it and sign in.</p>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> Sign up with a personal account (Google, GitHub, Microsoft). Custom email domains are treated as business use and do not get the free Personal plan.</p>
+</blockquote>
+<ol>
+<li>Note the server's Tailscale address:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>tailscale ip -4
+</code></pre></div>
+<ol>
+<li>
+<p>Install the Tailscale app on your phone or PC and sign in with the same account.</p>
+</li>
+<li>
+<p>Open Admincraft and connect:</p>
+</li>
+<li>
+<p><strong>IP / Hostname:</strong> the Tailscale address from step 2 (for example <code>100.101.102.103</code>)</p>
+</li>
+<li><strong>Port:</strong> <code>8080</code></li>
+<li><strong>Secret key:</strong> the <code>SECRET_KEY</code> from your <a href="../docker-compose.yml">docker-compose.yml</a></li>
+<li><strong>Connection security:</strong> <code>Private network</code></li>
+</ol>
+<p>Admincraft should connect automatically and display the server logs. If there is any issue you will be prompted with an error pop-up.</p>
+<p>Traffic is encrypted by Tailscale itself, so no certificate is needed. Keep port <code>8080</code> closed in your cloud firewall: only your own devices can reach it.</p>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> Tailscale must be connected on the device running Admincraft. To let someone else administer the server, invite them to your Tailscale network instead of sharing the secret key.</p>
+</blockquote>
+<h2 id="alternative-tailscale-funnel-no-app-on-the-client">Alternative: Tailscale Funnel (no app on the client)</h2>
+<p>Use this if you do not want to install Tailscale on every device running Admincraft. Only the server runs Tailscale; Funnel publishes the WebSocket on a public hostname with a certificate that renews itself, so there is still nothing to copy into the app.</p>
+<p>Follow step 1 of the Tailscale setup above to install Tailscale on the server, then:</p>
+<ol>
+<li>Funnel terminates TLS for you, so the WebSocket should speak plain HTTP and listen only on the server itself. In the <a href="../docker-compose.yml">docker-compose.yml</a>, set <code>USE_SSL: "false"</code> and bind the port to loopback:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">127.0.0.1:8080:8080</span>
+</code></pre></div>
+<p>Apply it with <code>sudo docker compose up -d</code>. Binding to <code>127.0.0.1</code> is what keeps the socket private: Funnel reaches it from the server itself, nothing else can, and the cloud firewall becomes a second layer instead of the only one.</p>
+<ol>
+<li>Publish it:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>sudo tailscale funnel --bg 8080
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>sudo tailscale funnel status
+</code></pre></div>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> The first run blocks and prints <code>Funnel is not enabled on your tailnet</code> with a link. Open the link to enable Funnel, then run the command again. It does not continue on its own.</p>
+</blockquote>
+<p><code>status</code> reports your public hostname, in the form <code>machine-name.tailnet-name.ts.net</code>. Tailscale requests and renews the certificate automatically; the public side always uses port <code>443</code>.</p>
+<ol>
+<li>
+<p>Connect Admincraft with:</p>
+</li>
+<li>
+<p><strong>IP / Hostname:</strong> the <code>ts.net</code> hostname reported by <code>tailscale funnel status</code></p>
+</li>
+<li><strong>Port:</strong> <code>443</code></li>
+<li><strong>Secret key:</strong> the <code>SECRET_KEY</code> from your <a href="../docker-compose.yml">docker-compose.yml</a></li>
+<li><strong>Connection security:</strong> <code>Public certificate</code></li>
+</ol>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> With the port bound to <code>127.0.0.1</code>, the private Tailscale option above stops working, because devices on your tailnet can no longer reach it either. To use both, add a second mapping for the server's Tailscale address, for example <code>- 100.101.102.103:8080:8080</code>.</p>
+<p><strong><em>WARNING:</em></strong> Funnel makes the WebSocket reachable from the whole internet, so the <code>SECRET_KEY</code> becomes the only thing protecting your server. Use a long random value and never commit it anywhere public. The private Tailscale setup above is safer.</p>
+</blockquote>
+<h2 id="alternative-public-access-with-self-signed-ssl">Alternative: public access with self-signed SSL</h2>
+<p>Use this if you cannot install Tailscale on the device running Admincraft, or you need the WebSocket reachable from anywhere. It exposes port <code>8080</code> to the internet, so SSL is mandatory and the certificate has to be copied into Admincraft by hand.</p>
+<p>Open port <code>8080</code> first (see <a href="#setup-a-vm-on-oracle-cloud">Setup a VM on Oracle Cloud</a> and step 2 of the server setup), then:</p>
+<ol>
+<li>Edit the <a href="../certs/makecerts.sh">certs/makecerts.sh</a> by changing the variable <code>COMMON_NAME=YOUR_IP_HERE</code> for your server IP.</li>
+<li>Upload the <a href="https://github.com/joanroig/admincraft/tree/main/docs/server/certs"><code>certs</code></a> folder to the home folder of your server.</li>
+<li>Make the script executable, format it for Linux, and run it to generate the certificates:</li>
+</ol>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>cd certs
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>chmod +x makecerts.sh
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>sed -i &#39;s/\r$//&#39; makecerts.sh
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>./makecerts.sh
+</code></pre></div>
+<ol>
+<li>
+<p>In the <a href="../docker-compose.yml">docker-compose.yml</a> file, set <code>services.websocket.environment.USE_SSL</code> to <code>"true"</code> and uncomment the <code>./certs</code> volume mount.</p>
+</li>
+<li>
+<p>The <code>server.crt</code> certificate can be downloaded directly from the server to avoid Man-in-the-Middle attacks. If using a safe network, it can download it from <a href="https://IP:8080/getcert">https://IP:8080/getcert</a> ignoring the security warnings.</p>
+</li>
+<li>
+<p>Open Admincraft and connect:</p>
+</li>
+<li>
+<p><strong>IP / Hostname:</strong> your server IP</p>
+</li>
+<li><strong>Port:</strong> <code>8080</code></li>
+<li><strong>Secret key:</strong> the <code>SECRET_KEY</code> from your <a href="../docker-compose.yml">docker-compose.yml</a></li>
+<li><strong>Connection security:</strong> <code>Self-signed certificate</code>, then load <code>server.crt</code></li>
+</ol>
+<blockquote>
+<p><strong><em>WARNING:</em></strong> Do not expose port <code>8080</code> with <code>Private network</code> selected. That mode sends your secret key and every command in clear text, and is only safe inside Tailscale, a VPN or a LAN.</p>
+<p><strong><em>NOTE:</em></strong> <code>makecerts.sh</code> issues certificates valid for one year. Once it expires Admincraft will refuse to connect, and you have to run the script again and reload <code>server.crt</code>. The Tailscale options avoid this entirely.</p>
+</blockquote>
+<h2 id="keeping-the-server-updated">Keeping the Server Updated</h2>
+<p>There are <strong>two</strong> separate things that need updating, and confusing them will leave your server stranded on an old version:</p>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>How it updates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bedrock server binary</strong></td>
+<td>Re-checked against Mojang's API on every container start, so a restart is enough.</td>
+</tr>
+<tr>
+<td><strong>Container images</strong> (<code>itzg/minecraft-bedrock-server</code>, etc.)</td>
+<td>Only ever update when you explicitly run <code>docker compose pull</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Restarting alone handles the first but <strong>never</strong> the second. That matters because the version lookup lives inside the image: when Mojang changed their download page, older images failed with <code>Unable to find an element with attribute matcher data-platform=serverBedrockLinux</code> and silently kept running the last version they had. Newer images query a JSON API instead. If you only ever restart, you never receive that fix.</p>
+<h3 id="manual-update">Manual update</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>sudo docker compose pull
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>sudo docker compose up -d
+</code></pre></div>
+<p>If the pull fails with <code>unauthorized: your account must log in with a Personal Access Token (PAT)</code>, a stale Docker Hub credential is stored for <code>root</code>. Clear it and retry:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>sudo docker logout
+</code></pre></div>
+<h3 id="automatic-nightly-update">Automatic nightly update</h3>
+<p><a href="../update-server.sh">update-server.sh</a> warns any online players, pulls new images, recreates the stack, prunes old images, and then <strong>verifies that a fresh backup actually landed</strong> before reporting success. Upload it to your home folder and install it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>chmod +x ~/update-server.sh
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>sudo chown root:root ~/update-server.sh
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>sudo crontab -e
+</code></pre></div>
+<p>Add this line to run it every night at 04:00:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>0 4 * * * /home/ubuntu/update-server.sh &gt;&gt; /var/log/minecraft-update.log 2&gt;&amp;1
+</code></pre></div>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> Cron follows the host's system clock. Check yours with <code>timedatectl</code> before assuming a time zone.</p>
+</blockquote>
+<p>Review runs with <code>sudo tail -n 40 /var/log/minecraft-update.log</code>.</p>
+<p>Because <code>VERSION</code> defaults to <code>LATEST</code>, this means Mojang decides when your world converts to a new format, and <strong>Bedrock world upgrades are one-way</strong>. The nightly backup taken immediately after each update is your safety net. If you would rather approve each version bump yourself, pin <code>VERSION: 1.26.43.1</code> (or whichever build you want) in the <a href="../docker-compose.yml">docker-compose.yml</a> — you will still receive image fixes automatically without surprise world conversions.</p>
+<h2 id="backups">Backups</h2>
+<p>Backups are handled by the <code>backup</code> container and configured in <a href="../backups-config/config.yml">backups-config/config.yml</a>. With <code>runInitialBackup: true</code>, a snapshot is taken on every service start in addition to the regular interval, so each nightly update leaves a restore point behind.</p>
+<p>Check that backups are working:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>sudo ls -lht ~/backups
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>sudo docker exec backup /opt/bedrock/bedrockifier healthcheck
+</code></pre></div>
+<p>Force one immediately:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>sudo docker exec backup /opt/bedrock/bedrockifier trigger-backup
+</code></pre></div>
+<blockquote>
+<p><strong><em>NOTE:</em></strong> The container's healthcheck only covers its HTTP endpoint, so it can report <code>healthy</code> while no backups are being written. Trust the timestamps in <code>~/backups</code> over the container status.</p>
+</blockquote>
+<h2 id="common-server-commands">Common Server Commands</h2>
+<p>See all available commands <a href="https://minecraftbedrock-archive.fandom.com/wiki/Commands/List_of_Commands">here</a>.</p>
+<h3 id="run-containers-in-the-background-detached-mode">Run containers in the background (detached mode)</h3>
+<p><code>sudo docker compose up -d</code></p>
+<h3 id="run-containers-in-the-foreground-for-debugging">Run containers in the foreground (for debugging)</h3>
+<p><code>sudo docker compose up</code></p>
+<h3 id="stop-containers">Stop containers</h3>
+<p><code>sudo docker compose stop</code></p>
+<h3 id="restart-containers">Restart containers</h3>
+<p><code>sudo docker compose restart</code></p>
+<h3 id="remove-all-containers-the-world-will-not-be-lost">Remove all containers (the world will not be lost)</h3>
+<p><code>sudo docker compose rm -fsv</code></p>
+<h3 id="remove-all-containers-and-volumes-the-world-will-not-be-lost">Remove all containers and volumes (the world will not be lost)</h3>
+<p><code>sudo docker rm -vf $(sudo docker ps -aq)</code></p>
+<h3 id="remove-all-images-the-world-will-not-be-lost">Remove all images (the world will not be lost)</h3>
+<p><code>sudo docker rmi -f $(sudo docker images -aq)</code></p>
+<h3 id="remove-all-server-data-the-world-will-be-lost">Remove all server data (the world WILL BE LOST!)</h3>
+<p><code>sudo rm -rf minecraft/</code></p>
+<h3 id="see-logs-interactively">See logs interactively</h3>
+<p><code>sudo docker compose logs -f</code></p>
+<h3 id="see-x-log-lines">See X log lines</h3>
+<p><code>sudo docker compose logs --tail 2</code></p>
+<h3 id="see-logs-interactively-for-a-specific-container">See logs interactively for a specific container</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>sudo docker compose logs admincraft -f
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>sudo docker compose logs websocket -f
+</code></pre></div>
+<h3 id="send-minecraft-commands-from-outside-the-container-this-is-exactly-how-admincraft-controls-the-server">Send minecraft commands from outside the container (this is exactly how Admincraft controls the server)</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>sudo docker exec minecraft send-command &lt;commandname&gt;
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>sudo docker exec minecraft send-command whitelist add moaibeats
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>sudo docker exec minecraft send-command give moaibeats coal 20
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>sudo docker exec minecraft send-command time set 2000
+</code></pre></div>
+<h3 id="go-into-the-containers-command-line-do-not-exit-with-ctrl-c-use-ctrl-p-ctrl-q">Go into the container's command line (do not exit with CTRL-C! Use CTRL-P CTRL-Q)</h3>
+<p><code>sudo docker attach minecraft</code></p>
+<h4 id="some-examples">Some examples</h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>whitelist add moaibeats
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>give moaibeats coal 20
+</code></pre></div>
+<h3 id="go-into-the-containers-shell">Go into the container's shell</h3>
+<p><code>sudo docker exec -ti minecraft /bin/bash</code></p>
+<h2 id="architecture">Architecture</h2>
+<p>The system consists of three main containers running in a Docker environment:</p>
+<ol>
+<li>
+<p><strong>Minecraft Bedrock Server</strong> (<code>minecraft</code>):</p>
+</li>
+<li>
+<p>Exposes the Minecraft server to the internet through port <code>19132/udp</code>.</p>
+</li>
+<li>Accepts incoming connections from Minecraft clients.</li>
+<li>SSH access is enabled for the backup process, and the Minecraft server data is stored in a mounted volume.</li>
+<li>
+<p>Server configuration is set in the <code>docker-compose.yml</code> file, allowing for customization of settings such as world seed, level name, and gameplay modes.</p>
+</li>
+<li>
+<p><strong>Admincraft WebSocket Server</strong> (<code>websocket</code>):</p>
+</li>
+<li>
+<p>Listens on port <code>8080</code>, allowing control of the Minecraft server using Admincraft. In the recommended setup this port is reached over Tailscale and stays closed to the internet; the self-signed SSL alternative exposes it publicly instead.</p>
+</li>
+<li>The WebSocket server authenticates incoming connections using JWT (JSON Web Tokens), with the <code>SECRET_KEY</code> stored in environment variables.</li>
+<li>Once authenticated, users can issue Minecraft server commands, which are executed in real time within the Minecraft container.</li>
+<li>
+<p>Additionally, certain Docker-level commands (like restarting the server) can be executed through the WebSocket interface, but these are restricted to predefined key commands for security reasons.</p>
+</li>
+<li>
+<p><strong>Backup Server</strong> (<code>backup</code>):</p>
+</li>
+<li>Connects to the Minecraft server every few hours via SSH to back up world data.</li>
+<li>The backup server uses a mounted volume to store backup files in a dedicated folder, ensuring Minecraft server data can be restored if needed.</li>
+<li>Backup configurations, including the backup schedule and the target Minecraft server, are stored in the <code>backups-config/config.yml</code> file.</li>
+</ol>
+<h2 id="credits-and-sources">Credits and sources</h2>
+<ul>
+<li>https://github.com/itzg/docker-minecraft-bedrock-server</li>
+<li>https://github.com/Kaiede/Bedrockifier</li>
+<li>https://docs.oracle.com/en-us/iaas/developer-tutorials/tutorials/apache-on-ubuntu/01oci-ubuntu-apache-summary.htm</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../getting-started/existing-server/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Add to an existing server">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Add to an existing server
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../getting-started/java-server/" class="md-footer__link md-footer__link--next" aria-label="Next: Java server setup">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Java server setup
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Admincraft is licensed under GPLv3.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/joanroig/admincraft" target="_blank" rel="noopener" title="Admincraft on GitHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.top", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

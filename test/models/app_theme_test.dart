@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:admincraft/models/app_theme.dart';
@@ -31,14 +32,36 @@ void main() {
         for (final b in AppTheme.values) {
           if (a.index >= b.index) continue;
           final gap = _distance(schemes[a]!.primary, schemes[b]!.primary);
+          // The closest pair in the set measures about 49. The old threshold
+          // of 24 was low enough to pass the two greens that were reported as
+          // indistinguishable, at 40.6, so it never guarded anything: this is
+          // set just under what the set actually holds.
           expect(
             gap,
-            greaterThan(24),
+            greaterThan(45),
             reason: '${a.label} and ${b.label} look alike in $brightness '
                 '(primary distance ${gap.toStringAsFixed(1)})',
           );
         }
       }
+    }
+  });
+
+  // A theme whose art is not bundled looks fine in every test and throws only
+  // when someone selects it in a real build.
+  test('every theme logo is bundled', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    for (final theme in AppTheme.values) {
+      expect(
+        File(theme.logoAsset).existsSync(),
+        isTrue,
+        reason: '${theme.label} points at a missing file: ${theme.logoAsset}',
+      );
+      expect(
+        pubspec.contains('- ${theme.logoAsset}'),
+        isTrue,
+        reason: '${theme.label} logo is not declared in pubspec assets',
+      );
     }
   });
 }
