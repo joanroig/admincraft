@@ -8,6 +8,7 @@ class NotificationController with ChangeNotifier {
   static const _storageKey = 'notificationHistory';
   static const _maximumEntries = 100;
   static const _popupsKey = 'notificationPopupsEnabled';
+  static const _duplicateWindow = Duration(seconds: 30);
 
   final SharedPreferences _preferences;
   late List<AppNotification> _entries;
@@ -36,12 +37,21 @@ class NotificationController with ChangeNotifier {
     notifyListeners();
   }
 
-  void add({
+  bool add({
     required AppNotificationKind kind,
     required String title,
     required String message,
   }) {
     final now = DateTime.now().toUtc();
+    if (_entries.isNotEmpty) {
+      final latest = _entries.last;
+      final duplicate =
+          latest.kind == kind &&
+          latest.title == title &&
+          latest.message == message &&
+          now.difference(latest.createdAt) <= _duplicateWindow;
+      if (duplicate) return false;
+    }
     _entries.add(
       AppNotification(
         id: now.microsecondsSinceEpoch.toString(),
@@ -56,6 +66,7 @@ class NotificationController with ChangeNotifier {
     }
     _persist();
     notifyListeners();
+    return true;
   }
 
   void markAllRead() {

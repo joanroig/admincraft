@@ -32,7 +32,6 @@ class OverviewView extends StatelessWidget {
 
     return _PageFrame(
       title: 'Overview',
-      subtitle: 'The current state of ${model.alias}.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -171,12 +170,10 @@ class OverviewView extends StatelessWidget {
 
 class _PageFrame extends StatelessWidget {
   final String title;
-  final String subtitle;
   final Widget child;
 
   const _PageFrame({
     required this.title,
-    required this.subtitle,
     required this.child,
   });
 
@@ -191,8 +188,6 @@ class _PageFrame extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(title, style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 4),
-              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: 12),
               child,
             ],

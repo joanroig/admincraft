@@ -35,6 +35,8 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   late Model _model;
   List<Completion> _suggestions = const [];
   bool _searchVisible = false;
+  bool _showScrollToBottom = false;
+  String _lastRenderedOutput = '';
 
   void _refreshSuggestions() {
     setState(() {
@@ -77,6 +79,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _model = Provider.of<Model>(context, listen: false);
+    _scrollController.addListener(_syncScrollButton);
 
     // Initialize controllers with context
     _terminalController = TerminalController(context);
@@ -106,13 +109,18 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
       return _buildDisabledState();
     }
 
-    // Auto-scroll to bottom when logs are updated
-    if (_model.terminalAutoScroll) {
+    final outputChanged = _lastRenderedOutput != _model.output;
+    _lastRenderedOutput = _model.output;
+    // Follow new output, but do not yank the console down on unrelated
+    // rebuilds after the user has deliberately scrolled up.
+    if (_model.terminalAutoScroll && outputChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncScrollButton());
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
       child: Stack(
         children: [
           Column(
@@ -191,6 +199,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
                   shown,
                   style: TextStyle(
                     fontFamily: _model.terminalFont,
+                    fontFamilyFallback: const ['monospace'],
                     fontSize: _model.terminalFontSize,
                     fontWeight: isUserCommand
                         ? FontWeight.bold
@@ -227,7 +236,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
 
   Widget _buildOutputTools() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
           if (_searchVisible)
@@ -252,18 +261,27 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
               ),
             )
           else
-            TextButton.icon(
-              onPressed: () => setState(() => _searchVisible = true),
-              icon: const Icon(Icons.search),
-              label: const Text('Search output'),
+            Expanded(
+              child: TextButton.icon(
+                onPressed: () => setState(() => _searchVisible = true),
+                style: TextButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  minimumSize: const Size.fromHeight(44),
+                ),
+                icon: const Icon(Icons.search),
+                label: const Text('Search output'),
+              ),
             ),
-          if (_searchVisible) const SizedBox(width: 6),
+          const SizedBox(width: 4),
           IconButton(
             tooltip: _model.terminalAutoScroll
                 ? 'Disable automatic scrolling'
                 : 'Enable automatic scrolling',
-            onPressed: () =>
-                _model.setTerminalAutoScroll(!_model.terminalAutoScroll),
+            onPressed: () async {
+              final enabled = !_model.terminalAutoScroll;
+              await _model.setTerminalAutoScroll(enabled);
+              if (enabled) _scrollToBottom();
+            },
             icon: Icon(
               _model.terminalAutoScroll
                   ? Icons.vertical_align_bottom
@@ -496,29 +514,16 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => _refreshSuggestions(),
-                onSubmitted: (command) async {
-                  await _terminalController.executeCommand(
-                    command,
-                    _commandController,
-                  );
-                  _resetHistoryIndex();
-                  _setText('');
-                },
+                onSubmitted: _submitCommand,
               ),
             ),
           ),
         ),
         const SizedBox(width: 10),
         IconButton(
-          icon: const Icon(Icons.play_arrow, color: Colors.white),
-          onPressed: () async {
-            await _terminalController.executeCommand(
-              _commandController.text,
-              _commandController,
-            );
-            _resetHistoryIndex();
-            _focusNode.requestFocus();
-          },
+          tooltip: 'Send command',
+          icon: const Icon(Icons.send_rounded, color: Colors.white),
+          onPressed: () => _submitCommand(_commandController.text),
           style: IconButton.styleFrom(backgroundColor: Colors.green),
         ),
       ],
@@ -526,6 +531,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   }
 
   Widget _buildScrollToBottomButton() {
+    if (!_showScrollToBottom) return const SizedBox.shrink();
     return Positioned(
       bottom: 120,
       right: 16,
@@ -533,6 +539,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
       // the scheme: a fixed black stayed dark in light mode and its icon
       // disappeared against it.
       child: FloatingActionButton(
+        key: const ValueKey('console-scroll-bottom'),
         onPressed: _scrollToBottom,
         backgroundColor: Theme.of(
           context,
@@ -569,7 +576,27 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      if (_showScrollToBottom && mounted) {
+        setState(() => _showScrollToBottom = false);
+      }
     }
+  }
+
+  void _syncScrollButton() {
+    if (!_scrollController.hasClients || !mounted) return;
+    final show = _scrollController.position.extentAfter > 48;
+    if (show != _showScrollToBottom) {
+      setState(() => _showScrollToBottom = show);
+    }
+  }
+
+  Future<void> _submitCommand(String command) async {
+    await _terminalController.executeCommand(command, _commandController);
+    if (!mounted) return;
+    _resetHistoryIndex();
+    // Clearing a TextEditingController does not fire onChanged. Route through
+    // _setText so numeric suggestions and syntax hints close immediately.
+    _setText('');
   }
 
   void _resetHistoryIndex() {
@@ -581,6 +608,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scrollController.removeListener(_syncScrollButton);
     _focusNode.dispose();
     _scrollController.dispose();
     _commandController.dispose();

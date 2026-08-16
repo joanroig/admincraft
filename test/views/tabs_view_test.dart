@@ -1,5 +1,6 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/controllers/google_drive_sync_controller.dart';
+import 'package:admincraft/controllers/notification_controller.dart';
 import 'dart:convert';
 
 import 'package:admincraft/main.dart';
@@ -40,6 +41,9 @@ void main() {
           ChangeNotifierProvider(create: (_) => ConnectionController()),
           ChangeNotifierProvider(
             create: (_) => GoogleDriveSyncController(prefs),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => NotificationController(prefs),
           ),
         ],
         child: const Admincraft(),
@@ -154,6 +158,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('mobile header is concise and does not repeat the app logo',
+      (tester) async {
+    await pumpApp(tester, const Size(390, 844));
+
+    final appLogos = find.byWidgetPredicate((widget) =>
+        widget is Image &&
+        widget.image is AssetImage &&
+        (widget.image as AssetImage).assetName == 'assets/logo.png');
+    expect(appLogos, findsNothing);
+    expect(find.textContaining('The current state of'), findsNothing);
+    expect(find.byTooltip('Notification history'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('onboarding replaces the workspace until a server is configured',
       (tester) async {
     await pumpApp(tester, const Size(390, 844), withServer: false);
@@ -259,6 +277,12 @@ void main() {
     );
     expect(address.maxLines, 1);
     expect(address.overflow, TextOverflow.ellipsis);
+
+    final serverCard = find.ancestor(
+      of: find.text('My World'),
+      matching: find.byType(Card),
+    );
+    expect(tester.getSize(serverCard.first).height, lessThan(90));
 
     // A RenderFlex overflow is reported as an exception, so this catches the
     // tile being too cramped as well as the text wrapping.

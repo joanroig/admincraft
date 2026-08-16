@@ -21,4 +21,32 @@ void main() {
     expect(restored.entries.single.message, 'The connection closed.');
     expect(restored.unreadCount, 0);
   });
+
+  test(
+    'identical notifications are collapsed while an event is active',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final controller = NotificationController(preferences);
+
+      expect(
+        controller.add(
+          kind: AppNotificationKind.info,
+          title: 'Connected',
+          message: 'My server is connected.',
+        ),
+        isTrue,
+      );
+      expect(
+        controller.add(
+          kind: AppNotificationKind.info,
+          title: 'Connected',
+          message: 'My server is connected.',
+        ),
+        isFalse,
+      );
+      expect(controller.entries, hasLength(1));
+      expect(controller.unreadCount, 1);
+    },
+  );
 }

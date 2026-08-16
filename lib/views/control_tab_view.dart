@@ -6,6 +6,7 @@ import 'package:admincraft/data/java_ids.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/world_state.dart';
+import 'package:admincraft/services/console_parser.dart';
 import 'package:admincraft/utils/command_utils.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:admincraft/utils/toast_utils.dart';
@@ -125,7 +126,6 @@ class _ControlTabState extends State<ControlTab> {
     await _connection.executeMinecraftCommand(_model, command);
     if (!mounted) return;
     setState(() => _lastCommand = command);
-    ToastUtils.showToastSuccess('Sent: $command');
   }
 
   Future<void> _refreshWorld() async {
@@ -451,19 +451,32 @@ class _ControlTabState extends State<ControlTab> {
         .split('\n')
         .where((line) => line.trim().isNotEmpty)
         .toList();
-    final tail = lines.length <= 5 ? lines : lines.sublist(lines.length - 5);
+    final tail = lines.length <= 8 ? lines : lines.sublist(lines.length - 8);
 
-    final latest = tail.isEmpty ? 'Waiting for output...' : tail.last;
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
+    final latest = tail.isEmpty
+        ? 'Waiting for output...'
+        : _formatResponseLine(tail.last, model.consoleTimestampMode);
+    final scheme = Theme.of(context).colorScheme;
+    final consoleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+      fontFamily: model.terminalFont,
+      fontFamilyFallback: const ['monospace'],
+      fontSize: model.terminalFontSize,
+      height: 1.25,
+    );
+
+    return DecoratedBox(
+      key: const ValueKey('control-response-panel'),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainer,
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
             onTap: () => setState(() => _responseExpanded = !_responseExpanded),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
                   const Icon(Icons.terminal, size: 19),
@@ -481,7 +494,7 @@ class _ControlTabState extends State<ControlTab> {
                             latest,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
+                            style: consoleStyle,
                           ),
                       ],
                     ),
@@ -500,9 +513,9 @@ class _ControlTabState extends State<ControlTab> {
             child: !_responseExpanded
                 ? const SizedBox.shrink()
                 : ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 150),
+                    constraints: const BoxConstraints(maxHeight: 180),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -511,25 +524,22 @@ class _ControlTabState extends State<ControlTab> {
                               padding: const EdgeInsets.only(bottom: 6),
                               child: Text(
                                 'Last sent: $_lastCommand',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
+                                style: consoleStyle?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: scheme.primary,
+                                ),
                               ),
                             ),
                           if (tail.isEmpty)
-                            Text(
-                              latest,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            )
+                            Text(latest, style: consoleStyle)
                           else
                             ...tail.map(
                               (line) => Text(
-                                line,
-                                style: Theme.of(context).textTheme.bodySmall,
+                                _formatResponseLine(
+                                  line,
+                                  model.consoleTimestampMode,
+                                ),
+                                style: consoleStyle,
                               ),
                             ),
                         ],
@@ -542,6 +552,16 @@ class _ControlTabState extends State<ControlTab> {
     );
   }
 
+  static String _formatResponseLine(String line, String timestampMode) {
+    if (timestampMode == 'hidden') return ConsoleParser.stripPrefix(line);
+    if (timestampMode != 'short') return line;
+    final match = RegExp(
+      r'^\[\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2})(?::\d{2}[^\s]*)?\s+([^\]]+)\]\s*(.*)$',
+    ).firstMatch(line);
+    if (match == null) return line;
+    return '[${match.group(1)} ${match.group(2)}] ${match.group(3)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!widget.isEnabled) {
@@ -552,16 +572,12 @@ class _ControlTabState extends State<ControlTab> {
     final model = Provider.of<Model>(context);
     final world = model.world;
 
-    // The response stays pinned below the scrolling cards: it is the feedback
-    // for whatever was just tapped, and scrolling away from it would hide the
-    // result of the action.
+    // The response is a full-width bottom surface, visually part of the page
+    // rather than a floating card over the scrolling controls.
     return Column(
       children: [
         Expanded(child: _buildCards(model, world)),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: _responsePanel(model),
-        ),
+        _responsePanel(model),
       ],
     );
   }

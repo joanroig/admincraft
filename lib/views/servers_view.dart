@@ -96,10 +96,8 @@ class ServersView extends StatelessWidget {
 
 /// One saved server.
 ///
-/// Not a ListTile: its trailing widget takes whatever width it wants, and a
-/// status chip beside an edit button left the address a five-line column on a
-/// phone. Here the text spans the card and the chip sits under it, so the
-/// address stays on one line and is truncated rather than stacked.
+/// Kept deliberately compact on phones: connection state lives beside the
+/// title instead of taking a full row below the address.
 class _ServerTile extends StatelessWidget {
   final ServerProfile server;
   final bool selected;
@@ -129,47 +127,57 @@ class _ServerTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: selected ? null : onSelect,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+          padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CircleAvatar(child: ServerIcon(server: server, size: 28)),
-              const SizedBox(width: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: ServerIcon(server: server, size: 34),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      server.alias.isEmpty ? 'Unnamed server' : server.alias,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            server.alias.isEmpty
+                                ? 'Unnamed server'
+                                : server.alias,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                        ),
+                        if (selected) ...[
+                          const SizedBox(width: 8),
+                          _ConnectionLabel(status: status),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      server.edition.label,
-                      style: theme.textTheme.bodySmall,
+                    Row(
+                      children: [
+                        Text(
+                          server.edition.label,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Tooltip(
+                            message: address,
+                            child: Text(
+                              address,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    // Truncated from the left: the port and the end of a
-                    // hostname distinguish two profiles, the leading label
-                    // rarely does.
-                    Tooltip(
-                      message: address,
-                      child: Text(
-                        address,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textDirection: TextDirection.rtl,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
-                    if (selected) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: _ConnectionChip(status: status),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -186,10 +194,10 @@ class _ServerTile extends StatelessWidget {
   }
 }
 
-class _ConnectionChip extends StatelessWidget {
+class _ConnectionLabel extends StatelessWidget {
   final ConnectionStatus status;
 
-  const _ConnectionChip({required this.status});
+  const _ConnectionLabel({required this.status});
 
   @override
   Widget build(BuildContext context) {
@@ -198,11 +206,31 @@ class _ConnectionChip extends StatelessWidget {
       ConnectionStatus.connecting => 'Connecting',
       ConnectionStatus.disconnected => 'Selected',
     };
-    final icon = switch (status) {
-      ConnectionStatus.connected => Icons.check_circle_outline,
-      ConnectionStatus.connecting => Icons.sync,
-      ConnectionStatus.disconnected => Icons.radio_button_checked,
+    final color = switch (status) {
+      ConnectionStatus.connected => Colors.green,
+      ConnectionStatus.connecting => Colors.orange,
+      ConnectionStatus.disconnected => Theme.of(context).colorScheme.outline,
     };
-    return Chip(avatar: Icon(icon, size: 16), label: Text(label));
+    return Semantics(
+      label: label,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

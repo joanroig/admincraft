@@ -23,4 +23,13 @@ void main() {
 
     expect(PersistenceService(preferences).appTheme, AppTheme.dirt);
   });
+
+  test('console defaults to Consolas without timestamps', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final persistence = PersistenceService(preferences);
+
+    expect(persistence.terminalFont, 'Consolas');
+    expect(persistence.consoleTimestampMode, 'hidden');
+  });
 }

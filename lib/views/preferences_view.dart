@@ -336,6 +336,10 @@ class _PreferencesViewState extends State<PreferencesView> {
                       ),
                       items: const [
                         DropdownMenuItem(
+                          value: 'Consolas',
+                          child: Text('Consolas'),
+                        ),
+                        DropdownMenuItem(
                           value: 'Miracode',
                           child: Text('Miracode'),
                         ),
