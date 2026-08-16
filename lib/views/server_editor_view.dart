@@ -217,9 +217,10 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                       final edition = DropdownButtonFormField<MinecraftEdition>(
                         initialValue: _edition,
                         isExpanded: true,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Minecraft edition',
-                          helperText: 'Java RCON is configured on the bridge.',
+                          helperText: _edition.connectivityHint,
+                          helperMaxLines: 2,
                         ),
                         items: MinecraftEdition.values
                             .map((value) => DropdownMenuItem(
@@ -259,7 +260,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                 const SizedBox(height: 14),
                 _SectionCard(
                   title: 'Connection',
-                  subtitle: 'These describe the bridge, not the Minecraft server.',
+                  subtitle: _security.fieldsDescribe,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -335,8 +336,9 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           final port = TextFormField(
                             controller: _portController,
                             decoration: InputDecoration(
-                              labelText: 'Bridge port',
+                              labelText: _security.portLabel,
                               helperText: _security.portHint,
+                              helperMaxLines: 2,
                             ),
                             keyboardType: TextInputType.number,
                             onChanged: (_) => setState(() {}),
@@ -367,10 +369,12 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                         enableSuggestions: false,
                         autocorrect: false,
                         decoration: InputDecoration(
-                          labelText: 'Bridge secret key',
-                          helperText: 'SECRET_KEY, not the RCON password.',
+                          labelText: _security.secretLabel,
+                          helperText: _security.secretHint,
+                          helperMaxLines: 2,
                           suffixIcon: IconButton(
-                            tooltip: _secretVisible ? 'Hide key' : 'Show key',
+                            tooltip:
+                                '${_secretVisible ? 'Hide' : 'Show'} ${_security.secretNoun}',
                             icon: Icon(_secretVisible
                                 ? Icons.visibility_off
                                 : Icons.visibility),
@@ -379,7 +383,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           ),
                         ),
                         validator: (value) => value == null || value.isEmpty
-                            ? 'Enter the WebSocket secret key.'
+                            ? _security.secretMissingMessage
                             : null,
                       ),
                       const SizedBox(height: 12),
