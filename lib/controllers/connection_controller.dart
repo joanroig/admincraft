@@ -189,8 +189,8 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   }
 
   Future<void> executeMinecraftCommand(Model model, String command) async {
-    model.addUserCommand(command);
-    model.recordCommandUsage(command);
+    await model.addUserCommand(command);
+    await model.recordCommandUsage(command);
     model.appendOutputCommand(command);
     if (!connectionService.executeCommand(command)) {
       // In the terminal rather than a toast: that is where the user is

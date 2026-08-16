@@ -17,7 +17,6 @@ class QuietCommandFilter {
 
     for (final reply in List<_PendingQuietReply>.from(_pending)) {
       if (!reply.consume(line)) continue;
-      if (reply.complete) _pending.remove(reply);
       return true;
     }
     return false;
@@ -32,8 +31,7 @@ class _PendingQuietReply {
   final _QuietReplyKind kind;
   final MinecraftEdition edition;
   final String? gamerule;
-  final DateTime expiresAt = DateTime.now().add(const Duration(seconds: 8));
-  bool complete = false;
+  DateTime expiresAt = DateTime.now().add(const Duration(seconds: 8));
   bool _awaitingPlayerNames = false;
 
   _PendingQuietReply(this.kind, this.edition, {this.gamerule});
@@ -75,20 +73,21 @@ class _PendingQuietReply {
     final matches = edition == MinecraftEdition.java
         ? RegExp(r'^The time is \d+$').hasMatch(line)
         : RegExp(r'^Daytime is \d+$').hasMatch(line);
-    if (matches) complete = true;
+    if (matches) _markComplete();
     return matches;
   }
 
   bool _consumePlayers(String rawLine) {
     if (_awaitingPlayerNames) {
-      complete = true;
+      _awaitingPlayerNames = false;
+      _markComplete();
       return true;
     }
 
     final count = ConsoleParser.playerCountHeader(rawLine, edition: edition);
     if (count == null) return false;
     _awaitingPlayerNames = edition == MinecraftEdition.bedrock && count > 0;
-    complete = !_awaitingPlayerNames;
+    if (!_awaitingPlayerNames) _markComplete();
     return true;
   }
 
@@ -100,7 +99,14 @@ class _PendingQuietReply {
             caseSensitive: false,
           ).hasMatch(line)
         : RegExp('^$rule\\s*=', caseSensitive: false).hasMatch(line);
-    if (matches) complete = true;
+    if (matches) _markComplete();
     return matches;
+  }
+
+  void _markComplete() {
+    // Bedrock can return a command result directly and then repeat it through
+    // the followed Docker log. Keep the matcher briefly after the first reply
+    // so both copies stay quiet, without hiding a manual query later on.
+    expiresAt = DateTime.now().add(const Duration(seconds: 2));
   }
 }

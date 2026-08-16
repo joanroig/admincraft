@@ -44,6 +44,7 @@ class _ControlTabState extends State<ControlTab> {
   String? _lastCommand;
   bool _loadingRules = false;
   bool _responseExpanded = false;
+  bool _gamerulesExpanded = false;
 
   static final List<_PromptedAction> _promptedActions = [
     _PromptedAction(
@@ -369,66 +370,97 @@ class _ControlTabState extends State<ControlTab> {
 
   Widget _gamerulesCard(WorldState world) {
     final known = world.gamerules;
+    final booleanRules = known.entries
+        .where((entry) => entry.value == 'true' || entry.value == 'false')
+        .toList();
 
-    return _card(
-      title: 'Game rules',
-      trailing: _loadingRules
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : IconButton(
-              icon: const Icon(Icons.download),
-              tooltip: 'Load current values',
-              onPressed: _loadGamerules,
+    return Card(
+      key: const ValueKey('gamerules-card'),
+      margin: const EdgeInsets.only(bottom: 16),
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        onExpansionChanged: (expanded) =>
+            setState(() => _gamerulesExpanded = expanded),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Game rules',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
-      child: known.isEmpty
-          ? Text(
-              _loadingRules
-                  ? 'Reading rules from the server...'
-                  : 'Load the current values to switch rules on and off.',
-              style: Theme.of(context).textTheme.bodySmall,
+            if (_loadingRules)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'Load current values',
+                onPressed: _loadGamerules,
+              ),
+          ],
+        ),
+        subtitle: !_gamerulesExpanded
+            ? Text(
+                booleanRules.isEmpty
+                    ? 'Collapsed · values not loaded'
+                    : 'Collapsed · ${booleanRules.length} values loaded',
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            : null,
+        children: [
+          if (booleanRules.isEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _loadingRules
+                    ? 'Reading rules from the server...'
+                    : 'Load the current values to switch rules on and off.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             )
-          : Column(
-              children: known.entries
-                  .where((e) => e.value == 'true' || e.value == 'false')
-                  .map((entry) {
-                    final info = BedrockGamerules.forName(entry.key);
-                    return SwitchListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        info.label,
-                        style: Theme.of(context).textTheme.bodyMedium,
+          else
+            ...booleanRules.map((entry) {
+              final info = BedrockGamerules.forName(entry.key);
+              return SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  info.label,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (info.description.isNotEmpty)
+                      Text(
+                        info.description,
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (info.description.isNotEmpty)
-                            Text(
-                              info.description,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          // The raw name still matters: it is what you type into a
-                          // command, and what the server reports back.
-                          Text(
-                            entry.key,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  fontFamily: 'Monocraft',
-                                  color: Theme.of(context).hintColor,
-                                ),
-                          ),
-                        ],
+                    // The raw name still matters: it is what you type into a
+                    // command, and what the server reports back.
+                    Text(
+                      entry.key,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontFamily: 'Monocraft',
+                        color: Theme.of(context).hintColor,
                       ),
-                      isThreeLine: info.description.isNotEmpty,
-                      value: entry.value == 'true',
-                      onChanged: (next) => _send('gamerule ${entry.key} $next'),
-                    );
-                  })
-                  .toList(),
-            ),
+                    ),
+                  ],
+                ),
+                isThreeLine: info.description.isNotEmpty,
+                value: entry.value == 'true',
+                onChanged: (next) => _send('gamerule ${entry.key} $next'),
+              );
+            }),
+        ],
+      ),
     );
   }
 

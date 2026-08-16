@@ -75,6 +75,7 @@ class Model with ChangeNotifier {
         : _servers.first.id;
 
     _commandUsage = _persistenceService.commandUsage;
+    _output = _persistenceService.consoleOutput(_selectedServerId);
   }
 
   static String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
@@ -112,6 +113,7 @@ class Model with ChangeNotifier {
     if (_servers.length <= 1) return;
     _servers = _servers.where((server) => server.id != id).toList();
     await _persistenceService.forgetServerSecrets(id);
+    await _persistenceService.forgetConsoleOutput(id);
     if (_selectedServerId == id) {
       _selectedServerId = _servers.first.id;
       _resetSession();
@@ -284,16 +286,25 @@ class Model with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Drops everything tied to the connected server: output, tracked players
-  /// and world state all belong to the session that is ending.
+  /// Resets live state when the selected server changes. Each profile keeps
+  /// its own transcript, so locally echoed commands do not disappear between
+  /// app launches or server switches.
   void _resetSession() {
-    _output = '';
+    _output = _persistenceService.consoleOutput(_selectedServerId);
     _onlinePlayers.clear();
     _world = const WorldState();
     unawaited(AndroidWidgetService.update(selectedServer, _world));
   }
 
-  void clearOutput() => _resetSession();
+  void clearOutput() {
+    _output = '';
+    _onlinePlayers.clear();
+    _world = const WorldState();
+    unawaited(
+      _persistenceService.saveConsoleOutput(_selectedServerId, _output),
+    );
+    notifyListeners();
+  }
 
   /// Set once a `list` header has been seen, because the names arrive on the
   /// following line, which may even come in a later message.
@@ -349,6 +360,9 @@ class Model with ChangeNotifier {
             .sublist(lines.length - _persistenceService.maxOutLines)
             .join('\n');
       }
+      unawaited(
+        _persistenceService.saveConsoleOutput(_selectedServerId, _output),
+      );
     }
     notifyListeners();
   }

@@ -76,6 +76,37 @@ void main() {
     expect(find.byTooltip('Refresh difficulty from server'), findsNothing);
   });
 
+  testWidgets('game rules start collapsed to keep server actions reachable', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    model.appendOutputCommand('[INFO] keepInventory = true');
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider(create: (_) => ConnectionController()),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: ControlTab(isEnabled: true)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('gamerules-card')), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsNothing);
+    await tester.ensureVisible(find.text('Game rules'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Game rules'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SwitchListTile), findsOneWidget);
+    expect(find.text('Restart Server'), findsOneWidget);
+  });
+
   testWidgets(
     'selected controls keep their icon clear and players autocomplete',
     (tester) async {
@@ -106,10 +137,10 @@ void main() {
       expect(normal.selected, isTrue);
       expect(normal.showCheckmark, isFalse);
 
-    final kick = find.widgetWithText(ActionChip, 'Kick');
-    await tester.ensureVisible(kick);
-    await tester.pumpAndSettle();
-    await tester.tap(kick);
+      final kick = find.widgetWithText(ActionChip, 'Kick');
+      await tester.ensureVisible(kick);
+      await tester.pumpAndSettle();
+      await tester.tap(kick);
       await tester.pumpAndSettle();
       final dialog = find.byType(AlertDialog);
       expect(

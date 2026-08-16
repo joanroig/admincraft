@@ -33,6 +33,7 @@ class PersistenceService {
   static const _consoleTimestampModeKey = 'consoleTimestampMode';
   static const _consoleFilterPatternKey = 'consoleFilterPattern';
   static const _hideCommonConsoleNoiseKey = 'hideCommonConsoleNoise';
+  static const _consoleOutputKeyPrefix = 'consoleOutput.';
 
   final SharedPreferences _prefs;
 
@@ -200,6 +201,21 @@ class PersistenceService {
   Future<void> forgetServerSecrets(String id) async {
     await _secrets?.remove(id);
   }
+
+  String consoleOutput(String serverId) =>
+      _prefs.getString('$_consoleOutputKeyPrefix$serverId') ?? '';
+
+  Future<void> saveConsoleOutput(String serverId, String output) async {
+    final key = '$_consoleOutputKeyPrefix$serverId';
+    if (output.isEmpty) {
+      await _prefs.remove(key);
+    } else {
+      await _prefs.setString(key, output);
+    }
+  }
+
+  Future<void> forgetConsoleOutput(String serverId) =>
+      _prefs.remove('$_consoleOutputKeyPrefix$serverId');
 
   DateTime? get serversUpdatedAt {
     final value = _prefs.getInt(_serversUpdatedAtKey);

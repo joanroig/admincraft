@@ -9,19 +9,28 @@ class TerminalController {
 
   TerminalController(this.context);
 
-  Future<void> executeCommand(String command, TextEditingController commandController) async {
+  Future<void> executeCommand(
+    String command,
+    TextEditingController commandController,
+  ) async {
     final model = Provider.of<Model>(context, listen: false);
-    final connectionController = Provider.of<ConnectionController>(context, listen: false);
+    final connectionController = Provider.of<ConnectionController>(
+      context,
+      listen: false,
+    );
 
     command = command.trim();
     if (command.isNotEmpty) {
-      model.addCommandToHistory(command);
+      await model.addCommandToHistory(command);
       await connectionController.executeMinecraftCommand(model, command);
       commandController.clear();
     }
   }
 
-  Future<void> handleCommandInput(String command, TextEditingController commandController) async {
+  Future<void> handleCommandInput(
+    String command,
+    TextEditingController commandController,
+  ) async {
     final placeholders = _extractPlaceholders(command);
 
     if (placeholders.isEmpty) {
@@ -40,7 +49,10 @@ class TerminalController {
 
     var filledCommand = command;
     for (int i = 0; i < placeholders.length; i++) {
-      filledCommand = filledCommand.replaceFirst('<${placeholders[i]}>', inputs[i]);
+      filledCommand = filledCommand.replaceFirst(
+        '<${placeholders[i]}>',
+        inputs[i],
+      );
     }
 
     // commandController.text = filledCommand;

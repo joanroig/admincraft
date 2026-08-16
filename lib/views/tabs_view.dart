@@ -35,6 +35,8 @@ enum _WorkspaceDestination {
   more,
 }
 
+enum _UnsavedChangesAction { cancel, discard, save }
+
 extension on _WorkspaceDestination {
   String get label => switch (this) {
     _WorkspaceDestination.overview => 'Overview',
@@ -134,31 +136,47 @@ class _TabsState extends State<Tabs> {
 
     _unsavedDialogOpen = true;
     try {
-      final save =
-          await showDialog<bool>(
+      final action =
+          await showDialog<_UnsavedChangesAction>(
             context: context,
             barrierDismissible: false,
             builder: (context) => AlertDialog(
               title: const Text('Save server changes?'),
               content: const Text(
-                'Configuration has unsaved changes. Save them before leaving?',
+                'Configuration has unsaved changes. Save them, discard them, or cancel to keep editing.',
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context, false),
+                  onPressed: () =>
+                      Navigator.pop(context, _UnsavedChangesAction.cancel),
                   child: const Text('Cancel'),
                 ),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(context, _UnsavedChangesAction.discard),
+                  child: const Text('Discard changes'),
+                ),
                 FilledButton.icon(
-                  onPressed: () => Navigator.pop(context, true),
+                  onPressed: () =>
+                      Navigator.pop(context, _UnsavedChangesAction.save),
                   icon: const Icon(Icons.save_outlined),
                   label: const Text('Save changes'),
                 ),
               ],
             ),
           ) ??
-          false;
-      if (!save || !mounted) return false;
-      return await _serverEditorController.save();
+          _UnsavedChangesAction.cancel;
+      if (!mounted) return false;
+      switch (action) {
+        case _UnsavedChangesAction.cancel:
+          return false;
+        case _UnsavedChangesAction.discard:
+          _serverEditorController.discard();
+          _serverEditorDirty = false;
+          return true;
+        case _UnsavedChangesAction.save:
+          return await _serverEditorController.save();
+      }
     } finally {
       _unsavedDialogOpen = false;
     }
@@ -264,7 +282,6 @@ class _TabsState extends State<Tabs> {
     await model.selectServer(id);
     if (!mounted) return;
     _serverEditorDirty = false;
-    _performGo(_WorkspaceDestination.overview);
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
     }
@@ -326,7 +343,6 @@ class _TabsState extends State<Tabs> {
     return switch (destination) {
       _WorkspaceDestination.overview => OverviewView(
         onOpenConsole: () => _go(_WorkspaceDestination.console),
-        onOpenControls: () => _go(_WorkspaceDestination.controls),
         onEditServer: () => _go(_WorkspaceDestination.serverEditor),
       ),
       _WorkspaceDestination.console => TerminalTab(
@@ -500,7 +516,11 @@ class _TabsState extends State<Tabs> {
               ),
         actions: [
           const NotificationInboxButton(),
-          _ConnectionAction(model: model, connection: connection),
+          Padding(
+            key: const ValueKey('mobile-connection-action'),
+            padding: const EdgeInsets.only(right: 8),
+            child: _ConnectionAction(model: model, connection: connection),
+          ),
         ],
       ),
       body: _pageHost(model, connection),

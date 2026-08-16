@@ -20,11 +20,20 @@ import 'package:provider/provider.dart';
 
 class ServerEditorController {
   Future<bool> Function()? _save;
+  VoidCallback? _discard;
 
   Future<bool> save() => _save?.call() ?? Future.value(false);
+  void discard() => _discard?.call();
 
-  void _attach(Future<bool> Function() save) => _save = save;
-  void _detach() => _save = null;
+  void _attach(Future<bool> Function() save, VoidCallback discard) {
+    _save = save;
+    _discard = discard;
+  }
+
+  void _detach() {
+    _save = null;
+    _discard = null;
+  }
 }
 
 class ServerEditorView extends StatefulWidget {
@@ -48,7 +57,7 @@ class ServerEditorView extends StatefulWidget {
 }
 
 class _ServerEditorViewState extends State<ServerEditorView> {
-  final _formKey = GlobalKey<FormState>();
+  GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final _aliasController = TextEditingController();
   final _hostController = TextEditingController();
   final _portController = TextEditingController();
@@ -63,6 +72,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   String _customIconBase64 = '';
   bool _secretVisible = false;
   bool _saving = false;
+  bool _showValidationErrors = false;
+  bool _loadingServer = false;
 
   /// Options depend on the edition and the platform, so the list is rebuilt
   /// rather than fixed: Bedrock has no RCON at all, and a browser cannot open
@@ -82,7 +93,21 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   void initState() {
     super.initState();
     _model = context.read<Model>();
+    _loadSelectedServer();
+    for (final controller in [
+      _aliasController,
+      _hostController,
+      _portController,
+      _secretController,
+    ]) {
+      controller.addListener(_reportDirty);
+    }
+    widget.controller._attach(_save, _discardChanges);
+  }
+
+  void _loadSelectedServer() {
     final server = _model.selectedServer;
+    _loadingServer = true;
     _aliasController.text = server.alias;
     _hostController.text = server.ip;
     _portController.text = server.port.toString();
@@ -99,15 +124,17 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     _security = _securityOptions.contains(server.security)
         ? server.security
         : ConnectionSecurity.trustedCertificate;
-    for (final controller in [
-      _aliasController,
-      _hostController,
-      _portController,
-      _secretController,
-    ]) {
-      controller.addListener(_reportDirty);
-    }
-    widget.controller._attach(_save);
+    _loadingServer = false;
+  }
+
+  void _discardChanges() {
+    if (!mounted) return;
+    setState(() {
+      _formKey = GlobalKey<FormState>();
+      _showValidationErrors = false;
+      _loadSelectedServer();
+    });
+    widget.onDirtyChanged?.call(false);
   }
 
   @override
@@ -115,7 +142,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller == widget.controller) return;
     oldWidget.controller._detach();
-    widget.controller._attach(_save);
+    widget.controller._attach(_save, _discardChanges);
   }
 
   @override
@@ -134,6 +161,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   }
 
   void _reportDirty() {
+    if (_loadingServer) return;
     final original = _model.selectedServer;
     final dirty =
         _aliasController.text != original.alias ||
@@ -299,10 +327,11 @@ class _ServerEditorViewState extends State<ServerEditorView> {
 
   Future<bool> _save() async {
     _normaliseHost();
-    if (!(_formKey.currentState?.validate() ?? false)) return false;
-    if (_security.requiresCertificate && _certificateContent.isEmpty) {
+    final valid = _formKey.currentState?.validate() ?? false;
+    if (!valid) {
+      if (mounted) setState(() => _showValidationErrors = true);
       ToastUtils.showToastError(
-        'Load a server certificate or choose another security mode.',
+        'Complete the highlighted server fields before saving.',
       );
       return false;
     }
@@ -356,6 +385,9 @@ class _ServerEditorViewState extends State<ServerEditorView> {
           constraints: const BoxConstraints(maxWidth: 820),
           child: Form(
             key: _formKey,
+            autovalidateMode: _showValidationErrors
+                ? AutovalidateMode.always
+                : AutovalidateMode.disabled,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -648,7 +680,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                       const SizedBox(height: 12),
                       if (_security.requiresCertificate) ...[
                         const SizedBox(height: 8),
-                        TextField(
+                        TextFormField(
                           controller: _certificateController,
                           readOnly: true,
                           decoration: InputDecoration(
@@ -677,6 +709,11 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                               ],
                             ),
                           ),
+                          validator: (_) =>
+                              _security.requiresCertificate &&
+                                  _certificateContent.isEmpty
+                              ? 'Load a server certificate or choose another security mode.'
+                              : null,
                         ),
                       ],
                     ],

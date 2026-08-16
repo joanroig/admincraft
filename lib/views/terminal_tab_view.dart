@@ -113,7 +113,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     _lastRenderedOutput = _model.output;
     // Follow new output, but do not yank the console down on unrelated
     // rebuilds after the user has deliberately scrolled up.
-    if (_model.terminalAutoScroll && outputChanged) {
+    if (_model.terminalAutoScroll && outputChanged && !_showScrollToBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncScrollButton());
@@ -133,6 +133,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
                 child: _model.output.isEmpty
                     ? _buildLoadingAnimation()
                     : ListView(
+                        key: const ValueKey('console-output-list'),
                         controller: _scrollController,
                         children: _formatOutput(
                           _model.output,
@@ -157,7 +158,6 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   }
 
   Widget _buildDisabledState() {
-    _model.clearOutput();
     return const Center(child: Text('Connect to enable the Terminal.'));
   }
 
@@ -274,7 +274,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
             onPressed: () async {
               final enabled = !_model.terminalAutoScroll;
               await _model.setTerminalAutoScroll(enabled);
-              if (enabled) _scrollToBottom();
+              if (enabled) _scrollToBottom(animate: true);
             },
             icon: Icon(
               _model.terminalAutoScroll
@@ -534,7 +534,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
       // disappeared against it.
       child: FloatingActionButton(
         key: const ValueKey('console-scroll-bottom'),
-        onPressed: _scrollToBottom,
+        onPressed: () => _scrollToBottom(animate: true),
         backgroundColor: Theme.of(
           context,
         ).colorScheme.secondaryContainer.withValues(alpha: 0.85),
@@ -567,13 +567,40 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
 
   void _setCursorToEnd() => _setText(_commandController.text);
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      if (_showScrollToBottom && mounted) {
+  void _scrollToBottom({bool animate = false}) {
+    if (!_scrollController.hasClients) return;
+    final target = _scrollController.position.maxScrollExtent;
+    if (!animate) {
+      _scrollController.jumpTo(target);
+      _finishScrollToBottom();
+      return;
+    }
+
+    _scrollController
+        .animateTo(
+          target,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(_finishScrollToBottom);
+  }
+
+  void _finishScrollToBottom() {
+    if (!mounted) return;
+    // The command area and wrapped log lines may settle one frame after the
+    // animation measured its target. Snap only that small remainder instead
+    // of rebuilding the list at an outdated extent, which caused a blank
+    // flash followed by the log appearing from the top.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final position = _scrollController.position;
+      if (position.extentAfter > 1) {
+        position.jumpTo(position.maxScrollExtent);
+      }
+      if (_showScrollToBottom) {
         setState(() => _showScrollToBottom = false);
       }
-    }
+    });
   }
 
   void _syncScrollButton() {

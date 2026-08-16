@@ -83,6 +83,59 @@ void main() {
     await tester.tap(find.byKey(button));
     await tester.pumpAndSettle();
     expect(find.byKey(button), findsNothing);
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byKey(const ValueKey('console-output-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(
+      scrollable.position.pixels,
+      moreOrLessEquals(scrollable.position.maxScrollExtent, epsilon: 1),
+    );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('scrolling up pauses tail following when new output arrives', (
+    tester,
+  ) async {
+    final model = await pumpTerminal(
+      tester,
+      output: List.generate(80, (index) => 'Output line $index'),
+    );
+    await tester.drag(
+      find.byKey(const ValueKey('console-output-list')),
+      const Offset(0, 500),
+    );
+    await tester.pumpAndSettle();
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byKey(const ValueKey('console-output-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    final before = scrollable.position.pixels;
+
+    model.appendOutputCommand('A new line while reading history');
+    await tester.pump();
+    await tester.pump();
+
+    expect(scrollable.position.pixels, moreOrLessEquals(before, epsilon: 1));
+    expect(find.byKey(const ValueKey('console-scroll-bottom')), findsOneWidget);
+  });
+
+  test('console transcript persists per server', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final first = Model(PersistenceService(preferences));
+    await first.addCommandToHistory('say persisted command');
+    await first.addUserCommand('say persisted command');
+    first.appendOutputCommand('say persisted command');
+    await Future<void>.delayed(Duration.zero);
+
+    final reopened = Model(PersistenceService(preferences));
+    expect(reopened.output, contains('say persisted command'));
+    expect(reopened.commandHistory, contains('say persisted command'));
+    expect(reopened.userCommands, contains('say persisted command'));
   });
 }

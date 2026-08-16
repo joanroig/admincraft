@@ -33,11 +33,7 @@ void main() {
           ],
           child: MaterialApp(
             home: Scaffold(
-              body: OverviewView(
-                onOpenConsole: () {},
-                onOpenControls: () {},
-                onEditServer: () {},
-              ),
+              body: OverviewView(onOpenConsole: () {}, onEditServer: () {}),
             ),
           ),
         ),
@@ -53,6 +49,7 @@ void main() {
       expect(find.textContaining('2026-08-16'), findsNothing);
       expect(find.textContaining('AutoCompaction'), findsNothing);
       expect(find.text('Server ready'), findsNothing);
+      expect(find.text('Quick actions'), findsNothing);
     },
   );
 }
