@@ -158,7 +158,7 @@ class _TabsState extends State<Tabs> {
           ) ??
           false;
       if (!save || !mounted) return false;
-      return _serverEditorController.save();
+      return await _serverEditorController.save();
     } finally {
       _unsavedDialogOpen = false;
     }
