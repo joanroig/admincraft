@@ -6,8 +6,7 @@ import 'dart:ui' as ui;
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/model.dart';
-import 'package:admincraft/services/rcon_client.dart';
-import 'package:admincraft/services/websocket_connector.dart';
+import 'package:admincraft/services/connection_platform_capabilities.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:admincraft/utils/host_utils.dart';
 import 'package:admincraft/utils/toast_utils.dart';
@@ -42,6 +41,7 @@ class ServerEditorView extends StatefulWidget {
   final Future<void> Function() onDeleted;
   final VoidCallback onBack;
   final ValueChanged<bool>? onDirtyChanged;
+  final ConnectionPlatformCapabilities capabilities;
 
   const ServerEditorView({
     super.key,
@@ -50,6 +50,7 @@ class ServerEditorView extends StatefulWidget {
     required this.onDeleted,
     required this.onBack,
     this.onDirtyChanged,
+    this.capabilities = currentConnectionPlatformCapabilities,
   });
 
   @override
@@ -75,19 +76,18 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   bool _showValidationErrors = false;
   bool _loadingServer = false;
 
-  /// Options depend on the edition and the platform, so the list is rebuilt
-  /// rather than fixed: Bedrock has no RCON at all, and a browser cannot open
-  /// the raw socket RCON needs.
-  List<ConnectionSecurity> get _securityOptions =>
-      ConnectionSecurity.values.where((value) {
-        if (value.requiresCertificate && !supportsCustomCertificate) {
-          return false;
-        }
-        if (value.isDirectRcon) {
-          return _edition == MinecraftEdition.java && supportsDirectRcon;
-        }
-        return true;
-      }).toList();
+  bool _supportsSecurity(ConnectionSecurity value) =>
+      widget.capabilities.supports(value, _edition);
+
+  /// Keep an unsupported synced value visible as the selected, disabled item.
+  /// Omitting it used to make the editor silently display Public certificate,
+  /// even though the saved Android profile still contained a self-signed one.
+  List<ConnectionSecurity> get _securityOptions {
+    final saved = _model.selectedServer.security;
+    return ConnectionSecurity.values
+        .where((value) => _supportsSecurity(value) || value == saved)
+        .toList();
+  }
 
   @override
   void initState() {
@@ -118,12 +118,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     _certificateController.text = server.certificate.isEmpty
         ? 'No certificate loaded'
         : 'Certificate loaded';
-    // Edition first: _securityOptions reads it to decide whether direct RCON is
-    // offered, so setting _security before it would read an uninitialised field.
     _edition = server.edition;
-    _security = _securityOptions.contains(server.security)
-        ? server.security
-        : ConnectionSecurity.trustedCertificate;
+    _security = server.security;
     _loadingServer = false;
   }
 
@@ -500,7 +496,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                                   if (value == null) return;
                                   setState(() {
                                     _edition = value;
-                                    if (!_securityOptions.contains(_security)) {
+                                    if (!_supportsSecurity(_security)) {
                                       _security =
                                           ConnectionSecurity.privateNetwork;
                                       _portController.text = _security
@@ -549,7 +545,12 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                             .map(
                               (value) => DropdownMenuItem(
                                 value: value,
-                                child: Text(value.typeLabel),
+                                enabled: _supportsSecurity(value),
+                                child: Text(
+                                  _supportsSecurity(value)
+                                      ? value.typeLabel
+                                      : '${value.typeLabel} (not available in browser)',
+                                ),
                               ),
                             )
                             .toList(),
@@ -602,6 +603,33 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           ],
                         ),
                       ),
+                      if (!_supportsSecurity(_security)) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          key: const ValueKey('connection-platform-warning'),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.browser_not_supported),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  widget.capabilities.unsupportedMessage(
+                                        _security,
+                                        _edition,
+                                      ) ??
+                                      '',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final wide = constraints.maxWidth >= 580;
@@ -690,20 +718,24 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                               children: [
                                 IconButton(
                                   tooltip: 'Load certificate',
-                                  onPressed: _pickCertificate,
+                                  onPressed: _supportsSecurity(_security)
+                                      ? _pickCertificate
+                                      : null,
                                   icon: const Icon(Icons.folder_open),
                                 ),
                                 if (_certificateContent.isNotEmpty)
                                   IconButton(
                                     tooltip: 'Remove certificate',
-                                    onPressed: () {
-                                      setState(() {
-                                        _certificateContent = '';
-                                        _certificateController.text =
-                                            'No certificate loaded';
-                                      });
-                                      _reportDirty();
-                                    },
+                                    onPressed: _supportsSecurity(_security)
+                                        ? () {
+                                            setState(() {
+                                              _certificateContent = '';
+                                              _certificateController.text =
+                                                  'No certificate loaded';
+                                            });
+                                            _reportDirty();
+                                          }
+                                        : null,
                                     icon: const Icon(Icons.clear),
                                   ),
                               ],

@@ -359,6 +359,7 @@ class _TabsState extends State<Tabs> {
       _WorkspaceDestination.serverEditor => ServerEditorView(
         key: ValueKey(model.selectedServerId),
         controller: _serverEditorController,
+        capabilities: connection.capabilities,
         onSaved: _serverSaved,
         onDeleted: _serverDeleted,
         onBack: () => _go(_WorkspaceDestination.servers),
@@ -946,7 +947,9 @@ class _ConnectionAction extends StatelessWidget {
     final connecting = connection.status == ConnectionStatus.connecting;
     // An incomplete profile cannot connect, so the control is disabled and says
     // why, rather than looking available and failing when pressed.
-    final ready = model.selectedServer.isComplete;
+    final compatibilityFailure = connection.compatibilityFailure(model);
+    final ready =
+        model.selectedServer.isComplete && compatibilityFailure == null;
 
     // Colour says what the connection is; the icon says what pressing will do.
     // Neither alone was enough before: a single tonal button looked the same
@@ -967,7 +970,8 @@ class _ConnectionAction extends StatelessWidget {
 
     return Tooltip(
       message: !ready
-          ? 'Finish setting up this server first'
+          ? compatibilityFailure?.message ??
+                'Finish setting up this server first'
           : switch (connection.status) {
               ConnectionStatus.connected => 'Connected. Press to disconnect.',
               ConnectionStatus.connecting => 'Connecting…',

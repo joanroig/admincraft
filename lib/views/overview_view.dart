@@ -20,6 +20,7 @@ class OverviewView extends StatelessWidget {
     final model = context.watch<Model>();
     final connection = context.watch<ConnectionController>();
     final connected = connection.status == ConnectionStatus.connected;
+    final compatibilityFailure = connection.compatibilityFailure(model);
     final world = model.world;
     final outputLines = ConsoleOutputFormatter.visibleLines(
       model.output,
@@ -37,6 +38,11 @@ class OverviewView extends StatelessWidget {
         children: [
           if (!model.selectedServer.isComplete)
             _SetupBanner(onEditServer: onEditServer)
+          else if (compatibilityFailure != null)
+            _CompatibilityBanner(
+              message: compatibilityFailure.message,
+              onEditServer: onEditServer,
+            )
           else if (!connected)
             const Card(
               child: ListTile(
@@ -158,6 +164,67 @@ class OverviewView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CompatibilityBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onEditServer;
+
+  const _CompatibilityBanner({
+    required this.message,
+    required this.onEditServer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      color: scheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.browser_not_supported,
+                  color: scheme.onErrorContainer,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'This connection is not available in the browser',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: scheme.onErrorContainer),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        message,
+                        style: TextStyle(color: scheme.onErrorContainer),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton(
+                onPressed: onEditServer,
+                child: const Text('Review connection'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

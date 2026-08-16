@@ -28,7 +28,17 @@ The private tailnet address still works in the Windows and Android builds, which
 
 ## Self-signed certificates
 
-Web pages cannot install or pin a certificate for a WebSocket connection. The **Self-signed certificate** option is therefore hidden in the web app.
+Web pages cannot install or pin a certificate for a WebSocket connection. The
+**Self-signed certificate** option is therefore not offered for new web
+profiles. A synced native profile still shows its real mode, disabled, so the
+web app does not silently reinterpret it as a public certificate.
+
+If Drive sync brings in a profile that was configured with a self-signed
+certificate on Android or desktop, Admincraft preserves it but does not try to
+connect with it in the browser. Switch that profile to **Public certificate**
+only when the same hostname presents a certificate the browser already trusts.
+If the browser needs another hostname or port, add a separate browser profile
+and keep the native self-signed profile unchanged.
 
 If the browser or operating system already trusts the endpoint certificate, use **Public certificate**. Otherwise use the Windows or Android build, or place the WebSocket behind a publicly trusted TLS endpoint.
 

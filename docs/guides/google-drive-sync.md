@@ -33,6 +33,20 @@ for recovery.
     Keep an exported backup file somewhere safe. A Drive copy cannot be
     decrypted without its passphrase.
 
+## If you forget the passphrase
+
+There is no recovery key or encryption backdoor. If the Drive file is your
+only remaining copy, it cannot be decrypted without the old passphrase.
+
+If Admincraft still has the server profiles on this device, open
+**Settings → Data & Sync → Forgot passphrase?** and choose **Replace Drive
+copy**. Confirm a new passphrase and Admincraft will encrypt the local profiles
+again, overwrite the inaccessible Drive file, and resume sync. This does not
+recover anything that existed only in the old Drive file.
+
+Choose **Disconnect Drive** instead if you want to stop sync without replacing
+the remote file. The profiles on this device are kept.
+
 ## Web app notes
 
 Drive sync works in the web app, but sign-in is tied to the exact site origin.
@@ -41,6 +55,18 @@ and third-party sign-in are allowed for the Admincraft site.
 
 Profiles in the browser still depend on site storage. Drive sync or an
 encrypted backup protects them if browser data is cleared.
+
+### Profiles created with a self-signed certificate
+
+Drive preserves a certificate configured on Android or desktop, but a browser
+cannot use that certificate for pinning. When such a profile is downloaded,
+Admincraft keeps it unchanged for native devices, stops the browser from
+attempting an incompatible connection, and explains the required change.
+
+Use **Public address, trusted certificate** with a hostname and certificate the
+browser already trusts. If the browser reaches the same Minecraft server
+through a different address, keep the self-signed profile for native apps and
+add a second browser-compatible server profile. Admincraft will sync both.
 
 ## Troubleshooting
 
@@ -52,6 +78,7 @@ encrypted backup protects them if browser data is cleared.
 | **No Admincraft configuration exists** | Choose **Upload this device** on the device that has the profiles first. |
 | **Sign-in was cancelled** | Try again and finish the Google account prompt. |
 | **Could not decrypt** | Check that the passphrase exactly matches the one used for the Drive copy. |
+| **Passphrase forgotten** | Use **Forgot passphrase?** to replace Drive from a device that still has the profiles, or disconnect while keeping its local profiles. A Drive-only copy cannot be recovered. |
 
 If you maintain the build, the
 [developer OAuth setup](../development/google-drive-oauth.md) explains origins,

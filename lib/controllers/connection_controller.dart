@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/connection_failure.dart';
+import 'package:admincraft/services/connection_platform_capabilities.dart';
 import 'package:admincraft/services/connection_service.dart';
 import 'package:admincraft/services/retry_policy.dart';
 import 'package:admincraft/utils/toast_utils.dart';
@@ -18,6 +19,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   static const int maxRetries = 3;
 
   final ConnectionService connectionService;
+  final ConnectionPlatformCapabilities capabilities;
   ConnectionStatus get status => connectionService.status;
 
   int _retries = 0;
@@ -32,8 +34,10 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   /// only flashing a toast that may be missed.
   ConnectionFailure? lastFailure;
 
-  ConnectionController({ConnectionService? connectionService})
-    : connectionService = connectionService ?? ConnectionService() {
+  ConnectionController({
+    ConnectionService? connectionService,
+    this.capabilities = currentConnectionPlatformCapabilities,
+  }) : connectionService = connectionService ?? ConnectionService() {
     this.connectionService.onConnectionLost = _handleConnectionLost;
     WidgetsBinding.instance.addObserver(this);
   }
@@ -51,6 +55,14 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
           'This server is not set up yet. Add its address and key first.',
         );
       }
+      return;
+    }
+
+    final platformFailure = compatibilityFailure(model);
+    if (platformFailure != null) {
+      _keepConnected = false;
+      lastFailure = platformFailure;
+      notifyListeners();
       return;
     }
 
@@ -83,6 +95,9 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
       notifyListeners();
     }
   }
+
+  ConnectionFailure? compatibilityFailure(Model model) =>
+      capabilities.failureFor(model.connectionSecurity, model.minecraftEdition);
 
   /// Reports the failure, and schedules another attempt when [decideRetry]
   /// says one is worth making.

@@ -198,6 +198,16 @@ class GoogleDriveSyncController with ChangeNotifier {
     });
   }
 
+  /// Replaces an inaccessible Drive copy with the profiles on this device.
+  ///
+  /// Encryption intentionally has no recovery key. This is therefore a reset,
+  /// not a way to decrypt the previous copy: the caller must warn the user
+  /// before overwriting it.
+  Future<void> replaceDriveCopyWithNewPassphrase(
+    Model model,
+    String passphrase,
+  ) => enableWithUpload(model, passphrase);
+
   Future<void> enableWithDownload(Model model, String passphrase) async {
     await _run(() async {
       final api = await _api(interactive: true);
