@@ -780,28 +780,64 @@ class _ConnectionAction extends StatelessWidget {
 
   const _ConnectionAction({required this.model, required this.connection});
 
+  /// Material has no success role, so the green is supplied here. Red comes
+  /// from the scheme's error role, which every theme already defines.
+  static const Color _connectedDark = Color(0xFF7BDC97);
+  static const Color _connectedLight = Color(0xFF1B5E20);
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
     final connected = connection.status == ConnectionStatus.connected;
     final connecting = connection.status == ConnectionStatus.connecting;
     // An incomplete profile cannot connect, so the control is disabled and says
     // why, rather than looking available and failing when pressed.
     final ready = model.selectedServer.isComplete;
 
-    return IconButton.filledTonal(
-      tooltip: !ready
+    // Colour says what the connection is; the icon says what pressing will do.
+    // Neither alone was enough before: a single tonal button looked the same
+    // whether the server was live or not.
+    final (Color background, Color foreground) = switch ((ready, connecting, connected)) {
+      (false, _, false) => (scheme.surfaceContainerHighest, scheme.outline),
+      (_, true, _) => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
+      (_, _, true) => (
+          (dark ? _connectedDark : _connectedLight).withValues(alpha: 0.20),
+          dark ? _connectedDark : _connectedLight,
+        ),
+      _ => (scheme.errorContainer, scheme.onErrorContainer),
+    };
+
+    return Tooltip(
+      message: !ready
           ? 'Finish setting up this server first'
-          : (connected ? 'Disconnect' : 'Connect'),
-      onPressed: connecting || (!ready && !connected)
-          ? null
-          : () => connection.toggleConnection(model),
-      icon: connecting
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Icon(connected ? Icons.stop_rounded : Icons.play_arrow_rounded),
+          : switch (connection.status) {
+              ConnectionStatus.connected => 'Connected. Press to disconnect.',
+              ConnectionStatus.connecting => 'Connecting…',
+              ConnectionStatus.disconnected => 'Disconnected. Press to connect.',
+            },
+      child: IconButton(
+        onPressed: connecting || (!ready && !connected)
+            ? null
+            : () => connection.toggleConnection(model),
+        style: IconButton.styleFrom(
+          backgroundColor: background,
+          foregroundColor: foreground,
+          disabledBackgroundColor: background,
+          disabledForegroundColor: foreground,
+        ),
+        icon: connecting
+            ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: foreground,
+                ),
+              )
+            : Icon(connected ? Icons.stop_rounded : Icons.play_arrow_rounded),
+      ),
     );
   }
 }

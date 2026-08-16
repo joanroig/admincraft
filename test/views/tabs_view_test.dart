@@ -1,8 +1,12 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/controllers/google_drive_sync_controller.dart';
+import 'dart:convert';
+
 import 'package:admincraft/main.dart';
 import 'package:admincraft/models/app_theme.dart';
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:admincraft/views/welcome_view.dart';
 import 'package:flutter/material.dart';
@@ -217,6 +221,47 @@ void main() {
 
     expect(find.byType(WelcomeView), findsNothing);
     expect(find.text('Servers'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a long address stays on one line in the server list',
+      (tester) async {
+    // The tile used to be a ListTile whose trailing chip and edit button took
+    // whatever width they wanted, leaving a Tailscale hostname stacked five
+    // lines deep down a narrow column on a phone.
+    // No key on purpose: a complete profile connects on startup, and the test
+    // binding refuses real sockets. The address is what this test is about.
+    const server = ServerProfile(
+      id: 'long',
+      alias: 'My World',
+      ip: 'admincraft.tail4e1785.ts.net',
+      port: 443,
+      secretKey: '',
+      certificate: '',
+      security: ConnectionSecurity.trustedCertificate,
+    );
+    await pumpApp(
+      tester,
+      const Size(390, 844),
+      extraPrefs: {
+        'servers': [jsonEncode(server.toJson())],
+        'selectedServer': server.id,
+      },
+    );
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Servers'));
+    await tester.pumpAndSettle();
+
+    final address = tester.widget<Text>(
+      find.text('admincraft.tail4e1785.ts.net:443'),
+    );
+    expect(address.maxLines, 1);
+    expect(address.overflow, TextOverflow.ellipsis);
+
+    // A RenderFlex overflow is reported as an exception, so this catches the
+    // tile being too cramped as well as the text wrapping.
     expect(tester.takeException(), isNull);
   });
 
