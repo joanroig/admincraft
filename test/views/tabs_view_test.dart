@@ -9,8 +9,10 @@ import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/services/connection_service.dart';
+import 'package:admincraft/services/connection_platform_capabilities.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:admincraft/utils/toast_utils.dart';
+import 'package:admincraft/views/server_editor_view.dart';
 import 'package:admincraft/views/welcome_view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +28,8 @@ void main() {
     bool withServer = true,
     Map<String, Object> extraPrefs = const {},
     ConnectionService? connectionService,
+    ConnectionPlatformCapabilities capabilities =
+        currentConnectionPlatformCapabilities,
   }) async {
     SharedPreferences.setMockInitialValues({
       if (withServer) 'onboardingCompleted': true,
@@ -44,8 +48,10 @@ void main() {
             create: (_) => Model(PersistenceService(prefs)),
           ),
           ChangeNotifierProvider(
-            create: (_) =>
-                ConnectionController(connectionService: connectionService),
+            create: (_) => ConnectionController(
+              connectionService: connectionService,
+              capabilities: capabilities,
+            ),
           ),
           ChangeNotifierProvider(
             create: (_) => GoogleDriveSyncController(prefs),
@@ -507,6 +513,62 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'a synced native certificate is preserved and explained in the browser',
+    (tester) async {
+      const server = ServerProfile(
+        id: 'native-certificate',
+        alias: 'Native certificate server',
+        ip: 'server.example.com',
+        port: 8080,
+        secretKey: 'secret',
+        certificate: 'self-signed certificate',
+        security: ConnectionSecurity.customCertificate,
+      );
+      const browserCapabilities = ConnectionPlatformCapabilities(
+        supportsCustomCertificates: false,
+        supportsDirectRcon: false,
+      );
+      final service = _NoopConnectionService();
+
+      await pumpApp(
+        tester,
+        const Size(390, 844),
+        extraPrefs: {
+          'servers': [jsonEncode(server.toJson())],
+          'selectedServer': server.id,
+        },
+        connectionService: service,
+        capabilities: browserCapabilities,
+      );
+
+      expect(
+        find.text('This connection is not available in the browser'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('cannot use the self-signed'), findsOneWidget);
+      expect(service.connectCalls, 0);
+
+      await tester.tap(find.text('Review connection'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Public address, self-signed certificate (not available in browser)',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('connection-platform-warning')),
+        findsOneWidget,
+      );
+      final model = tester.element(find.byType(ServerEditorView)).read<Model>();
+      expect(model.connectionSecurity, ConnectionSecurity.customCertificate);
+      expect(model.certificate, 'self-signed certificate');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('theme picker stays one row until it is expanded', (
     tester,
   ) async {
@@ -578,7 +640,7 @@ void main() {
     PackageInfo.setMockInitialValues(
       appName: 'Admincraft',
       packageName: 'com.joanroig.admincraft',
-      version: '2.3.1',
+      version: '2.3.2',
       buildNumber: '1',
       buildSignature: '',
     );
@@ -614,6 +676,10 @@ void main() {
 }
 
 class _NoopConnectionService extends ConnectionService {
+  int connectCalls = 0;
+
   @override
-  Future<void> connect(Model model, {bool reconnect = false}) async {}
+  Future<void> connect(Model model, {bool reconnect = false}) async {
+    connectCalls++;
+  }
 }

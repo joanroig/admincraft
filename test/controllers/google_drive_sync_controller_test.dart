@@ -260,6 +260,64 @@ void main() {
     },
   );
 
+  test(
+    'forgotten passphrase recovery replaces Drive and stores the new secret',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'servers': [jsonEncode(localServer.toJson())],
+        'selectedServer': localServer.id,
+        'googleDriveSyncEnabled': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final model = Model(PersistenceService(prefs));
+      final secureValues = _MemorySecureValues()
+        ..values['admincraft.google-drive.passphrase'] = 'forgotten';
+      String? uploadedBody;
+      final client = MockClient((request) async {
+        if (request.method == 'GET') {
+          return http.Response(
+            jsonEncode({
+              'files': [
+                {
+                  'id': 'inaccessible-copy',
+                  'modifiedTime': DateTime.now().toUtc().toIso8601String(),
+                },
+              ],
+            }),
+            200,
+          );
+        }
+        uploadedBody = request.body;
+        return http.Response(
+          jsonEncode({
+            'id': 'inaccessible-copy',
+            'modifiedTime': DateTime.now().toUtc().toIso8601String(),
+          }),
+          200,
+        );
+      });
+      final controller = GoogleDriveSyncController(
+        prefs,
+        auth: _FakeAuth(client),
+        secureValues: secureValues,
+      );
+
+      await controller.initialize(model);
+      await controller.replaceDriveCopyWithNewPassphrase(
+        model,
+        'new passphrase',
+      );
+
+      expect(
+        secureValues.values['admincraft.google-drive.passphrase'],
+        'new passphrase',
+      );
+      expect(uploadedBody, contains('admincraft-config'));
+      expect(uploadedBody, isNot(contains('local-secret')));
+      expect(controller.automaticSyncEnabled, isTrue);
+    },
+  );
+
   test('first download replaces local profiles and enables sync', () async {
     SharedPreferences.setMockInitialValues({
       'servers': [jsonEncode(localServer.toJson())],

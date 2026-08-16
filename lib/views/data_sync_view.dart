@@ -13,6 +13,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+enum _PassphraseRecoveryAction { replaceDriveCopy, disconnect }
+
 class DataSyncView extends StatefulWidget {
   final Future<void> Function() onServersChanged;
 
@@ -111,7 +113,8 @@ class _DataSyncViewState extends State<DataSyncView> {
       final servers = await ConfigTransfer.import(blob, passphrase);
       if (servers.isEmpty) {
         throw const ConfigTransferException(
-            'This backup does not contain any servers.');
+          'This backup does not contain any servers.',
+        );
       }
       if (!mounted) return;
       final confirmed = await DialogUtils.confirmAction(
@@ -182,6 +185,66 @@ class _DataSyncViewState extends State<DataSyncView> {
     );
   }
 
+  Future<void> _recoverDrivePassphrase() async {
+    final action = await showDialog<_PassphraseRecoveryAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.key_off_outlined),
+        title: const Text('Forgot the sync passphrase?'),
+        content: const Text(
+          'The existing encrypted Drive copy cannot be decrypted without its '
+          'old passphrase.\n\nIf this device still has the server profiles you '
+          'want, you can replace the Drive copy and protect it with a new '
+          'passphrase. Otherwise, disconnect Drive and keep the profiles on '
+          'this device.\n\nIf Drive is your only remaining copy, it cannot be '
+          'recovered.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              _PassphraseRecoveryAction.disconnect,
+            ),
+            child: const Text('Disconnect Drive'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              dialogContext,
+              _PassphraseRecoveryAction.replaceDriveCopy,
+            ),
+            child: const Text('Replace Drive copy'),
+          ),
+        ],
+      ),
+    );
+    if (action == null || !mounted) return;
+
+    if (action == _PassphraseRecoveryAction.disconnect) {
+      await _drive.disconnect();
+      ToastUtils.showToastSuccess(
+        'Google Drive disconnected. Local server profiles were kept.',
+      );
+      return;
+    }
+
+    final passphrase = await DialogUtils.promptForPassphrase(
+      context,
+      title: 'Set a new sync passphrase',
+      message:
+          'The profiles currently on this device will replace the inaccessible Drive copy.',
+      confirm: true,
+    );
+    if (passphrase == null || !mounted) return;
+    await _driveAction(
+      () => _drive.replaceDriveCopyWithNewPassphrase(_model, passphrase),
+      'Google Drive was replaced and protected with the new passphrase.',
+    );
+  }
+
   Future<void> _driveAction(
     Future<void> Function() action,
     String success,
@@ -241,10 +304,10 @@ class _DataSyncViewState extends State<DataSyncView> {
     final subtitle = !drive.configured
         ? 'This build has no Google OAuth client IDs. Add them at build time to enable Drive.'
         : !drive.signedIn
-            ? 'Sign in to keep the same encrypted server profiles on every device.'
-            : drive.automaticSyncEnabled
-                ? '${account == null ? 'Connected to Google Drive' : 'Connected as $account'} · ${_lastSyncLabel(drive.lastSyncAt)}'
-                : '${account ?? 'Google account connected'} · Choose which copy to use first.';
+        ? 'Sign in to keep the same encrypted server profiles on every device.'
+        : drive.automaticSyncEnabled
+        ? '${account == null ? 'Connected to Google Drive' : 'Connected as $account'} · ${_lastSyncLabel(drive.lastSyncAt)}'
+        : '${account ?? 'Google account connected'} · Choose which copy to use first.';
 
     final actions = <Widget>[];
     if (drive.configured && !drive.signedIn) {
@@ -271,6 +334,11 @@ class _DataSyncViewState extends State<DataSyncView> {
           icon: const Icon(Icons.cloud_download_outlined),
           label: const Text('Use Drive copy'),
         ),
+        TextButton.icon(
+          onPressed: drive.busy ? null : _recoverDrivePassphrase,
+          icon: const Icon(Icons.key_off_outlined),
+          label: const Text('Forgot passphrase?'),
+        ),
         TextButton(
           onPressed: drive.busy ? null : drive.disconnect,
           child: const Text('Sign out'),
@@ -282,9 +350,9 @@ class _DataSyncViewState extends State<DataSyncView> {
           onPressed: drive.busy
               ? null
               : () => _driveAction(
-                    () => drive.syncNow(_model),
-                    'Google Drive is up to date.',
-                  ),
+                  () => drive.syncNow(_model),
+                  'Google Drive is up to date.',
+                ),
           icon: const Icon(Icons.sync),
           label: const Text('Sync now'),
         ),
@@ -297,6 +365,11 @@ class _DataSyncViewState extends State<DataSyncView> {
           onPressed: drive.busy ? null : _forceDriveDownload,
           icon: const Icon(Icons.cloud_download_outlined),
           label: const Text('Download'),
+        ),
+        TextButton.icon(
+          onPressed: drive.busy ? null : _recoverDrivePassphrase,
+          icon: const Icon(Icons.key_off_outlined),
+          label: const Text('Forgot passphrase?'),
         ),
         TextButton(
           onPressed: drive.busy ? null : drive.disconnect,
@@ -316,8 +389,8 @@ class _DataSyncViewState extends State<DataSyncView> {
                 final status = !drive.configured
                     ? const Chip(label: Text('Setup required'))
                     : drive.automaticSyncEnabled
-                        ? const Chip(label: Text('Automatic'))
-                        : null;
+                    ? const Chip(label: Text('Automatic'))
+                    : null;
                 final icon = Icon(
                   Icons.cloud_sync_outlined,
                   size: 30,
@@ -408,8 +481,10 @@ class _DataSyncViewState extends State<DataSyncView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Data & Sync',
-                            style: Theme.of(context).textTheme.headlineMedium),
+                        Text(
+                          'Data & Sync',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'Move or protect every saved server profile.',
@@ -440,8 +515,9 @@ class _DataSyncViewState extends State<DataSyncView> {
                           'Copy an encrypted configuration and paste it on another device.',
                       actions: [
                         FilledButton.icon(
-                          onPressed:
-                              busy ? null : () => _export(toClipboard: true),
+                          onPressed: busy
+                              ? null
+                              : () => _export(toClipboard: true),
                           icon: const Icon(Icons.copy),
                           label: const Text('Copy config'),
                         ),
@@ -459,8 +535,9 @@ class _DataSyncViewState extends State<DataSyncView> {
                           'Keep a portable encrypted backup for offline transfer or recovery.',
                       actions: [
                         FilledButton.icon(
-                          onPressed:
-                              busy ? null : () => _export(toClipboard: false),
+                          onPressed: busy
+                              ? null
+                              : () => _export(toClipboard: false),
                           icon: const Icon(Icons.save_alt),
                           label: const Text('Export file'),
                         ),
@@ -501,7 +578,7 @@ class _DataSyncViewState extends State<DataSyncView> {
                   leading: Icon(Icons.lock_outline),
                   title: Text('Your passphrase is never stored in the backup'),
                   subtitle: Text(
-                    'Anyone importing it must know the passphrase you chose during export.',
+                    'There is no recovery key. Keep the passphrase or an accessible copy of your server profiles.',
                   ),
                 ),
               ),
