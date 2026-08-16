@@ -112,6 +112,30 @@ extension ConnectionSecurityInfo on ConnectionSecurity {
     }
   }
 
+  /// Everything below the picker belongs either to the bridge or to the
+  /// Minecraft server, and only this mode moves it to the latter. Labelling the
+  /// fields from here keeps them honest: they used to name the bridge outright,
+  /// so choosing direct RCON left the editor asking for a bridge port and a
+  /// bridge key that no longer existed.
+  String get portLabel => isDirectRcon ? 'RCON port' : 'Bridge port';
+
+  String get secretLabel => isDirectRcon ? 'RCON password' : 'Bridge secret key';
+
+  String get secretHint => isDirectRcon
+      ? 'rcon.password from server.properties.'
+      : 'SECRET_KEY from the bridge, not the RCON password.';
+
+  String get secretMissingMessage =>
+      isDirectRcon ? 'Enter the RCON password.' : 'Enter the bridge secret key.';
+
+  /// For prose about the field, such as the reveal button's tooltip.
+  String get secretNoun => isDirectRcon ? 'password' : 'key';
+
+  /// What the address, port and key below actually describe.
+  String get fieldsDescribe => isDirectRcon
+      ? 'These describe the Minecraft server itself. No bridge is involved.'
+      : 'These describe the bridge, not the Minecraft server.';
+
   String get portHint {
     switch (this) {
       case ConnectionSecurity.privateNetwork:
