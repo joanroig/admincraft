@@ -45,6 +45,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('There are 0/10 players online:'), findsOneWidget);
+      final recent = tester.widget<Text>(
+        find.text('There are 0/10 players online:'),
+      );
+      expect(recent.style?.height, 1.08);
+      expect(recent.strutStyle?.forceStrutHeight, isTrue);
       expect(find.textContaining('2026-08-16'), findsNothing);
       expect(find.textContaining('AutoCompaction'), findsNothing);
       expect(find.text('Server ready'), findsNothing);

@@ -7,6 +7,7 @@ import 'package:admincraft/services/connection_diagnosis.dart';
 import 'package:admincraft/services/connection_failure.dart';
 import 'package:admincraft/services/rcon_client.dart';
 import 'package:admincraft/services/rcon_connection.dart';
+import 'package:admincraft/services/quiet_command_filter.dart';
 import 'package:admincraft/services/websocket_connector.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -22,6 +23,7 @@ class ConnectionService {
   WebSocketChannel? _channel;
   RconConnection? _rcon;
   StreamSubscription? _subscription;
+  final QuietCommandFilter _quietReplies = QuietCommandFilter();
 
   /// Called when an established connection ends, with the reason if there is
   /// one. The controller decides from that whether trying again makes sense.
@@ -52,8 +54,9 @@ class ConnectionService {
 
     final security = model.connectionSecurity;
     final protocol = security.usesTls ? 'wss' : 'ws';
-    final uri =
-        Uri.parse('$protocol://${model.ip}:${model.port}?token=$jwtToken');
+    final uri = Uri.parse(
+      '$protocol://${model.ip}:${model.port}?token=$jwtToken',
+    );
 
     final channel = _openChannel(model, uri, security);
 
@@ -73,7 +76,7 @@ class ConnectionService {
 
     _status = ConnectionStatus.connected;
     _subscription = channel.stream.listen(
-      (message) => model.appendOutputCommand(message),
+      (message) => _receive(model, message.toString()),
       onError: (error) => _endConnection(
         model,
         diagnoseConnectionError(
@@ -124,17 +127,13 @@ class ConnectionService {
     onConnectionLost?.call(model, failure);
   }
 
-  String createJwt(
-    String userId,
-    String secretKey, {
-    required String edition,
-  }) {
+  String createJwt(String userId, String secretKey, {required String edition}) {
     final jwt = JWT({
       'userId': userId,
       'edition': edition,
       'exp':
           DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
-              1000,
+          1000,
     });
     return jwt.sign(SecretKey(secretKey));
   }
@@ -154,6 +153,21 @@ class ConnectionService {
     if (!isConnected()) return false;
     _channel?.sink.add(message);
     return true;
+  }
+
+  /// Sends an automatic status query and suppresses only its matching reply
+  /// from visible history. The model still observes that reply first.
+  bool executeQuietCommand(Model model, String message) {
+    if (!isConnected()) return false;
+    _quietReplies.expect(message, model.minecraftEdition);
+    return executeCommand(message);
+  }
+
+  void _receive(Model model, String message) {
+    for (final line in message.split('\n')) {
+      if (line.trim().isEmpty) continue;
+      model.appendOutputCommand(line, visible: !_quietReplies.shouldHide(line));
+    }
   }
 
   /// Talks to the Minecraft server directly, with no bridge.
@@ -177,8 +191,7 @@ class ConnectionService {
       );
     } on RconUnsupportedException catch (error) {
       _status = ConnectionStatus.disconnected;
-      throw ConnectionFailure(
-          ConnectionFailureKind.unsupported, error.message);
+      throw ConnectionFailure(ConnectionFailureKind.unsupported, error.message);
     } catch (error) {
       _status = ConnectionStatus.disconnected;
       throw diagnoseConnectionError(
@@ -193,7 +206,7 @@ class ConnectionService {
     _status = ConnectionStatus.connected;
 
     _subscription = rcon.responses.listen(
-      (response) => model.appendOutputCommand(response),
+      (response) => _receive(model, response),
       onError: (Object error) => _endConnection(
         model,
         diagnoseConnectionError(
@@ -216,7 +229,8 @@ class ConnectionService {
     // Nothing arrives unprompted, so say something rather than leaving the
     // terminal blank and looking unconnected.
     model.appendOutputCommand(
-        'Connected over RCON. Command replies appear here; RCON cannot stream the server log.');
+      'Connected over RCON. Command replies appear here; RCON cannot stream the server log.',
+    );
   }
 
   /// Closes the connection on purpose. Nothing is reported: the user did it.
@@ -230,6 +244,7 @@ class ConnectionService {
     _subscription = null;
     _channel = null;
     _rcon = null;
+    _quietReplies.clear();
   }
 
   bool isConnected() {

@@ -25,29 +25,36 @@ class DialogUtils {
   static Widget _syntax(BedrockCommand command, ThemeData theme) {
     final base = theme.textTheme.bodyMedium;
     return RichText(
-      text: TextSpan(children: [
-        TextSpan(
-            text: command.name,
-            style: base?.copyWith(fontWeight: FontWeight.bold)),
-        for (final arg in command.args)
+      text: TextSpan(
+        children: [
           TextSpan(
-            text: ' ${arg.hint}',
-            style: base?.copyWith(color: base.color?.withValues(alpha: 0.55)),
+            text: command.name,
+            style: base?.copyWith(fontWeight: FontWeight.bold),
           ),
-      ]),
+          for (final arg in command.args)
+            TextSpan(
+              text: ' ${arg.hint}',
+              style: base?.copyWith(color: base.color?.withValues(alpha: 0.55)),
+            ),
+        ],
+      ),
     );
   }
 
   /// Browsable command reference, grouped by category and searchable by name
   /// or description.
   static void showDefaultCommandsPopup(
-      BuildContext context, Function(String) onCommandSelected) {
+    BuildContext context,
+    Function(String) onCommandSelected,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         final theme = Theme.of(context);
-        final edition =
-            Provider.of<Model>(context, listen: false).minecraftEdition;
+        final edition = Provider.of<Model>(
+          context,
+          listen: false,
+        ).minecraftEdition;
         final commands = MinecraftCommands.all(edition);
         var query = '';
 
@@ -62,8 +69,10 @@ class DialogUtils {
             }).toList();
 
             // Grouped so the list reads as sections rather than one long run.
-            final categories =
-                matches.map((command) => command.category).toSet().toList();
+            final categories = matches
+                .map((command) => command.category)
+                .toSet()
+                .toList();
 
             return AlertDialog(
               title: Row(
@@ -95,34 +104,44 @@ class DialogUtils {
                     Expanded(
                       child: matches.isEmpty
                           ? Center(
-                              child: Text('No command matches "$query"',
-                                  style: theme.textTheme.bodySmall),
+                              child: Text(
+                                'No command matches "$query"',
+                                style: theme.textTheme.bodySmall,
+                              ),
                             )
                           : ListView(
                               shrinkWrap: true,
                               children: [
                                 for (final category in categories) ...[
                                   Padding(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(4, 10, 4, 6),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      4,
+                                      10,
+                                      4,
+                                      6,
+                                    ),
                                     child: Row(
                                       children: [
-                                        Icon(_categoryIcon(category),
-                                            size: 16,
-                                            color: theme.colorScheme.primary),
+                                        Icon(
+                                          _categoryIcon(category),
+                                          size: 16,
+                                          color: theme.colorScheme.primary,
+                                        ),
                                         const SizedBox(width: 6),
                                         Text(
                                           category.toUpperCase(),
                                           style: theme.textTheme.labelSmall
                                               ?.copyWith(
-                                                  color: theme
-                                                      .colorScheme.primary),
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  for (final command in matches
-                                      .where((c) => c.category == category))
+                                  for (final command in matches.where(
+                                    (c) => c.category == category,
+                                  ))
                                     InkWell(
                                       onTap: () {
                                         Navigator.of(context).pop();
@@ -132,16 +151,19 @@ class DialogUtils {
                                       },
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 8),
+                                          horizontal: 8,
+                                          vertical: 8,
+                                        ),
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
                                             _syntax(command, theme),
                                             const SizedBox(height: 2),
-                                            Text(command.description,
-                                                style:
-                                                    theme.textTheme.bodySmall),
+                                            Text(
+                                              command.description,
+                                              style: theme.textTheme.bodySmall,
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -199,7 +221,8 @@ class DialogUtils {
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: Icon(
-                            visible ? Icons.visibility : Icons.visibility_off),
+                          visible ? Icons.visibility : Icons.visibility_off,
+                        ),
                         onPressed: () => setState(() => visible = !visible),
                       ),
                     ),
@@ -235,8 +258,9 @@ class DialogUtils {
                   child: const Text('Cancel'),
                 ),
                 TextButton(
-                  onPressed:
-                      canSubmit ? () => Navigator.of(context).pop(value) : null,
+                  onPressed: canSubmit
+                      ? () => Navigator.of(context).pop(value)
+                      : null,
                   child: const Text('OK'),
                 ),
               ],
@@ -279,40 +303,96 @@ class DialogUtils {
   }
 
   static Future<String?> promptForInput(
-      BuildContext context, String placeholder) {
+    BuildContext context,
+    String placeholder, {
+    Iterable<String> suggestions = const [],
+  }) {
     final TextEditingController inputController = TextEditingController();
     final FocusNode focusNode = FocusNode();
+    final options = suggestions.toSet().toList()
+      ..sort(
+        (left, right) => left.toLowerCase().compareTo(right.toLowerCase()),
+      );
 
-    return showDialog<String>(
+    final result = showDialog<String>(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
+            final query = inputController.text.trim().toLowerCase();
+            final matches = options
+                .where(
+                  (option) =>
+                      query.isEmpty || option.toLowerCase().contains(query),
+                )
+                .take(5)
+                .toList();
+
             return AlertDialog(
               title: Text('Enter $placeholder'),
-              content: TextField(
-                controller: inputController,
-                focusNode: focusNode,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Enter $placeholder',
+              content: SizedBox(
+                width: 340,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: inputController,
+                      focusNode: focusNode,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Enter $placeholder',
+                        prefixIcon: options.isEmpty
+                            ? null
+                            : const Icon(Icons.person_search_outlined),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) {
+                        if (inputController.text.trim().isNotEmpty) {
+                          Navigator.of(
+                            context,
+                          ).pop(inputController.text.trim());
+                        }
+                      },
+                    ),
+                    if (matches.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 180),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: matches.length,
+                          itemBuilder: (context, index) {
+                            final player = matches[index];
+                            return ListTile(
+                              dense: true,
+                              visualDensity: VisualDensity.compact,
+                              leading: const Icon(Icons.person_outline),
+                              title: Text(player),
+                              onTap: () {
+                                inputController.value = TextEditingValue(
+                                  text: player,
+                                  selection: TextSelection.collapsed(
+                                    offset: player.length,
+                                  ),
+                                );
+                                focusNode.requestFocus();
+                                setState(() {});
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                onChanged: (value) {
-                  // Rebuild the UI to update the state of the OK button
-                  setState(() {});
-                },
-                onSubmitted: (value) {
-                  if (inputController.text.trim().isNotEmpty) {
-                    Navigator.of(context).pop(inputController.text.trim());
-                  }
-                },
               ),
               actions: [
                 TextButton(
                   onPressed: inputController.text.trim().isNotEmpty
                       ? () {
-                          Navigator.of(context)
-                              .pop(inputController.text.trim());
+                          Navigator.of(
+                            context,
+                          ).pop(inputController.text.trim());
                         }
                       : null,
                   child: const Text('OK'),
@@ -329,17 +409,24 @@ class DialogUtils {
         );
       },
     );
+    return result.whenComplete(() {
+      inputController.dispose();
+      focusNode.dispose();
+    });
   }
 
   static void showClearHistoryDialog(
-      BuildContext context, Function resetHistoryIndex) {
+    BuildContext context,
+    Function resetHistoryIndex,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Clear Command History'),
-          content:
-              const Text('Are you sure you want to clear all command history?'),
+          content: const Text(
+            'Are you sure you want to clear all command history?',
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -349,8 +436,10 @@ class DialogUtils {
             ),
             TextButton(
               onPressed: () {
-                Provider.of<Model>(context, listen: false)
-                    .clearCommandHistory();
+                Provider.of<Model>(
+                  context,
+                  listen: false,
+                ).clearCommandHistory();
                 resetHistoryIndex(); // Call resetHistoryIndex after clearing history
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
@@ -364,10 +453,11 @@ class DialogUtils {
   }
 
   static void showHistoryPopup(
-      BuildContext context,
-      TextEditingController commandController,
-      Function resetHistoryIndex,
-      Function setCursorToEnd) {
+    BuildContext context,
+    TextEditingController commandController,
+    Function resetHistoryIndex,
+    Function setCursorToEnd,
+  ) {
     final model = Provider.of<Model>(context, listen: false);
     showDialog(
       context: context,
@@ -421,8 +511,10 @@ class DialogUtils {
                     ),
                     TextButton(
                       onPressed: () {
-                        showClearHistoryDialog(context,
-                            resetHistoryIndex); // Pass resetHistoryIndex as an argument
+                        showClearHistoryDialog(
+                          context,
+                          resetHistoryIndex,
+                        ); // Pass resetHistoryIndex as an argument
                       },
                       child: const Text('Clear All'),
                     ),

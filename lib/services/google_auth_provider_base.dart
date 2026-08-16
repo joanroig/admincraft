@@ -9,7 +9,8 @@ abstract class GoogleAuthProvider {
   String? get email;
   Stream<bool> get authenticationChanges;
 
-  Future<void> initialize();
+  Future<void> initialize({bool restoreMobileSession = true});
+  Future<bool> restoreSession();
   Future<bool> signIn();
   Widget? buildSignInButton();
   Future<http.Client?> authenticatedClient({required bool interactive});
@@ -22,7 +23,7 @@ class BearerClient extends http.BaseClient {
   final http.Client _inner;
 
   BearerClient(this.accessToken, [http.Client? inner])
-      : _inner = inner ?? http.Client();
+    : _inner = inner ?? http.Client();
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {

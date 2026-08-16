@@ -32,7 +32,7 @@ class _WebGoogleAuthProvider implements GoogleAuthProvider {
   Stream<bool> get authenticationChanges => _changes.stream;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({bool restoreMobileSession = true}) async {
     if (_initialized || !configured) return;
     _initialized = true;
     try {
@@ -64,6 +64,12 @@ class _WebGoogleAuthProvider implements GoogleAuthProvider {
       _subscription = null;
       rethrow;
     }
+  }
+
+  @override
+  Future<bool> restoreSession() async {
+    await initialize();
+    return signedIn;
   }
 
   @override

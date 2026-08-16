@@ -17,11 +17,13 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   /// lost", including a rejected key, which cannot fix itself.
   static const int maxRetries = 3;
 
-  final ConnectionService connectionService = ConnectionService();
+  final ConnectionService connectionService;
   ConnectionStatus get status => connectionService.status;
 
   int _retries = 0;
   Timer? _retryTimer;
+  Timer? _statusTimer;
+  bool _statusRefreshInFlight = false;
   Model? _model;
   bool _keepConnected = false;
   bool _wasBackgrounded = false;
@@ -30,8 +32,9 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   /// only flashing a toast that may be missed.
   ConnectionFailure? lastFailure;
 
-  ConnectionController() {
-    connectionService.onConnectionLost = _handleConnectionLost;
+  ConnectionController({ConnectionService? connectionService})
+    : connectionService = connectionService ?? ConnectionService() {
+    this.connectionService.onConnectionLost = _handleConnectionLost;
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -68,6 +71,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
         reconnect ? 'Reconnected' : 'Connected',
         '${model.alias} is connected.',
       );
+      _startStatusMonitoring();
     } on ConnectionFailure catch (failure) {
       _reportAndMaybeRetry(model, failure);
     } catch (error) {
@@ -116,6 +120,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
 
     if (status == ConnectionStatus.connected) {
       _keepConnected = false;
+      _statusTimer?.cancel();
       connectionService.disconnect(model);
       lastFailure = null;
       ToastUtils.showInfo('Disconnected', '${model.alias} was disconnected.');
@@ -127,6 +132,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   }
 
   void _handleConnectionLost(Model model, ConnectionFailure? failure) {
+    _statusTimer?.cancel();
     notifyListeners();
     if (failure == null) return;
     _reportAndMaybeRetry(model, failure);
@@ -136,6 +142,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   Future<void> disconnect(Model model) async {
     _keepConnected = false;
     _retryTimer?.cancel();
+    _statusTimer?.cancel();
     _retries = 0;
     connectionService.disconnect(model);
     notifyListeners();
@@ -148,6 +155,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
         state == AppLifecycleState.detached) {
       _wasBackgrounded = true;
       _retryTimer?.cancel();
+      _statusTimer?.cancel();
       return;
     }
 
@@ -198,13 +206,36 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   /// otherwise bury the terminal and the saved-command list under dozens of
   /// entries the user never typed.
   Future<void> sendQuietly(String command) async {
-    connectionService.executeCommand(command);
+    final model = _model;
+    if (model != null) connectionService.executeQuietCommand(model, command);
+  }
+
+  void _startStatusMonitoring() {
+    _statusTimer?.cancel();
+    unawaited(_refreshServerStatus());
+    _statusTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => unawaited(_refreshServerStatus()),
+    );
+  }
+
+  Future<void> _refreshServerStatus() async {
+    if (_statusRefreshInFlight || status != ConnectionStatus.connected) return;
+    _statusRefreshInFlight = true;
+    try {
+      await sendQuietly('time query daytime');
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (status == ConnectionStatus.connected) await sendQuietly('list');
+    } finally {
+      _statusRefreshInFlight = false;
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _retryTimer?.cancel();
+    _statusTimer?.cancel();
     super.dispose();
   }
 }

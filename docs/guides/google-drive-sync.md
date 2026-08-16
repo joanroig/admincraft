@@ -21,9 +21,13 @@ before upload with the passphrase you choose.
 Use the same passphrase on every device. Google cannot recover it, and
 Admincraft never uploads it.
 
-After setup, Admincraft syncs at startup and after server changes. If local and
-Drive copies both changed, the more recently modified copy wins. **Upload**,
-**Download**, and **Sync now** remain available for recovery.
+After setup, Admincraft checks Drive at startup and syncs whenever a server
+profile is added, edited, deleted, or imported. On Android, the startup check
+uses Credential Manager; Android may briefly show its system sign-in progress
+surface, which the app cannot suppress. It is only requested when automatic
+sync is enabled. If local and Drive copies both changed, the more recently
+modified copy wins. **Upload**, **Download**, and **Sync now** remain available
+for recovery.
 
 !!! warning
     Keep an exported backup file somewhere safe. A Drive copy cannot be

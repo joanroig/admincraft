@@ -154,22 +154,42 @@ class OverviewView extends StatelessWidget {
                     )
                   else
                     for (final line in recentLines)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                        leading: const Icon(Icons.chevron_right, size: 18),
-                        title: Text(
-                          ConsoleOutputFormatter.formatLine(
-                            line,
-                            model.consoleTimestampMode,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: model.terminalFont,
-                            fontFamilyFallback: const ['monospace'],
-                            fontSize: model.terminalFontSize,
-                          ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 1),
+                              child: Icon(Icons.chevron_right, size: 17),
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                ConsoleOutputFormatter.formatLine(
+                                  line,
+                                  model.consoleTimestampMode,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                strutStyle: StrutStyle(
+                                  fontFamily: model.terminalFont,
+                                  fontFamilyFallback: const ['monospace'],
+                                  fontSize: model.terminalFontSize,
+                                  height: 1.08,
+                                  forceStrutHeight: true,
+                                ),
+                                style: TextStyle(
+                                  fontFamily: model.terminalFont,
+                                  fontFamilyFallback: const ['monospace'],
+                                  fontSize: model.terminalFontSize,
+                                  height: 1.08,
+                                  leadingDistribution:
+                                      TextLeadingDistribution.even,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                 ],

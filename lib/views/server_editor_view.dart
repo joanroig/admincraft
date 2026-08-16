@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -17,7 +18,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+class ServerEditorController {
+  Future<bool> Function()? _save;
+
+  Future<bool> save() => _save?.call() ?? Future.value(false);
+
+  void _attach(Future<bool> Function() save) => _save = save;
+  void _detach() => _save = null;
+}
+
 class ServerEditorView extends StatefulWidget {
+  final ServerEditorController controller;
   final Future<void> Function() onSaved;
   final Future<void> Function() onDeleted;
   final VoidCallback onBack;
@@ -25,6 +36,7 @@ class ServerEditorView extends StatefulWidget {
 
   const ServerEditorView({
     super.key,
+    required this.controller,
     required this.onSaved,
     required this.onDeleted,
     required this.onBack,
@@ -95,6 +107,30 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     ]) {
       controller.addListener(_reportDirty);
     }
+    widget.controller._attach(_save);
+  }
+
+  @override
+  void didUpdateWidget(covariant ServerEditorView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+    oldWidget.controller._detach();
+    widget.controller._attach(_save);
+  }
+
+  @override
+  void dispose() {
+    widget.controller._detach();
+    for (final controller in [
+      _aliasController,
+      _hostController,
+      _portController,
+      _secretController,
+      _certificateController,
+    ]) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   void _reportDirty() {
@@ -261,14 +297,14 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     );
   }
 
-  Future<void> _save() async {
+  Future<bool> _save() async {
     _normaliseHost();
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return false;
     if (_security.requiresCertificate && _certificateContent.isEmpty) {
       ToastUtils.showToastError(
         'Load a server certificate or choose another security mode.',
       );
-      return;
+      return false;
     }
 
     setState(() => _saving = true);
@@ -284,9 +320,13 @@ class _ServerEditorViewState extends State<ServerEditorView> {
         iconAsset: _iconAsset,
         customIconBase64: _customIconBase64,
       );
-      await widget.onSaved();
       widget.onDirtyChanged?.call(false);
+      // The profile is safely persisted at this point. Reconnecting and
+      // scheduling Drive sync may take time, and must not hold a navigation
+      // guard open over a completed save.
+      unawaited(widget.onSaved());
       ToastUtils.showToastSuccess('Server saved.');
+      return true;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -713,16 +753,6 @@ class _ServerEditorViewState extends State<ServerEditorView> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _aliasController.dispose();
-    _hostController.dispose();
-    _portController.dispose();
-    _secretController.dispose();
-    _certificateController.dispose();
-    super.dispose();
   }
 }
 

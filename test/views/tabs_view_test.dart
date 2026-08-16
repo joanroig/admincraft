@@ -8,8 +8,10 @@ import 'package:admincraft/models/app_theme.dart';
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/server_profile.dart';
+import 'package:admincraft/services/connection_service.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:admincraft/views/welcome_view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +23,7 @@ void main() {
     Size size, {
     bool withServer = true,
     Map<String, Object> extraPrefs = const {},
+    ConnectionService? connectionService,
   }) async {
     SharedPreferences.setMockInitialValues({
       if (withServer) 'onboardingCompleted': true,
@@ -38,13 +41,14 @@ void main() {
           ChangeNotifierProvider(
             create: (_) => Model(PersistenceService(prefs)),
           ),
-          ChangeNotifierProvider(create: (_) => ConnectionController()),
+          ChangeNotifierProvider(
+            create: (_) =>
+                ConnectionController(connectionService: connectionService),
+          ),
           ChangeNotifierProvider(
             create: (_) => GoogleDriveSyncController(prefs),
           ),
-          ChangeNotifierProvider(
-            create: (_) => NotificationController(prefs),
-          ),
+          ChangeNotifierProvider(create: (_) => NotificationController(prefs)),
         ],
         child: const Admincraft(),
       ),
@@ -52,8 +56,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('desktop workspace renders without layout errors',
-      (tester) async {
+  testWidgets('desktop workspace renders without layout errors', (
+    tester,
+  ) async {
     await pumpApp(tester, const Size(1280, 720));
 
     expect(find.text('Overview'), findsWidgets);
@@ -83,8 +88,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('color theme changes the palette and pixel-art logo',
-      (tester) async {
+  testWidgets('color theme changes the palette and pixel-art logo', (
+    tester,
+  ) async {
     await pumpApp(tester, const Size(1280, 720));
 
     final initialContext = tester.element(find.text('Admincraft'));
@@ -116,8 +122,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('server switcher exposes add server as its final action',
-      (tester) async {
+  testWidgets('server switcher exposes add server as its final action', (
+    tester,
+  ) async {
     await pumpApp(tester, const Size(390, 844));
 
     await tester.tap(find.byTooltip('Switch server'));
@@ -136,61 +143,120 @@ void main() {
       lessThan(tester.getTopLeft(find.text('Danger zone')).dy),
     );
 
-    final aliasField = find.widgetWithText(TextFormField, 'Alias');
-    await tester.enterText(aliasField, 'Unsaved draft');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('unsaved server changes guard back and tab navigation', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await pumpApp(
+      tester,
+      const Size(390, 844),
+      connectionService: _NoopConnectionService(),
+    );
+
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-    expect(find.text('Docs'), findsOneWidget);
     await tester.tap(find.text('Servers'));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byTooltip('Edit server'));
     await tester.tap(find.byTooltip('Edit server'));
     await tester.pumpAndSettle();
 
-    expect(
-      tester.widget<TextFormField>(aliasField).controller?.text,
-      'Unsaved draft',
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Alias'),
+      'Saved before leaving',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Private address of the bridge'),
+      '127.0.0.1',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Bridge secret key'),
+      'test-key',
     );
 
-    await tester.tap(find.byTooltip('Back to Servers'));
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('Servers'), findsWidgets);
+    expect(find.text('Save server changes?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit server'), findsWidgets);
+
+    await tester.tap(find.text('Console'));
+    await tester.pumpAndSettle();
+    expect(find.text('Save server changes?'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Save changes'),
+      ),
+    );
+    // Saving reports connection and save notifications whose progress
+    // indicators intentionally keep scheduling frames; bounded pumps cover
+    // the dialog exit, persistence, and navigation without waiting out every
+    // banner.
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Connect to enable the Terminal.'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    final stored = (prefs.getStringList('servers') ?? const [])
+        .map((server) => ServerProfile.fromJson(jsonDecode(server)))
+        .single;
+    expect(stored.alias, 'Saved before leaving');
+    await tester.pump(const Duration(seconds: 3));
+    debugDefaultTargetPlatformOverride = null;
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('mobile header is concise and does not repeat the app logo',
-      (tester) async {
+  testWidgets('mobile header is concise and does not repeat the app logo', (
+    tester,
+  ) async {
     await pumpApp(tester, const Size(390, 844));
 
-    final appLogos = find.byWidgetPredicate((widget) =>
-        widget is Image &&
-        widget.image is AssetImage &&
-        (widget.image as AssetImage).assetName == 'assets/logo.png');
+    final appLogos = find.byWidgetPredicate(
+      (widget) =>
+          widget is Image &&
+          widget.image is AssetImage &&
+          (widget.image as AssetImage).assetName == 'assets/logo.png',
+    );
     expect(appLogos, findsNothing);
     expect(find.textContaining('The current state of'), findsNothing);
     expect(find.byTooltip('Notification history'), findsOneWidget);
+    final navigation = tester.widget<DecoratedBox>(
+      find.byKey(const ValueKey('mobile-bottom-navigation')),
+    );
+    final navigationColor = (navigation.decoration as BoxDecoration).color;
+    final pageColor = Theme.of(
+      tester.element(find.byKey(const ValueKey('mobile-bottom-navigation'))),
+    ).scaffoldBackgroundColor;
+    expect(navigationColor, isNot(pageColor));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('onboarding replaces the workspace until a server is configured',
-      (tester) async {
-    await pumpApp(tester, const Size(390, 844), withServer: false);
+  testWidgets(
+    'onboarding replaces the workspace until a server is configured',
+    (tester) async {
+      await pumpApp(tester, const Size(390, 844), withServer: false);
 
-    expect(find.text('Welcome to Admincraft'), findsOneWidget);
-    expect(find.text('Add your first server'), findsOneWidget);
-    // The workspace must not be reachable behind it.
-    expect(find.text('Console'), findsNothing);
-    expect(find.text('Controls'), findsNothing);
+      expect(find.text('Welcome to Admincraft'), findsOneWidget);
+      expect(find.text('Add your first server'), findsOneWidget);
+      // The workspace must not be reachable behind it.
+      expect(find.text('Console'), findsNothing);
+      expect(find.text('Controls'), findsNothing);
 
-    await tester.tap(find.text('Add your first server'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Add your first server'));
+      await tester.pumpAndSettle();
 
-    expect(find.byType(WelcomeView), findsNothing);
-    // The editor itself, not merely the absence of onboarding: landing on
-    // Overview instead was a real bug that a weaker assertion hid.
-    expect(find.text('Edit server'), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
+      expect(find.byType(WelcomeView), findsNothing);
+      // The editor itself, not merely the absence of onboarding: landing on
+      // Overview instead was a real bug that a weaker assertion hid.
+      expect(find.text('Edit server'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('onboarding still allows reaching preferences', (tester) async {
     await pumpApp(tester, const Size(390, 844), withServer: false);
@@ -207,8 +273,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('onboarding does not trap mobile users on the welcome screen',
-      (tester) async {
+  testWidgets('onboarding does not trap mobile users on the welcome screen', (
+    tester,
+  ) async {
     await pumpApp(tester, const Size(390, 844), withServer: false);
 
     // Mobile has no sidebar, so the app bar's back arrow is the only way out
@@ -228,8 +295,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('leaving the server editor during onboarding reaches Servers',
-      (tester) async {
+  testWidgets('leaving the server editor during onboarding reaches Servers', (
+    tester,
+  ) async {
     await pumpApp(tester, const Size(390, 844), withServer: false);
 
     await tester.tap(find.text('Add your first server'));
@@ -242,8 +310,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a long address stays on one line in the server list',
-      (tester) async {
+  testWidgets('a long address stays on one line in the server list', (
+    tester,
+  ) async {
     // The tile used to be a ListTile whose trailing chip and edit button took
     // whatever width they wanted, leaving a Tailscale hostname stacked five
     // lines deep down a narrow column on a phone.
@@ -289,15 +358,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('theme picker stays one row until it is expanded',
-      (tester) async {
+  testWidgets('theme picker stays one row until it is expanded', (
+    tester,
+  ) async {
     await pumpApp(tester, const Size(1280, 720));
     await tester.tap(find.text('Preferences'));
     await tester.pumpAndSettle();
 
-    final tiles = find.byWidgetPredicate((widget) =>
-        widget.key is ValueKey<String> &&
-        (widget.key! as ValueKey<String>).value.startsWith('app-theme-'));
+    final tiles = find.byWidgetPredicate(
+      (widget) =>
+          widget.key is ValueKey<String> &&
+          (widget.key! as ValueKey<String>).value.startsWith('app-theme-'),
+    );
 
     final collapsed = tester.widgetList(tiles).length;
     expect(collapsed, lessThan(AppTheme.values.length));
@@ -305,8 +377,9 @@ void main() {
     // Hard against the right edge of the tiles below it. Flexible plus a
     // Spacer put it halfway across the card, because both default to flex 1
     // and split the free space.
-    final toggleRight =
-        tester.getRect(find.byKey(const ValueKey('theme-expand-toggle'))).right;
+    final toggleRight = tester
+        .getRect(find.byKey(const ValueKey('theme-expand-toggle')))
+        .right;
     final tilesRight = tester.getRect(tiles.last).right;
     expect((toggleRight - tilesRight).abs(), lessThan(1));
 
@@ -338,10 +411,15 @@ void main() {
 
     expect(find.byType(WelcomeView), findsOneWidget);
     final logo = tester.widget<Image>(
-      find.descendant(of: find.byType(WelcomeView), matching: find.byType(Image)),
+      find.descendant(
+        of: find.byType(WelcomeView),
+        matching: find.byType(Image),
+      ),
     );
-    expect((logo.image as AssetImage).assetName,
-        'docs/logo/variants/creeper.png');
+    expect(
+      (logo.image as AssetImage).assetName,
+      'docs/logo/variants/creeper.png',
+    );
     expect(logo.width, 96);
     expect(logo.filterQuality, FilterQuality.none);
     expect(tester.takeException(), isNull);
@@ -355,16 +433,24 @@ void main() {
 
     expect(
       find.text(
-          'These settings apply to Admincraft on this device, not to one server.'),
+        'These settings apply to Admincraft on this device, not to one server.',
+      ),
       findsOneWidget,
     );
     // Mojang's usage guidelines ask for this wording, so it should not be able
     // to disappear in a refactor of the About card.
     expect(
-      find.text('NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR '
-          'ASSOCIATED WITH MOJANG OR MICROSOFT.'),
+      find.text(
+        'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR '
+        'ASSOCIATED WITH MOJANG OR MICROSOFT.',
+      ),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
   });
+}
+
+class _NoopConnectionService extends ConnectionService {
+  @override
+  Future<void> connect(Model model, {bool reconnect = false}) async {}
 }
