@@ -43,7 +43,6 @@ class ControlTab extends StatefulWidget {
 class _ControlTabState extends State<ControlTab> {
   String? _lastCommand;
   bool _loadingRules = false;
-  bool _refreshedOnce = false;
   bool _responseExpanded = false;
 
   static final List<_PromptedAction> _promptedActions = [
@@ -92,28 +91,6 @@ class _ControlTabState extends State<ControlTab> {
     _Choice('Hard', Icons.local_fire_department, 'hard'),
   ];
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Pull the state the server can report as soon as the panel first becomes
-    // usable, so it does not open showing "Unknown" everywhere.
-    if (widget.isEnabled && !_refreshedOnce) {
-      _refreshedOnce = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshWorld());
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant ControlTab oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.isEnabled) {
-      _refreshedOnce = false;
-    } else if (!oldWidget.isEnabled && !_refreshedOnce) {
-      _refreshedOnce = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshWorld());
-    }
-  }
-
   ConnectionController get _connection =>
       Provider.of<ConnectionController>(context, listen: false);
   Model get _model => Provider.of<Model>(context, listen: false);
@@ -126,12 +103,6 @@ class _ControlTabState extends State<ControlTab> {
     await _connection.executeMinecraftCommand(_model, command);
     if (!mounted) return;
     setState(() => _lastCommand = command);
-  }
-
-  Future<void> _refreshWorld() async {
-    await _connection.sendQuietly('time query daytime');
-    await Future.delayed(const Duration(milliseconds: 300));
-    await _connection.sendQuietly('list');
   }
 
   /// Queries every game rule. Spaced out because the WebSocket server rate
@@ -156,7 +127,13 @@ class _ControlTabState extends State<ControlTab> {
   }
 
   Future<void> _promptAndSend(_PromptedAction action) async {
-    final value = await DialogUtils.promptForInput(context, action.placeholder);
+    final value = await DialogUtils.promptForInput(
+      context,
+      action.placeholder,
+      suggestions: action.placeholder == 'player'
+          ? _model.onlinePlayers
+          : const [],
+    );
     if (value == null || !mounted) return;
     await _send(action.build(value.trim()));
   }
@@ -264,10 +241,21 @@ class _ControlTabState extends State<ControlTab> {
       runSpacing: 8,
       children: choices.map((choice) {
         final isSelected = selected == choice.value;
+        final scheme = Theme.of(context).colorScheme;
         return ChoiceChip(
-          avatar: Icon(choice.icon, size: 18),
+          showCheckmark: false,
+          avatar: Icon(
+            choice.icon,
+            size: 18,
+            color: isSelected ? scheme.onSecondaryContainer : scheme.primary,
+          ),
           label: Text(choice.label),
           selected: isSelected,
+          selectedColor: scheme.secondaryContainer,
+          side: BorderSide(
+            color: isSelected ? scheme.primary : scheme.outlineVariant,
+            width: isSelected ? 1.5 : 1,
+          ),
           onSelected: (_) => onPick(choice.value),
         );
       }).toList(),
@@ -563,13 +551,14 @@ class _ControlTabState extends State<ControlTab> {
     // Watched, not read: the cards follow the server log as it arrives.
     final model = Provider.of<Model>(context);
     final world = model.world;
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
     // The response is a full-width bottom surface, visually part of the page
     // rather than a floating card over the scrolling controls.
     return Column(
       children: [
         Expanded(child: _buildCards(model, world)),
-        _responsePanel(model),
+        if (!keyboardVisible) _responsePanel(model),
       ],
     );
   }

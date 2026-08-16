@@ -6,7 +6,6 @@ import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/utils/build_info.dart';
 import 'package:admincraft/utils/url_utils.dart';
-import 'package:admincraft/utils/toast_utils.dart';
 import 'package:admincraft/views/control_tab_view.dart';
 import 'package:admincraft/views/data_sync_view.dart';
 import 'package:admincraft/views/more_view.dart';
@@ -90,10 +89,13 @@ class _TabsState extends State<Tabs> {
   static const double _desktopBreakpoint = 820;
   late Future<void> _initializationFuture;
   late final PageController _pageController;
+  final ServerEditorController _serverEditorController =
+      ServerEditorController();
   final _pageViewKey = GlobalKey();
   _WorkspaceDestination _destination = _WorkspaceDestination.overview;
   final List<_WorkspaceDestination> _navigationHistory = [];
   bool _serverEditorDirty = false;
+  bool _unsavedDialogOpen = false;
 
   @override
   void initState() {
@@ -123,16 +125,49 @@ class _TabsState extends State<Tabs> {
     });
   }
 
-  void _go(_WorkspaceDestination destination) {
-    if (_destination == destination) return;
-    if (_destination == _WorkspaceDestination.serverEditor &&
-        destination != _WorkspaceDestination.serverEditor &&
-        _serverEditorDirty) {
-      ToastUtils.showInfo(
-        'Unsaved server changes',
-        'Your draft is still here. Return to Configuration and save it.',
-      );
+  Future<bool> _confirmCanLeaveEditor() async {
+    if (_destination != _WorkspaceDestination.serverEditor ||
+        !_serverEditorDirty) {
+      return true;
     }
+    if (_unsavedDialogOpen) return false;
+
+    _unsavedDialogOpen = true;
+    try {
+      final save =
+          await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text('Save server changes?'),
+              content: const Text(
+                'Configuration has unsaved changes. Save them before leaving?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pop(context, true),
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Save changes'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!save || !mounted) return false;
+      return _serverEditorController.save();
+    } finally {
+      _unsavedDialogOpen = false;
+    }
+  }
+
+  Future<void> _go(_WorkspaceDestination destination) async {
+    if (_destination == destination) return;
+    if (!await _confirmCanLeaveEditor()) return;
+    if (!mounted) return;
     _performGo(destination);
   }
 
@@ -154,13 +189,13 @@ class _TabsState extends State<Tabs> {
   Future<void> _back() async {
     FocusManager.instance.primaryFocus?.unfocus();
     if (_destination == _WorkspaceDestination.serverEditor) {
-      _go(_WorkspaceDestination.servers);
+      await _go(_WorkspaceDestination.servers);
       return;
     }
     if (_destination == _WorkspaceDestination.servers ||
         _destination == _WorkspaceDestination.dataSync ||
         _destination == _WorkspaceDestination.preferences) {
-      _go(_WorkspaceDestination.more);
+      await _go(_WorkspaceDestination.more);
       return;
     }
     if (_navigationHistory.isNotEmpty) {
@@ -221,12 +256,15 @@ class _TabsState extends State<Tabs> {
   }
 
   Future<void> _selectServer(String id) async {
+    if (!await _confirmCanLeaveEditor()) return;
+    if (!mounted) return;
     final model = context.read<Model>();
     final connection = context.read<ConnectionController>();
     await connection.disconnect(model);
     await model.selectServer(id);
     if (!mounted) return;
-    _go(_WorkspaceDestination.overview);
+    _serverEditorDirty = false;
+    _performGo(_WorkspaceDestination.overview);
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
     }
@@ -234,15 +272,24 @@ class _TabsState extends State<Tabs> {
 
   /// Edits the blank profile that already exists rather than adding a second
   /// one, so a first-time setup does not leave an unused server behind.
-  void _startFirstServer() => _go(_WorkspaceDestination.serverEditor);
+  void _startFirstServer() =>
+      unawaited(_go(_WorkspaceDestination.serverEditor));
 
   Future<void> _addServer() async {
+    if (!await _confirmCanLeaveEditor()) return;
+    if (!mounted) return;
     final model = context.read<Model>();
     final connection = context.read<ConnectionController>();
     await connection.disconnect(model);
     await model.addServer();
     if (!mounted) return;
-    _go(_WorkspaceDestination.serverEditor);
+    _serverEditorDirty = false;
+    if (_destination == _WorkspaceDestination.serverEditor) {
+      setState(() {});
+      _syncPage();
+    } else {
+      _performGo(_WorkspaceDestination.serverEditor);
+    }
   }
 
   Future<void> _serverSaved() async {
@@ -252,9 +299,6 @@ class _TabsState extends State<Tabs> {
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
     }
-    if (mounted) {
-      context.read<GoogleDriveSyncController>().scheduleSync(model);
-    }
   }
 
   Future<void> _serverDeleted() async {
@@ -262,12 +306,9 @@ class _TabsState extends State<Tabs> {
     final connection = context.read<ConnectionController>();
     await connection.disconnect(model);
     if (!mounted) return;
-    _go(_WorkspaceDestination.servers);
+    await _go(_WorkspaceDestination.servers);
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
-    }
-    if (mounted) {
-      context.read<GoogleDriveSyncController>().scheduleSync(model);
     }
   }
 
@@ -277,9 +318,6 @@ class _TabsState extends State<Tabs> {
     await connection.disconnect(model);
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
-    }
-    if (mounted) {
-      context.read<GoogleDriveSyncController>().scheduleSync(model);
     }
   }
 
@@ -304,6 +342,7 @@ class _TabsState extends State<Tabs> {
       ),
       _WorkspaceDestination.serverEditor => ServerEditorView(
         key: ValueKey(model.selectedServerId),
+        controller: _serverEditorController,
         onSaved: _serverSaved,
         onDeleted: _serverDeleted,
         onBack: () => _go(_WorkspaceDestination.servers),
@@ -426,6 +465,11 @@ class _TabsState extends State<Tabs> {
     Model model,
     ConnectionController connection,
   ) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final navigationColor = theme.brightness == Brightness.light
+        ? scheme.surfaceContainerHigh
+        : scheme.surfaceContainerLow;
     final secondary = {
       _WorkspaceDestination.servers,
       _WorkspaceDestination.serverEditor,
@@ -460,35 +504,44 @@ class _TabsState extends State<Tabs> {
         ],
       ),
       body: _pageHost(model, connection),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _mobileIndex,
-        onDestinationSelected: (index) => _go(switch (index) {
-          0 => _WorkspaceDestination.overview,
-          1 => _WorkspaceDestination.console,
-          2 => _WorkspaceDestination.controls,
-          _ => _WorkspaceDestination.more,
-        }),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Overview',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.terminal_outlined),
-            selectedIcon: Icon(Icons.terminal),
-            label: 'Console',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune_outlined),
-            selectedIcon: Icon(Icons.tune),
-            label: 'Controls',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.more_horiz),
-            label: 'Settings',
-          ),
-        ],
+      bottomNavigationBar: DecoratedBox(
+        key: const ValueKey('mobile-bottom-navigation'),
+        decoration: BoxDecoration(
+          color: navigationColor,
+          border: Border(top: BorderSide(color: scheme.outlineVariant)),
+        ),
+        child: NavigationBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedIndex: _mobileIndex,
+          onDestinationSelected: (index) => _go(switch (index) {
+            0 => _WorkspaceDestination.overview,
+            1 => _WorkspaceDestination.console,
+            2 => _WorkspaceDestination.controls,
+            _ => _WorkspaceDestination.more,
+          }),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Overview',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.terminal_outlined),
+              selectedIcon: Icon(Icons.terminal),
+              label: 'Console',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.tune_outlined),
+              selectedIcon: Icon(Icons.tune),
+              label: 'Controls',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.more_horiz),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }

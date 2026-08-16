@@ -46,6 +46,9 @@ void main() {
     );
 
     expect(find.text('Server ready'), findsOneWidget);
+    final serverReady = tester.widget<Text>(find.text('Server ready'));
+    expect(serverReady.style?.height, 1.08);
+    expect(serverReady.strutStyle?.forceStrutHeight, isTrue);
     expect(find.textContaining('AutoCompaction'), findsNothing);
     expect(find.textContaining('2026-08-16'), findsNothing);
 

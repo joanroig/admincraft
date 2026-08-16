@@ -40,13 +40,14 @@ void main() {
   // device that has never connected Drive must not ask at all: the prompt
   // otherwise appears on every launch, including during onboarding, before
   // anything has offered the feature.
-  test('startup does not touch Google until sync has been connected',
-      () async {
+  test('startup does not touch Google until sync has been connected', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final model = Model(PersistenceService(prefs));
-    final auth = _FakeAuth(MockClient((_) async => http.Response('{}', 200)),
-        signedInValue: false);
+    final auth = _FakeAuth(
+      MockClient((_) async => http.Response('{}', 200)),
+      signedInValue: false,
+    );
     final controller = GoogleDriveSyncController(prefs, auth: auth);
 
     await controller.initialize(model);
@@ -57,16 +58,122 @@ void main() {
     expect(auth.signInCalls, 1);
   });
 
-  test('startup restores a session once sync has been connected', () async {
-    SharedPreferences.setMockInitialValues({'googleDriveConnected': true});
+  test(
+    'startup prepares prior sync without prompting Android sign-in',
+    () async {
+      SharedPreferences.setMockInitialValues({'googleDriveConnected': true});
+      final prefs = await SharedPreferences.getInstance();
+      final model = Model(PersistenceService(prefs));
+      final auth = _FakeAuth(MockClient((_) async => http.Response('{}', 200)));
+      final controller = GoogleDriveSyncController(prefs, auth: auth);
+
+      await controller.initialize(model);
+
+      expect(auth.initializeCalls, 1);
+      expect(auth.lastRestoreMobileSession, isFalse);
+    },
+  );
+
+  test(
+    'automatic sync restores auth at startup to check remote changes',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'googleDriveConnected': true,
+        'googleDriveSyncEnabled': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final model = Model(PersistenceService(prefs));
+      final auth = _FakeAuth(
+        MockClient((_) async => http.Response('{}', 200)),
+        signedInValue: false,
+        restoreResult: true,
+      );
+      final controller = GoogleDriveSyncController(prefs, auth: auth);
+
+      await controller.initialize(model);
+
+      expect(auth.lastRestoreMobileSession, isTrue);
+      expect(controller.signedIn, isTrue);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'a server-profile change schedules sync after startup restore',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'servers': [jsonEncode(localServer.toJson())],
+        'selectedServer': localServer.id,
+        'googleDriveConnected': true,
+        'googleDriveSyncEnabled': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final model = Model(PersistenceService(prefs));
+      final secureValues = _MemorySecureValues()
+        ..values['admincraft.google-drive.passphrase'] = 'drive passphrase';
+      final uploaded = Completer<void>();
+      final client = MockClient((request) async {
+        if (request.method == 'GET') {
+          return http.Response(jsonEncode({'files': []}), 200);
+        }
+        if (!uploaded.isCompleted) uploaded.complete();
+        return http.Response(
+          jsonEncode({
+            'id': 'created',
+            'modifiedTime': DateTime.now().toUtc().toIso8601String(),
+          }),
+          200,
+        );
+      });
+      final auth = _FakeAuth(client, signedInValue: false, restoreResult: true);
+      final controller = GoogleDriveSyncController(
+        prefs,
+        auth: auth,
+        secureValues: secureValues,
+      );
+
+      await controller.initialize(model);
+      expect(auth.restoreCalls, 0);
+
+      await model.setConnectionDetails(
+        alias: 'Changed world',
+        ip: localServer.ip,
+        port: localServer.port,
+        secretKey: localServer.secretKey,
+        certificate: localServer.certificate,
+        connectionSecurity: localServer.security,
+        minecraftEdition: localServer.edition,
+      );
+      await uploaded.future.timeout(const Duration(seconds: 4));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(auth.lastRestoreMobileSession, isTrue);
+      expect(auth.restoreCalls, 0);
+      expect(controller.lastSyncAt, isNotNull);
+      controller.dispose();
+    },
+  );
+
+  test('device-only preferences do not schedule profile sync', () async {
+    SharedPreferences.setMockInitialValues({
+      'googleDriveConnected': true,
+      'googleDriveSyncEnabled': true,
+    });
     final prefs = await SharedPreferences.getInstance();
     final model = Model(PersistenceService(prefs));
-    final auth = _FakeAuth(MockClient((_) async => http.Response('{}', 200)));
+    final auth = _FakeAuth(
+      MockClient((_) async => http.Response('{}', 200)),
+      signedInValue: false,
+      restoreResult: true,
+    );
     final controller = GoogleDriveSyncController(prefs, auth: auth);
 
     await controller.initialize(model);
+    await model.setFontSize(18);
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
 
-    expect(auth.initializeCalls, 1);
+    expect(auth.restoreCalls, 0);
+    controller.dispose();
   });
 
   test('disconnecting stops the next start from restoring', () async {
@@ -91,44 +198,46 @@ void main() {
     expect(next.initializeCalls, 0);
   });
 
-  test('first upload enables automatic sync and stores only ciphertext',
-      () async {
-    SharedPreferences.setMockInitialValues({
-      'servers': [jsonEncode(localServer.toJson())],
-      'selectedServer': localServer.id,
-    });
-    final prefs = await SharedPreferences.getInstance();
-    final model = Model(PersistenceService(prefs));
-    final secureValues = _MemorySecureValues();
-    String? uploadedBody;
-    final client = MockClient((request) async {
-      if (request.method == 'GET') {
-        return http.Response(jsonEncode({'files': []}), 200);
-      }
-      uploadedBody = request.body;
-      return http.Response(
-        jsonEncode({
-          'id': 'created',
-          'modifiedTime': DateTime.now().toUtc().toIso8601String(),
-        }),
-        200,
+  test(
+    'first upload enables automatic sync and stores only ciphertext',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'servers': [jsonEncode(localServer.toJson())],
+        'selectedServer': localServer.id,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final model = Model(PersistenceService(prefs));
+      final secureValues = _MemorySecureValues();
+      String? uploadedBody;
+      final client = MockClient((request) async {
+        if (request.method == 'GET') {
+          return http.Response(jsonEncode({'files': []}), 200);
+        }
+        uploadedBody = request.body;
+        return http.Response(
+          jsonEncode({
+            'id': 'created',
+            'modifiedTime': DateTime.now().toUtc().toIso8601String(),
+          }),
+          200,
+        );
+      });
+      final controller = GoogleDriveSyncController(
+        prefs,
+        auth: _FakeAuth(client),
+        secureValues: secureValues,
       );
-    });
-    final controller = GoogleDriveSyncController(
-      prefs,
-      auth: _FakeAuth(client),
-      secureValues: secureValues,
-    );
 
-    await controller.initialize(model);
-    await controller.enableWithUpload(model, 'drive passphrase');
+      await controller.initialize(model);
+      await controller.enableWithUpload(model, 'drive passphrase');
 
-    expect(controller.automaticSyncEnabled, isTrue);
-    expect(controller.lastSyncAt, isNotNull);
-    expect(secureValues.values.values, contains('drive passphrase'));
-    expect(uploadedBody, isNot(contains('local-secret')));
-    expect(uploadedBody, contains('admincraft-config'));
-  });
+      expect(controller.automaticSyncEnabled, isTrue);
+      expect(controller.lastSyncAt, isNotNull);
+      expect(secureValues.values.values, contains('drive passphrase'));
+      expect(uploadedBody, isNot(contains('local-secret')));
+      expect(uploadedBody, contains('admincraft-config'));
+    },
+  );
 
   test('first download replaces local profiles and enables sync', () async {
     SharedPreferences.setMockInitialValues({
@@ -137,10 +246,9 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     final model = Model(PersistenceService(prefs));
-    final blob = await ConfigTransfer.export(
-      const [remoteServer],
-      'drive passphrase',
-    );
+    final blob = await ConfigTransfer.export(const [
+      remoteServer,
+    ], 'drive passphrase');
     final client = MockClient((request) async {
       if (request.url.queryParameters['alt'] == 'media') {
         return http.Response(blob, 200);
@@ -151,7 +259,7 @@ void main() {
             {
               'id': 'remote-file',
               'modifiedTime': DateTime.now().toUtc().toIso8601String(),
-            }
+            },
           ],
         }),
         200,
@@ -166,36 +274,37 @@ void main() {
     await controller.initialize(model);
     await controller.enableWithDownload(model, 'drive passphrase');
 
-    expect(
-      model.servers.map((server) => server.toJson()),
-      [remoteServer.toJson()],
-    );
+    expect(model.servers.map((server) => server.toJson()), [
+      remoteServer.toJson(),
+    ]);
     expect(model.selectedServerId, remoteServer.id);
     expect(controller.automaticSyncEnabled, isTrue);
   });
 
-  test('automatic sync applies a Drive copy changed since the last sync',
-      () async {
+  test('startup automatic sync applies a newer Drive copy', () async {
     final now = DateTime.now().toUtc();
-    final blob = await ConfigTransfer.export(
-      const [remoteServer],
-      'drive passphrase',
-    );
+    final blob = await ConfigTransfer.export(const [
+      remoteServer,
+    ], 'drive passphrase');
     SharedPreferences.setMockInitialValues({
       'servers': [jsonEncode(localServer.toJson())],
       'selectedServer': localServer.id,
-      'serversUpdatedAt':
-          now.subtract(const Duration(hours: 3)).millisecondsSinceEpoch,
+      'serversUpdatedAt': now
+          .subtract(const Duration(hours: 3))
+          .millisecondsSinceEpoch,
       'googleDriveSyncEnabled': true,
-      'googleDriveLastSync':
-          now.subtract(const Duration(hours: 2)).millisecondsSinceEpoch,
+      'googleDriveLastSync': now
+          .subtract(const Duration(hours: 2))
+          .millisecondsSinceEpoch,
     });
     final prefs = await SharedPreferences.getInstance();
     final model = Model(PersistenceService(prefs));
     final secureValues = _MemorySecureValues()
       ..values['admincraft.google-drive.passphrase'] = 'drive passphrase';
+    final downloaded = Completer<void>();
     final client = MockClient((request) async {
       if (request.url.queryParameters['alt'] == 'media') {
+        if (!downloaded.isCompleted) downloaded.complete();
         return http.Response(blob, 200);
       }
       return http.Response(
@@ -203,9 +312,10 @@ void main() {
           'files': [
             {
               'id': 'remote-file',
-              'modifiedTime':
-                  now.subtract(const Duration(hours: 1)).toIso8601String(),
-            }
+              'modifiedTime': now
+                  .subtract(const Duration(hours: 1))
+                  .toIso8601String(),
+            },
           ],
         }),
         200,
@@ -218,23 +328,31 @@ void main() {
     );
 
     await controller.initialize(model);
-    await controller.syncNow(model);
-    controller.dispose();
+    await downloaded.future.timeout(const Duration(seconds: 4));
+    final deadline = DateTime.now().add(const Duration(seconds: 3));
+    while (model.selectedServerId != remoteServer.id &&
+        DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
 
-    expect(
-      model.servers.map((server) => server.toJson()),
-      [remoteServer.toJson()],
-    );
+    expect(model.servers.map((server) => server.toJson()), [
+      remoteServer.toJson(),
+    ]);
+    controller.dispose();
   });
 }
 
 class _FakeAuth implements GoogleAuthProvider {
   final http.Client client;
-  final bool signedInValue;
+  bool signedInValue;
+  final bool restoreResult;
   int initializeCalls = 0;
+  bool? lastRestoreMobileSession;
+  int restoreCalls = 0;
   int signInCalls = 0;
 
-  _FakeAuth(this.client, {this.signedInValue = true});
+  _FakeAuth(this.client, {this.signedInValue = true, bool? restoreResult})
+    : restoreResult = restoreResult ?? signedInValue;
 
   @override
   bool get configured => true;
@@ -249,7 +367,18 @@ class _FakeAuth implements GoogleAuthProvider {
   Stream<bool> get authenticationChanges => const Stream.empty();
 
   @override
-  Future<void> initialize() async => initializeCalls++;
+  Future<void> initialize({bool restoreMobileSession = true}) async {
+    initializeCalls++;
+    lastRestoreMobileSession = restoreMobileSession;
+    if (restoreMobileSession && restoreResult) signedInValue = true;
+  }
+
+  @override
+  Future<bool> restoreSession() async {
+    restoreCalls++;
+    signedInValue = restoreResult;
+    return signedInValue;
+  }
 
   @override
   Future<bool> signIn() async {

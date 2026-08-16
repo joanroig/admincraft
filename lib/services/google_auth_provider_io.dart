@@ -11,10 +11,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'google_auth_provider_base.dart';
 
 const _webClientId = String.fromEnvironment('ADMINCRAFT_GOOGLE_WEB_CLIENT_ID');
-const _desktopClientId =
-    String.fromEnvironment('ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID');
-const _desktopClientSecret =
-    String.fromEnvironment('ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET');
+const _desktopClientId = String.fromEnvironment(
+  'ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_ID',
+);
+const _desktopClientSecret = String.fromEnvironment(
+  'ADMINCRAFT_GOOGLE_DESKTOP_CLIENT_SECRET',
+);
 const _refreshTokenKey = 'admincraft.google.refresh-token';
 
 GoogleAuthProvider createGoogleAuthProvider() => _IoGoogleAuthProvider();
@@ -33,9 +35,9 @@ class _IoGoogleAuthProvider implements GoogleAuthProvider {
   bool get _usesMobileSignIn => Platform.isAndroid;
 
   google_auth.ClientId get _desktopCredentials => google_auth.ClientId(
-        _desktopClientId,
-        _desktopClientSecret.isEmpty ? null : _desktopClientSecret,
-      );
+    _desktopClientId,
+    _desktopClientSecret.isEmpty ? null : _desktopClientSecret,
+  );
 
   @override
   bool get configured => _usesMobileSignIn
@@ -58,7 +60,7 @@ class _IoGoogleAuthProvider implements GoogleAuthProvider {
   }
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({bool restoreMobileSession = true}) async {
     if (_initialized || !configured) return;
     _initialized = true;
     try {
@@ -80,10 +82,16 @@ class _IoGoogleAuthProvider implements GoogleAuthProvider {
           },
         );
         await _googleSignIn.initialize(serverClientId: _webClientId);
-        final attempt = _googleSignIn.attemptLightweightAuthentication();
-        if (attempt != null) {
-          _mobileAccount = await attempt;
-          _setSignedIn(_mobileAccount != null);
+        // Credential Manager's "lightweight" authentication is not visually
+        // silent on Android: it briefly replaces the app with a system
+        // "Signing you in" surface. Startup only prepares the plugin; account
+        // restoration is reserved for an explicitly requested auth flow.
+        if (restoreMobileSession) {
+          final attempt = _googleSignIn.attemptLightweightAuthentication();
+          if (attempt != null) {
+            _mobileAccount = await attempt;
+            _setSignedIn(_mobileAccount != null);
+          }
         }
         return;
       }
@@ -110,6 +118,19 @@ class _IoGoogleAuthProvider implements GoogleAuthProvider {
   }
 
   @override
+  Future<bool> restoreSession() async {
+    await initialize(restoreMobileSession: false);
+    if (_signedIn || !configured) return _signedIn;
+    if (!_usesMobileSignIn) return _signedIn;
+
+    final attempt = _googleSignIn.attemptLightweightAuthentication();
+    if (attempt == null) return false;
+    _mobileAccount = await attempt;
+    _setSignedIn(_mobileAccount != null);
+    return _signedIn;
+  }
+
+  @override
   Future<bool> signIn() async {
     await initialize();
     if (!configured) return false;
@@ -118,38 +139,35 @@ class _IoGoogleAuthProvider implements GoogleAuthProvider {
       _mobileAccount = await _googleSignIn.authenticate(
         scopeHint: const [googleDriveAppDataScope],
       );
-      await _mobileAccount!.authorizationClient.authorizeScopes(
-        const [googleDriveAppDataScope],
-      );
+      await _mobileAccount!.authorizationClient.authorizeScopes(const [
+        googleDriveAppDataScope,
+      ]);
       _setSignedIn(true);
       return true;
     }
 
     final baseClient = http.Client();
     try {
-      final credentials =
-          await google_auth.obtainAccessCredentialsViaUserConsent(
-        _desktopCredentials,
-        const [googleDriveAppDataScope],
-        baseClient,
-        (url) => unawaited(
-          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-        ),
-        customPostAuthPage: '''
+      final credentials = await google_auth
+          .obtainAccessCredentialsViaUserConsent(
+            _desktopCredentials,
+            const [googleDriveAppDataScope],
+            baseClient,
+            (url) => unawaited(
+              launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            ),
+            customPostAuthPage: '''
 <!doctype html><html><body style="font-family: sans-serif; text-align: center; padding: 3rem">
 <h2>Admincraft is connected</h2><p>You can close this tab and return to the app.</p>
 </body></html>
 ''',
-      );
+          );
       final refreshToken = credentials.refreshToken;
       if (refreshToken == null || refreshToken.isEmpty) {
         baseClient.close();
         return false;
       }
-      await _secureStorage.write(
-        key: _refreshTokenKey,
-        value: refreshToken,
-      );
+      await _secureStorage.write(key: _refreshTokenKey, value: refreshToken);
       _desktopClient = google_auth.autoRefreshingClient(
         _desktopCredentials,
         credentials,
@@ -174,11 +192,14 @@ class _IoGoogleAuthProvider implements GoogleAuthProvider {
     if (_usesMobileSignIn) {
       final account = _mobileAccount;
       if (account == null) return null;
-      final authorization = await account.authorizationClient
-              .authorizationForScopes(const [googleDriveAppDataScope]) ??
+      final authorization =
+          await account.authorizationClient.authorizationForScopes(const [
+            googleDriveAppDataScope,
+          ]) ??
           (interactive
-              ? await account.authorizationClient
-                  .authorizeScopes(const [googleDriveAppDataScope])
+              ? await account.authorizationClient.authorizeScopes(const [
+                  googleDriveAppDataScope,
+                ])
               : null);
       return authorization == null
           ? null

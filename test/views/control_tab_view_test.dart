@@ -51,35 +51,109 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
+  testWidgets('opening controls does not start a duplicate status poll', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    final connection = _RecordingConnectionController();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider<ConnectionController>.value(value: connection),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: ControlTab(isEnabled: true)),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(connection.quietCommands, isEmpty);
+    expect(find.byTooltip('Refresh difficulty from server'), findsNothing);
+  });
+
   testWidgets(
-    'automatic world refresh never sends an invalid difficulty query',
+    'selected controls keep their icon clear and players autocomplete',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
       final model = Model(PersistenceService(preferences));
-      final connection = _RecordingConnectionController();
+      model.recordDifficulty('normal');
+      model.appendOutputCommand(
+        '[2026-08-16 18:00:00:000 INFO] Player connected: Steve, xuid: 1',
+      );
 
       await tester.pumpWidget(
         MultiProvider(
           providers: [
             ChangeNotifierProvider.value(value: model),
-            ChangeNotifierProvider<ConnectionController>.value(
-              value: connection,
-            ),
+            ChangeNotifierProvider(create: (_) => ConnectionController()),
           ],
           child: const MaterialApp(
             home: Scaffold(body: ControlTab(isEnabled: true)),
           ),
         ),
       );
-      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
 
-      expect(connection.quietCommands, contains('time query daytime'));
-      expect(connection.quietCommands, contains('list'));
-      expect(connection.quietCommands, isNot(contains('difficulty')));
-      expect(find.byTooltip('Refresh difficulty from server'), findsNothing);
+      final normal = tester.widget<ChoiceChip>(
+        find.widgetWithText(ChoiceChip, 'Normal'),
+      );
+      expect(normal.selected, isTrue);
+      expect(normal.showCheckmark, isFalse);
+
+    final kick = find.widgetWithText(ActionChip, 'Kick');
+    await tester.ensureVisible(kick);
+    await tester.pumpAndSettle();
+    await tester.tap(kick);
+      await tester.pumpAndSettle();
+      final dialog = find.byType(AlertDialog);
+      expect(
+        find.descendant(of: dialog, matching: find.text('Steve')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.descendant(of: dialog, matching: find.text('Steve')),
+      );
+      await tester.pump();
+      final input = tester.widget<TextField>(
+        find.descendant(of: dialog, matching: find.byType(TextField)),
+      );
+      expect(input.controller?.text, 'Steve');
     },
   );
+
+  testWidgets('server response tray stays out of the keyboard workspace', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider(create: (_) => ConnectionController()),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: MediaQuery(
+              data: MediaQueryData(viewInsets: EdgeInsets.only(bottom: 300)),
+              child: ControlTab(isEnabled: true),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('control-response-panel')), findsNothing);
+  });
 }
 
 class _RecordingConnectionController extends ConnectionController {

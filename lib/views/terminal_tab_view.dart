@@ -196,10 +196,19 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
               padding: const EdgeInsets.symmetric(vertical: 0.0),
               child: Text(
                 shown,
+                strutStyle: StrutStyle(
+                  fontFamily: _model.terminalFont,
+                  fontFamilyFallback: const ['monospace'],
+                  fontSize: _model.terminalFontSize,
+                  height: 1.08,
+                  forceStrutHeight: true,
+                ),
                 style: TextStyle(
                   fontFamily: _model.terminalFont,
                   fontFamilyFallback: const ['monospace'],
                   fontSize: _model.terminalFontSize,
+                  height: 1.08,
+                  leadingDistribution: TextLeadingDistribution.even,
                   fontWeight: isUserCommand
                       ? FontWeight.bold
                       : FontWeight.normal,

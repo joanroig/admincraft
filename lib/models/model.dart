@@ -15,12 +15,14 @@ class Model with ChangeNotifier {
   String _output = '';
 
   List<ServerProfile> _servers = [];
+  int _serverRevision = 0;
   late String _selectedServerId;
 
   String get output => _output;
 
   List<ServerProfile> get servers => List.unmodifiable(_servers);
   DateTime? get serversUpdatedAt => _persistenceService.serversUpdatedAt;
+  int get serverRevision => _serverRevision;
   String get selectedServerId => _selectedServerId;
 
   /// The server the app is configured against. Every connection getter reads
@@ -79,6 +81,7 @@ class Model with ChangeNotifier {
 
   Future<void> _persistServers() async {
     await _persistenceService.saveServers(_servers);
+    _serverRevision++;
     notifyListeners();
   }
 
@@ -329,7 +332,7 @@ class Model with ChangeNotifier {
     }
   }
 
-  void appendOutputCommand(String command) {
+  void appendOutputCommand(String command, {bool visible = true}) {
     final previousPlayers = _world.playersOnline;
     final previousLimit = _world.playerLimit;
     _trackPlayers(command);
@@ -338,12 +341,14 @@ class Model with ChangeNotifier {
         _world.playerLimit != previousLimit) {
       unawaited(AndroidWidgetService.update(selectedServer, _world));
     }
-    _output += "$command\n";
-    final lines = _output.split('\n');
-    if (lines.length > _persistenceService.maxOutLines) {
-      _output = lines
-          .sublist(lines.length - _persistenceService.maxOutLines)
-          .join('\n');
+    if (visible) {
+      _output += "$command\n";
+      final lines = _output.split('\n');
+      if (lines.length > _persistenceService.maxOutLines) {
+        _output = lines
+            .sublist(lines.length - _persistenceService.maxOutLines)
+            .join('\n');
+      }
     }
     notifyListeners();
   }

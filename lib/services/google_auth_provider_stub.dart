@@ -21,7 +21,10 @@ class _UnsupportedGoogleAuth implements GoogleAuthProvider {
   Stream<bool> get authenticationChanges => const Stream.empty();
 
   @override
-  Future<void> initialize() async {}
+  Future<void> initialize({bool restoreMobileSession = true}) async {}
+
+  @override
+  Future<bool> restoreSession() async => false;
 
   @override
   Future<bool> signIn() async => false;

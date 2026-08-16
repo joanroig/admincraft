@@ -27,8 +27,10 @@ class GoogleDriveSyncController with ChangeNotifier {
   Future<void>? _initialization;
   Timer? _syncTimer;
   Model? _model;
+  int _observedServerRevision = 0;
   Future<void> Function()? _onRemoteApplied;
   bool _busy = false;
+  bool _scheduledSyncRunning = false;
   String? _error;
 
   GoogleDriveSyncController(
@@ -60,36 +62,55 @@ class GoogleDriveSyncController with ChangeNotifier {
     Model model, {
     Future<void> Function()? onRemoteApplied,
   }) {
-    _model = model;
+    if (_model != model) {
+      _model?.removeListener(_handleModelChanged);
+      _model = model;
+      _observedServerRevision = model.serverRevision;
+      model.addListener(_handleModelChanged);
+    }
     _onRemoteApplied ??= onRemoteApplied;
     return _initialization ??= _initialize();
+  }
+
+  void _handleModelChanged() {
+    final model = _model;
+    if (model == null) return;
+    final revision = model.serverRevision;
+    if (revision == _observedServerRevision) return;
+    _observedServerRevision = revision;
+    if (!_busy) scheduleSync(model);
   }
 
   /// Whether this device has connected Drive sync at some point.
   ///
   /// `automaticSyncEnabled` counts too: it is the flag earlier versions set,
-  /// and a device that was syncing before this one existed should still be
-  /// restored rather than asked to sign in again.
+  /// and a device that was syncing before this one existed should still have
+  /// its provider prepared. Desktop refresh tokens can restore silently;
+  /// Android deliberately waits for an explicit sign-in action.
   bool get _everConnected =>
       (_preferences.getBool(_connectedKey) ?? false) || automaticSyncEnabled;
 
   Future<void> _initialize() async {
     _authSubscription = _auth.authenticationChanges.listen((signedIn) {
       notifyListeners();
-      if (signedIn && automaticSyncEnabled && _model != null) {
+      if (signedIn &&
+          automaticSyncEnabled &&
+          _model != null &&
+          !_scheduledSyncRunning) {
         scheduleSync(_model!);
       }
     });
 
-    // Only restore a session that exists. Asking Google to identify the user
-    // is what makes Android raise an account sheet, and doing it on every
-    // start put that in front of people who had never opened Data & Sync,
-    // during onboarding, before anything had offered them sync at all.
+    // Only prepare authentication after Drive has actually been used. An
+    // enabled automatic sync must restore its Android session here so startup
+    // can discover a newer remote copy. Credential Manager owns the brief
+    // system sign-in surface used for that restoration; it is skipped when
+    // automatic sync is not enabled.
     // The web flow must initialize Google Identity Services before its sign-in
     // button can be rendered. Unlike Android, doing that does not raise an
     // account chooser, so first-time web users can be prepared safely here.
     if (_everConnected || kIsWeb) {
-      await _auth.initialize();
+      await _auth.initialize(restoreMobileSession: automaticSyncEnabled);
     }
 
     notifyListeners();
@@ -103,8 +124,9 @@ class GoogleDriveSyncController with ChangeNotifier {
     notifyListeners();
     try {
       final result = await _auth.signIn();
-      // Remembered so later starts may restore this session silently. Until
-      // someone signs in here, the app never asks Google anything.
+      // Remembered so later starts prepare the provider. Desktop may restore
+      // through its refresh token; Android waits for another explicit action
+      // rather than flashing Credential Manager over every launch.
       if (result) await _preferences.setBool(_connectedKey, true);
       notifyListeners();
       return result;
@@ -264,12 +286,38 @@ class GoogleDriveSyncController with ChangeNotifier {
   }
 
   void scheduleSync(Model model) {
-    if (!automaticSyncEnabled || !signedIn) return;
+    if (!automaticSyncEnabled) return;
     _syncTimer?.cancel();
     _syncTimer = Timer(
       const Duration(seconds: 1),
-      () => unawaited(syncNow(model, interactive: false)),
+      () => unawaited(_runScheduledSync(model)),
     );
+  }
+
+  Future<void> _runScheduledSync(Model model) async {
+    if (_scheduledSyncRunning) return;
+    _scheduledSyncRunning = true;
+    try {
+      if (!signedIn) {
+        final bool restored;
+        try {
+          restored = await _auth.restoreSession();
+        } catch (error) {
+          _error = _signInMessage(error);
+          notifyListeners();
+          return;
+        }
+        notifyListeners();
+        if (!restored) {
+          _error = 'Sign in to Google Drive again to resume automatic sync.';
+          notifyListeners();
+          return;
+        }
+      }
+      await syncNow(model, interactive: false);
+    } finally {
+      _scheduledSyncRunning = false;
+    }
   }
 
   Future<GoogleDriveApi> _api({required bool interactive}) async {
@@ -358,6 +406,7 @@ class GoogleDriveSyncController with ChangeNotifier {
   void dispose() {
     _syncTimer?.cancel();
     _authSubscription?.cancel();
+    _model?.removeListener(_handleModelChanged);
     _auth.dispose();
     super.dispose();
   }
