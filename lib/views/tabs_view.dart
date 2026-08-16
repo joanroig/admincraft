@@ -761,8 +761,8 @@ class _NavigationTile extends StatelessWidget {
   }
 }
 
-/// The logo, the app name and a faint version, as one target that opens
-/// Preferences, where the full version and build stamp live.
+/// The logo, app name and faint version form one target that opens Preferences.
+/// Only the version reveals the full build stamp when hovered.
 class _AppTitle extends StatefulWidget {
   final VoidCallback onTap;
 
@@ -799,34 +799,35 @@ class _AppTitleState extends State<_AppTitle> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: Tooltip(
-        message: _tooltip,
-        child: InkWell(
-          key: const ValueKey('app-title'),
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-            child: Row(
-              children: [
-                const ThemeLogo(),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'Admincraft',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.4,
-                    ),
+      child: InkWell(
+        key: const ValueKey('app-title'),
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+          child: Row(
+            children: [
+              const ThemeLogo(),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  'Admincraft',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.4,
                   ),
                 ),
-                if (_version.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  // Deliberately faint: useful when reporting a problem,
-                  // noise the rest of the time.
-                  Padding(
+              ),
+              if (_version.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                // Deliberately faint: useful when reporting a problem,
+                // noise the rest of the time.
+                Tooltip(
+                  key: const ValueKey('app-version-tooltip'),
+                  message: _tooltip,
+                  child: Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       _version,
@@ -837,9 +838,9 @@ class _AppTitleState extends State<_AppTitle> {
                       ),
                     ),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
