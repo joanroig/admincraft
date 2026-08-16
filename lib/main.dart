@@ -7,7 +7,6 @@ import 'package:admincraft/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:toastification/toastification.dart';
 
 import 'models/model.dart';
 import 'services/secret_migration.dart';
@@ -105,15 +104,14 @@ class Admincraft extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = Provider.of<Model>(context);
 
-    return ToastificationWrapper(
-      child: MaterialApp(
-        title: "Admincraft",
-        debugShowCheckedModeBanner: false,
-        themeMode: model.themeMode,
-        theme: _theme(model, Brightness.light),
-        darkTheme: _theme(model, Brightness.dark),
-        home: const Tabs(),
-      ),
+    return MaterialApp(
+      navigatorKey: ToastUtils.navigatorKey,
+      title: "Admincraft",
+      debugShowCheckedModeBanner: false,
+      themeMode: model.themeMode,
+      theme: _theme(model, Brightness.light),
+      darkTheme: _theme(model, Brightness.dark),
+      home: const Tabs(),
     );
   }
 }

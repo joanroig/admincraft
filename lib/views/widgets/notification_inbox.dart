@@ -13,12 +13,19 @@ class NotificationInboxButton extends StatelessWidget {
     final count = controller.unreadCount;
     return Badge(
       isLabelVisible: count > 0,
-      label: Text(count > 99 ? '99+' : '$count'),
-      child: IconButton(
-        tooltip: 'Notification history',
-        onPressed: () => showNotificationInbox(context),
-        icon: Icon(
-          count > 0 ? Icons.notifications_outlined : Icons.notifications_none,
+      label: Text(count > 9 ? '9+' : '$count'),
+      alignment: AlignmentDirectional.topEnd,
+      offset: const Offset(-4, 5),
+      largeSize: 17,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: SizedBox.square(
+        dimension: 48,
+        child: IconButton(
+          tooltip: 'Notification history',
+          onPressed: () => showNotificationInbox(context),
+          icon: Icon(
+            count > 0 ? Icons.notifications_outlined : Icons.notifications_none,
+          ),
         ),
       ),
     );

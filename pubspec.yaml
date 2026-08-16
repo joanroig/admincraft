@@ -31,7 +31,6 @@ dependencies:
   webview_flutter: ^4.14.1
   shared_preferences: ^2.5.5
   file_picker: ^8.1.2
-  toastification: ^2.2.0
   package_info_plus: ^8.0.2
   url_launcher: ^6.3.2
   web_socket_channel: ^3.0.3

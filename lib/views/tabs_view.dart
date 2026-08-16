@@ -435,6 +435,7 @@ class _TabsState extends State<Tabs> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         leading: secondary
             ? IconButton(
                 tooltip: _destination == _WorkspaceDestination.serverEditor
@@ -443,15 +444,8 @@ class _TabsState extends State<Tabs> {
                 onPressed: _back,
                 icon: const Icon(Icons.arrow_back),
               )
-            : Padding(
-                padding: const EdgeInsets.all(12),
-                child: Image.asset(
-                  'assets/logo.png',
-                  filterQuality: FilterQuality.none,
-                  isAntiAlias: false,
-                ),
-              ),
-        titleSpacing: 0,
+            : null,
+        titleSpacing: secondary ? 0 : 16,
         title: secondary
             ? Text(_destination.label)
             : ServerSwitcher(

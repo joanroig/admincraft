@@ -249,11 +249,11 @@ class PersistenceService {
 
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';
   double get fontSize => _prefs.getDouble(_fontSizeKey) ?? 16;
-  String get terminalFont => _prefs.getString(_terminalFontKey) ?? 'Monocraft';
+  String get terminalFont => _prefs.getString(_terminalFontKey) ?? 'Consolas';
   double get terminalFontSize => _prefs.getDouble(_terminalFontSizeKey) ?? 14;
   bool get terminalAutoScroll => _prefs.getBool(_terminalAutoScrollKey) ?? true;
   String get consoleTimestampMode =>
-      _prefs.getString(_consoleTimestampModeKey) ?? 'short';
+      _prefs.getString(_consoleTimestampModeKey) ?? 'hidden';
   String get consoleFilterPattern =>
       _prefs.getString(_consoleFilterPatternKey) ?? '';
 

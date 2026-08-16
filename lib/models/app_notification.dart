@@ -17,12 +17,12 @@ class AppNotification {
     this.read = false,
   });
 
-  AppNotification copyWith({bool? read}) => AppNotification(
+  AppNotification copyWith({bool? read, DateTime? createdAt}) => AppNotification(
     id: id,
     kind: kind,
     title: title,
     message: message,
-    createdAt: createdAt,
+    createdAt: createdAt ?? this.createdAt,
     read: read ?? this.read,
   );
 
