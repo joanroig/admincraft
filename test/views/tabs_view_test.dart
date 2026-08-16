@@ -10,6 +10,7 @@ import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/services/connection_service.dart';
 import 'package:admincraft/services/persistence_service.dart';
+import 'package:admincraft/utils/toast_utils.dart';
 import 'package:admincraft/views/welcome_view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -85,6 +86,23 @@ void main() {
 
     expect(find.text('Data & Sync'), findsWidgets);
     expect(find.text('Google Drive sync'), findsOneWidget);
+    final quickTransferCard = find
+        .ancestor(of: find.text('Quick transfer'), matching: find.byType(Card))
+        .first;
+    final backupFileCard = find
+        .ancestor(of: find.text('Backup file'), matching: find.byType(Card))
+        .first;
+    final driveSyncCard = find
+        .ancestor(
+          of: find.text('Google Drive sync'),
+          matching: find.byType(Card),
+        )
+        .first;
+    expect(tester.getSize(quickTransferCard).width, 350);
+    expect(
+      tester.getSize(backupFileCard).width,
+      tester.getSize(driveSyncCard).width,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -211,6 +229,125 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('invalid guarded save highlights fields and can be discarded', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      const Size(390, 844),
+      connectionService: _NoopConnectionService(),
+    );
+    ToastUtils.initialize(
+      tester.element(find.byType(Admincraft)).read<NotificationController>(),
+    );
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Servers'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit server'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Alias'), '');
+    await tester.tap(find.text('Console'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Discard changes'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Save changes'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Save changes'),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Edit server'), findsWidgets);
+    expect(find.text('Enter a name for this server.'), findsOneWidget);
+    expect(find.text('Enter the server host.'), findsOneWidget);
+    expect(find.text('Enter the bridge secret key.'), findsOneWidget);
+    expect(
+      find.text('Complete the highlighted server fields before saving.'),
+      findsOneWidget,
+    );
+
+    ToastUtils.dismissPopups();
+    await tester.pump();
+    await tester.tap(find.text('Console'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard changes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Connect to enable the Terminal.'), findsOneWidget);
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Servers'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit server'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextFormField>(find.widgetWithText(TextFormField, 'Alias'))
+          .controller
+          ?.text,
+      'My World',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('selecting a server keeps the server list open', (tester) async {
+    const first = ServerProfile(
+      id: 'first',
+      alias: 'First server',
+      ip: '',
+      port: 8080,
+      secretKey: '',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+    );
+    const second = ServerProfile(
+      id: 'second',
+      alias: 'Second server',
+      ip: '',
+      port: 8080,
+      secretKey: '',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+    );
+    await pumpApp(
+      tester,
+      const Size(390, 844),
+      extraPrefs: {
+        'servers': [jsonEncode(first.toJson()), jsonEncode(second.toJson())],
+        'selectedServer': first.id,
+      },
+      connectionService: _NoopConnectionService(),
+    );
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Servers'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Second server'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Choose a server or create another profile.'),
+      findsOneWidget,
+    );
+    expect(find.text('Players'), findsNothing);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('selectedServer'), second.id);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('mobile header is concise and does not repeat the app logo', (
     tester,
   ) async {
@@ -225,6 +362,17 @@ void main() {
     expect(appLogos, findsNothing);
     expect(find.textContaining('The current state of'), findsNothing);
     expect(find.byTooltip('Notification history'), findsOneWidget);
+    expect(
+      tester
+          .getTopRight(
+            find.descendant(
+              of: find.byKey(const ValueKey('mobile-connection-action')),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .dx,
+      382,
+    );
     final navigation = tester.widget<DecoratedBox>(
       find.byKey(const ValueKey('mobile-bottom-navigation')),
     );

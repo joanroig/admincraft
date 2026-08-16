@@ -15,6 +15,11 @@ void main() {
     expect(filter.shouldHide('[INFO] Daytime is 1200'), isTrue);
     expect(filter.shouldHide('[INFO] There are 2/10 players online:'), isTrue);
     expect(filter.shouldHide('Alex, Steve'), isTrue);
+    // The bridge may echo the same command reply through Docker logs after it
+    // has already returned the direct response.
+    expect(filter.shouldHide('[INFO] Daytime is 1200'), isTrue);
+    expect(filter.shouldHide('[INFO] There are 2/10 players online:'), isTrue);
+    expect(filter.shouldHide('Alex, Steve'), isTrue);
     expect(filter.shouldHide('[WARN] Keepalive timeout'), isFalse);
   });
 

@@ -22,6 +22,7 @@ class GoogleDriveSyncController with ChangeNotifier {
   final GoogleAuthProvider _auth;
   final SecureValueStore _secureValues;
   final DriveApiBuilder _driveApiBuilder;
+  final bool _isWeb;
 
   StreamSubscription<bool>? _authSubscription;
   Future<void>? _initialization;
@@ -38,9 +39,11 @@ class GoogleDriveSyncController with ChangeNotifier {
     GoogleAuthProvider? auth,
     SecureValueStore? secureValues,
     DriveApiBuilder? driveApiBuilder,
+    bool? platformIsWeb,
   }) : _auth = auth ?? createGoogleAuthProvider(),
        _secureValues = secureValues ?? const PlatformSecureValueStore(),
-       _driveApiBuilder = driveApiBuilder ?? GoogleDriveApi.new;
+       _driveApiBuilder = driveApiBuilder ?? GoogleDriveApi.new,
+       _isWeb = platformIsWeb ?? kIsWeb;
 
   bool get configured => _auth.configured;
   bool get signedIn => _auth.signedIn;
@@ -109,7 +112,7 @@ class GoogleDriveSyncController with ChangeNotifier {
     // The web flow must initialize Google Identity Services before its sign-in
     // button can be rendered. Unlike Android, doing that does not raise an
     // account chooser, so first-time web users can be prepared safely here.
-    if (_everConnected || kIsWeb) {
+    if (_everConnected || _isWeb) {
       await _auth.initialize(restoreMobileSession: automaticSyncEnabled);
     }
 

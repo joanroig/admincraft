@@ -7,13 +7,11 @@ import 'package:provider/provider.dart';
 
 class OverviewView extends StatelessWidget {
   final VoidCallback onOpenConsole;
-  final VoidCallback onOpenControls;
   final VoidCallback onEditServer;
 
   const OverviewView({
     super.key,
     required this.onOpenConsole,
-    required this.onOpenControls,
     required this.onEditServer,
   });
 
@@ -83,43 +81,6 @@ class OverviewView extends StatelessWidget {
                 ],
               );
             },
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Quick actions',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Common server tasks stay together instead of being scattered through settings.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: onOpenConsole,
-                        icon: const Icon(Icons.terminal),
-                        label: const Text('Open console'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: onOpenControls,
-                        icon: const Icon(Icons.tune),
-                        label: const Text('Server controls'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ),
           const SizedBox(height: 16),
           Card(

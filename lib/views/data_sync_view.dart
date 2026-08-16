@@ -481,11 +481,14 @@ class _DataSyncViewState extends State<DataSyncView> {
                             Expanded(child: panels.last),
                           ],
                         )
-                      : Column(children: [
-                          panels.first,
-                          const SizedBox(height: 12),
-                          panels.last,
-                        ]);
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            panels.first,
+                            const SizedBox(height: 12),
+                            panels.last,
+                          ],
+                        );
                 },
               ),
               const SizedBox(height: 14),

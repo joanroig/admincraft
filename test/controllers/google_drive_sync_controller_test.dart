@@ -58,6 +58,27 @@ void main() {
     expect(auth.signInCalls, 1);
   });
 
+  test('first web launch prepares the Google sign-in button', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(prefs));
+    final auth = _FakeAuth(
+      MockClient((_) async => http.Response('{}', 200)),
+      signedInValue: false,
+    );
+    final controller = GoogleDriveSyncController(
+      prefs,
+      auth: auth,
+      platformIsWeb: true,
+    );
+
+    await controller.initialize(model);
+
+    expect(auth.initializeCalls, 1);
+    expect(auth.lastRestoreMobileSession, isFalse);
+    controller.dispose();
+  });
+
   test(
     'startup prepares prior sync without prompting Android sign-in',
     () async {
