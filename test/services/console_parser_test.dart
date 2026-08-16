@@ -4,6 +4,20 @@ import 'package:admincraft/services/console_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('reads difficulty query and change replies', () {
+    final queried = ConsoleParser.apply(
+      const WorldState(),
+      '[INFO] The difficulty is Hard',
+    );
+    final changed = ConsoleParser.apply(
+      queried,
+      '[INFO] Set game difficulty to Easy',
+    );
+
+    expect(queried.lastDifficulty, 'hard');
+    expect(changed.lastDifficulty, 'easy');
+  });
+
   test('parses Java time, gamerules, and player counts', () {
     const output = '''
 The time is 5231
@@ -37,10 +51,7 @@ There are 2 of a max of 20 players online: Alex, Steve
 ''';
 
     expect(
-      ConsoleParser.playerChanges(
-        output,
-        edition: MinecraftEdition.java,
-      ),
+      ConsoleParser.playerChanges(output, edition: MinecraftEdition.java),
       [('Alex', true), ('Steve', false)],
     );
   });

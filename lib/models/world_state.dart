@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Live world state, built from what the server prints to its console.
 ///
-/// Only some of it can be read back. `time query daytime` and `gamerule <rule>`
-/// both answer, but there is no query form for weather, and `difficulty` with
-/// no argument is a syntax error. Those are therefore remembered from what was
-/// last set from here, and are null until then rather than guessed.
+/// Only some of it can be read back. Time, difficulty and game rules answer
+/// queries, but there is no portable query form for weather. Weather is
+/// therefore remembered from what was last set here rather than guessed.
 class WorldState {
   /// Ticks into the Minecraft day, 0-23999, or null if never queried.
   final int? daytime;
@@ -17,7 +16,7 @@ class WorldState {
   final int? playersOnline;
   final int? playerLimit;
 
-  /// Set from this app, since the server offers no way to read them back.
+  /// Weather is set from this app; difficulty is also updated from replies.
   final String? lastWeather;
   final String? lastDifficulty;
 

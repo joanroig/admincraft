@@ -1,4 +1,5 @@
 import 'package:admincraft/models/app_theme.dart';
+import 'package:admincraft/controllers/notification_controller.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/theme_service.dart';
 import 'package:admincraft/utils/toast_utils.dart';
@@ -17,10 +18,15 @@ class PreferencesView extends StatefulWidget {
 
 class _PreferencesViewState extends State<PreferencesView> {
   final _maxLinesController = TextEditingController();
+  final _consoleFilterController = TextEditingController();
   late AppTheme _appTheme;
   late ThemeMode _themeMode;
   late String _font;
   late double _fontSize;
+  late String _terminalFont;
+  late double _terminalFontSize;
+  late bool _terminalAutoScroll;
+  late String _timestampMode;
   String _version = '';
   bool _themesExpanded = false;
 
@@ -48,7 +54,12 @@ class _PreferencesViewState extends State<PreferencesView> {
     _themeMode = model.themeMode;
     _font = model.font;
     _fontSize = model.fontSize;
+    _terminalFont = model.terminalFont;
+    _terminalFontSize = model.terminalFontSize;
+    _terminalAutoScroll = model.terminalAutoScroll;
+    _timestampMode = model.consoleTimestampMode;
     _maxLinesController.text = model.maxOutLines.toString();
+    _consoleFilterController.text = model.consoleFilterPattern;
     _loadVersion();
   }
 
@@ -65,11 +76,17 @@ class _PreferencesViewState extends State<PreferencesView> {
       return;
     }
     await _model.setMaxOutputLines(lines);
+    await _model.setTerminalFont(_terminalFont);
+    await _model.setTerminalFontSize(_terminalFontSize);
+    await _model.setTerminalAutoScroll(_terminalAutoScroll);
+    await _model.setConsoleTimestampMode(_timestampMode);
+    await _model.setConsoleFilterPattern(_consoleFilterController.text.trim());
     ToastUtils.showToastSuccess('Console preferences saved.');
   }
 
   @override
   Widget build(BuildContext context) {
+    final notifications = context.watch<NotificationController?>();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Center(
@@ -78,8 +95,10 @@ class _PreferencesViewState extends State<PreferencesView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Preferences',
-                  style: Theme.of(context).textTheme.headlineMedium),
+              Text(
+                'Preferences',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
               const SizedBox(height: 4),
               Text(
                 'These settings apply to Admincraft on this device, not to one server.',
@@ -110,14 +129,19 @@ class _PreferencesViewState extends State<PreferencesView> {
                           // Not prefixed 'app-theme-', which identifies the
                           // tiles themselves and is counted as such.
                           key: const ValueKey('theme-expand-toggle'),
-                          onPressed: () =>
-                              setState(() => _themesExpanded = !_themesExpanded),
-                          icon: Icon(_themesExpanded
-                              ? Icons.expand_less
-                              : Icons.expand_more),
-                          label: Text(_themesExpanded
-                              ? 'Show less'
-                              : 'All ${AppTheme.values.length}'),
+                          onPressed: () => setState(
+                            () => _themesExpanded = !_themesExpanded,
+                          ),
+                          icon: Icon(
+                            _themesExpanded
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                          ),
+                          label: Text(
+                            _themesExpanded
+                                ? 'Show less'
+                                : 'All ${AppTheme.values.length}',
+                          ),
                         ),
                       ],
                     ),
@@ -131,14 +155,14 @@ class _PreferencesViewState extends State<PreferencesView> {
                         final columns = constraints.maxWidth >= 880
                             ? 8
                             : constraints.maxWidth >= 720
-                                ? 6
-                                : constraints.maxWidth >= 440
-                                    ? 4
-                                    : 3;
+                            ? 6
+                            : constraints.maxWidth >= 440
+                            ? 4
+                            : 3;
                         const spacing = 8.0;
                         final width =
                             (constraints.maxWidth - spacing * (columns - 1)) /
-                                columns;
+                            columns;
                         return Wrap(
                           spacing: spacing,
                           runSpacing: spacing,
@@ -162,16 +186,22 @@ class _PreferencesViewState extends State<PreferencesView> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<ThemeMode>(
                       initialValue: _themeMode,
-                      decoration:
-                          const InputDecoration(labelText: 'Appearance mode'),
+                      decoration: const InputDecoration(
+                        labelText: 'Appearance mode',
+                      ),
                       items: const [
                         DropdownMenuItem(
-                            value: ThemeMode.system,
-                            child: Text('System default')),
+                          value: ThemeMode.system,
+                          child: Text('System default'),
+                        ),
                         DropdownMenuItem(
-                            value: ThemeMode.light, child: Text('Light')),
+                          value: ThemeMode.light,
+                          child: Text('Light'),
+                        ),
                         DropdownMenuItem(
-                            value: ThemeMode.dark, child: Text('Dark')),
+                          value: ThemeMode.dark,
+                          child: Text('Dark'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value == null) return;
@@ -185,13 +215,21 @@ class _PreferencesViewState extends State<PreferencesView> {
                       decoration: const InputDecoration(labelText: 'Font'),
                       items: const [
                         DropdownMenuItem(
-                            value: 'Miracode', child: Text('Miracode')),
+                          value: 'Miracode',
+                          child: Text('Miracode'),
+                        ),
                         DropdownMenuItem(
-                            value: 'Monocraft', child: Text('Monocraft')),
+                          value: 'Monocraft',
+                          child: Text('Monocraft'),
+                        ),
                         DropdownMenuItem(
-                            value: 'Scientifica', child: Text('Scientifica')),
+                          value: 'Scientifica',
+                          child: Text('Scientifica'),
+                        ),
                         DropdownMenuItem(
-                            value: 'Roboto', child: Text('Roboto')),
+                          value: 'Roboto',
+                          child: Text('Roboto'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value == null) return;
@@ -225,39 +263,168 @@ class _PreferencesViewState extends State<PreferencesView> {
               const SizedBox(height: 14),
               _PreferenceCard(
                 title: 'Console behavior',
-                subtitle: 'Local display limits for terminal output.',
-                child: Row(
+                subtitle:
+                    'Typography, filtering and scrolling for terminal output.',
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _maxLinesController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                            labelText: 'Maximum output lines'),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final fieldWidth = constraints.maxWidth < 520
+                            ? constraints.maxWidth
+                            : (constraints.maxWidth - 10) / 2;
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 12,
+                          children: [
+                            SizedBox(
+                              width: fieldWidth,
+                              child: TextField(
+                                controller: _maxLinesController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Maximum output lines',
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: fieldWidth,
+                              child: DropdownButtonFormField<String>(
+                                initialValue: _timestampMode,
+                                decoration: const InputDecoration(
+                                  labelText: 'Timestamps',
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'full',
+                                    child: Text('Full'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'short',
+                                    child: Text('Short'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'hidden',
+                                    child: Text('Hidden'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _timestampMode = value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _consoleFilterController,
+                      decoration: const InputDecoration(
+                        labelText: 'Only show lines containing (optional)',
+                        helperText:
+                            'Case-insensitive; leave empty to show everything.',
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: _saveConsolePreferences,
-                      child: const Text('Save'),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _terminalFont,
+                      decoration: const InputDecoration(
+                        labelText: 'Terminal font',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Miracode',
+                          child: Text('Miracode'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Monocraft',
+                          child: Text('Monocraft'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Scientifica',
+                          child: Text('Scientifica'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Roboto',
+                          child: Text('Roboto'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _terminalFont = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Expanded(child: Text('Terminal font size')),
+                        Text(_terminalFontSize.toStringAsFixed(0)),
+                      ],
+                    ),
+                    Slider(
+                      value: _terminalFontSize,
+                      min: 10,
+                      max: 28,
+                      divisions: 18,
+                      label: _terminalFontSize.toStringAsFixed(0),
+                      onChanged: (value) =>
+                          setState(() => _terminalFontSize = value),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Automatically scroll to new output'),
+                      value: _terminalAutoScroll,
+                      onChanged: (value) =>
+                          setState(() => _terminalAutoScroll = value),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton(
+                        onPressed: _saveConsolePreferences,
+                        child: const Text('Save console preferences'),
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 14),
+              if (notifications != null) ...[
+                _PreferenceCard(
+                  title: 'Notifications',
+                  subtitle:
+                      'Every event stays in the notification history even when popups are hidden.',
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Show notification popups'),
+                    subtitle: const Text(
+                      'Connection events and errors will still be saved behind the bell icon.',
+                    ),
+                    value: notifications.popupsEnabled,
+                    onChanged: notifications.setPopupsEnabled,
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('About Admincraft',
-                          style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        'About Admincraft',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 6),
-                      Text(_version.isEmpty
-                          ? 'Loading version…'
-                          : 'Version $_version'),
+                      Text(
+                        _version.isEmpty
+                            ? 'Loading version…'
+                            : 'Version $_version',
+                      ),
                       // Release builds carry the time they were made, so a
                       // report can identify the exact binary rather than a
                       // version several builds share.
@@ -281,7 +448,8 @@ class _PreferencesViewState extends State<PreferencesView> {
                           ),
                           OutlinedButton.icon(
                             onPressed: () => UrlUtils.openUrl(
-                                'https://github.com/joanroig/admincraft'),
+                              'https://github.com/joanroig/admincraft',
+                            ),
                             icon: const Icon(Icons.code),
                             label: const Text('GitHub'),
                           ),
@@ -296,20 +464,16 @@ class _PreferencesViewState extends State<PreferencesView> {
                         'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR '
                         'ASSOCIATED WITH MOJANG OR MICROSOFT.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Minecraft is a trademark of Mojang Synergies AB. '
                         'Admincraft is an independent project.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -325,6 +489,7 @@ class _PreferencesViewState extends State<PreferencesView> {
   @override
   void dispose() {
     _maxLinesController.dispose();
+    _consoleFilterController.dispose();
     super.dispose();
   }
 }

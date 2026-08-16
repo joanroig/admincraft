@@ -1,6 +1,6 @@
 import 'package:admincraft/models/model.dart';
-import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:flutter/material.dart';
+import 'package:admincraft/views/widgets/server_icon.dart';
 
 class ServerSwitcher extends StatelessWidget {
   static const String _addServerValue = '__add_server__';
@@ -38,16 +38,10 @@ class ServerSwitcher extends StatelessWidget {
             value: server.id,
             child: ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                server.id == model.selectedServerId
-                    ? Icons.check_circle
-                    : Icons.dns_outlined,
-                color: server.id == model.selectedServerId
-                    ? theme.colorScheme.primary
-                    : null,
+              leading: ServerIcon(server: server),
+              title: Text(
+                server.alias.isEmpty ? 'Unnamed server' : server.alias,
               ),
-              title:
-                  Text(server.alias.isEmpty ? 'Unnamed server' : server.alias),
               subtitle: Text(server.edition.label),
             ),
           ),
@@ -77,13 +71,7 @@ class ServerSwitcher extends StatelessWidget {
         child: Row(
           mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
           children: [
-            Icon(
-              selected.edition == MinecraftEdition.java
-                  ? Icons.coffee_outlined
-                  : Icons.view_in_ar_outlined,
-              size: compact ? 20 : 22,
-              color: theme.colorScheme.primary,
-            ),
+            ServerIcon(server: selected, size: compact ? 20 : 32),
             const SizedBox(width: 9),
             Flexible(
               child: Column(

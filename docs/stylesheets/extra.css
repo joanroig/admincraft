@@ -113,6 +113,20 @@
   color: var(--admincraft-ink);
 }
 
+/* Legal and generator credits should remain available on every page without
+ * competing with the article or navigation. */
+.md-copyright {
+  max-width: 58rem;
+  font-size: 0.56rem;
+  line-height: 1.35;
+  opacity: 0.68;
+}
+
+.md-footer-meta__inner {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+
 @media (max-width: 44.9844em) {
   .admincraft-hero {
     padding: 1.5rem 1rem;

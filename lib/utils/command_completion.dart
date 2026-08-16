@@ -45,8 +45,9 @@ class CommandCompletion {
       return _commands(words.isEmpty ? '' : words.first, usage, edition);
     }
 
-    final command =
-        MinecraftCommands.byName(edition)[words.first.toLowerCase()];
+    final command = MinecraftCommands.byName(
+      edition,
+    )[words.first.toLowerCase()];
     if (command == null) return const [];
 
     // Index of the argument being typed, counting from after the command name.
@@ -102,9 +103,9 @@ class CommandCompletion {
     MinecraftEdition edition,
   ) {
     return _rank(
-      MinecraftCommands.all(edition)
-          .map((c) => Completion(c.name, c.description))
-          .toList(),
+      MinecraftCommands.all(
+        edition,
+      ).map((c) => Completion(c.name, c.description)).toList(),
       prefix,
       usage: usage,
     );
@@ -119,8 +120,9 @@ class CommandCompletion {
     switch (arg.type) {
       case ArgType.literal:
         return _rank(
-            arg.options.map((o) => Completion(o, '', ArgType.literal)).toList(),
-            prefix);
+          arg.options.map((o) => Completion(o, '', ArgType.literal)).toList(),
+          prefix,
+        );
       case ArgType.player:
         return _rank(
           onlinePlayers
@@ -130,39 +132,52 @@ class CommandCompletion {
         );
       case ArgType.item:
         return _rank(
-            BedrockIds.items
-                .map((i) => Completion(i, '', ArgType.item))
-                .toList(),
-            prefix);
+          BedrockIds.items.map((i) => Completion(i, '', ArgType.item)).toList(),
+          prefix,
+        );
       case ArgType.entity:
         return _rank(
-            BedrockIds.entities
-                .map((e) => Completion(e, '', ArgType.entity))
-                .toList(),
-            prefix);
+          BedrockIds.entities
+              .map((e) => Completion(e, '', ArgType.entity))
+              .toList(),
+          prefix,
+        );
       case ArgType.effect:
         return _rank(
-            BedrockIds.effects
-                .map((e) => Completion(e, '', ArgType.effect))
-                .toList(),
-            prefix);
+          BedrockIds.effects
+              .map((e) => Completion(e, '', ArgType.effect))
+              .toList(),
+          prefix,
+        );
       case ArgType.enchantment:
         return _rank(
-            BedrockIds.enchantments
-                .map((e) => Completion(e, '', ArgType.enchantment))
-                .toList(),
-            prefix);
+          BedrockIds.enchantments
+              .map((e) => Completion(e, '', ArgType.enchantment))
+              .toList(),
+          prefix,
+        );
       case ArgType.gamerule:
         final gamerules = edition == MinecraftEdition.java
             ? JavaIds.gamerules
             : BedrockIds.gamerules;
         return _rank(
-            gamerules
-                .map((g) => Completion(
-                    g, BedrockGamerules.forName(g).label, ArgType.gamerule))
-                .toList(),
-            prefix);
+          gamerules
+              .map(
+                (g) => Completion(
+                  g,
+                  BedrockGamerules.forName(g).label,
+                  ArgType.gamerule,
+                ),
+              )
+              .toList(),
+          prefix,
+        );
       case ArgType.number:
+        const amounts = ['1', '5', '10', '20', '64', '128'];
+        return amounts
+            .where((value) => value.startsWith(prefix))
+            .map((value) => Completion(value, 'amount', ArgType.number))
+            .toList();
       case ArgType.text:
       case ArgType.position:
         return const [];
@@ -182,7 +197,8 @@ class CommandCompletion {
     Map<String, int> usage = const {},
   }) {
     int byUsage(Completion a, Completion b) {
-      final used = (usage[b.value.toLowerCase()] ?? 0) -
+      final used =
+          (usage[b.value.toLowerCase()] ?? 0) -
           (usage[a.value.toLowerCase()] ?? 0);
       return used != 0 ? used : a.value.compareTo(b.value);
     }

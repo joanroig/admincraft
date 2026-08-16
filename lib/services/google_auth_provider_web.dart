@@ -67,7 +67,13 @@ class _WebGoogleAuthProvider implements GoogleAuthProvider {
   }
 
   @override
-  Future<bool> signIn() async => false;
+  Future<bool> signIn() async {
+    await initialize();
+    // Web sign-in must be initiated by the rendered Google button. Returning
+    // the current state still lets callers recover if the button event arrived
+    // just before this method was reached.
+    return _account != null;
+  }
 
   @override
   Widget? buildSignInButton() {
@@ -85,11 +91,14 @@ class _WebGoogleAuthProvider implements GoogleAuthProvider {
   Future<http.Client?> authenticatedClient({required bool interactive}) async {
     final account = _account;
     if (account == null) return null;
-    final authorization = await account.authorizationClient
-            .authorizationForScopes(const [googleDriveAppDataScope]) ??
+    final authorization =
+        await account.authorizationClient.authorizationForScopes(const [
+          googleDriveAppDataScope,
+        ]) ??
         (interactive
-            ? await account.authorizationClient
-                .authorizeScopes(const [googleDriveAppDataScope])
+            ? await account.authorizationClient.authorizeScopes(const [
+                googleDriveAppDataScope,
+              ])
             : null);
     return authorization == null
         ? null

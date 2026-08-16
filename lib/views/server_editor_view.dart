@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
@@ -10,6 +11,7 @@ import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:admincraft/utils/host_utils.dart';
 import 'package:admincraft/utils/toast_utils.dart';
 import 'package:admincraft/utils/url_utils.dart';
+import 'package:admincraft/views/widgets/server_icon.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -19,12 +21,14 @@ class ServerEditorView extends StatefulWidget {
   final Future<void> Function() onSaved;
   final Future<void> Function() onDeleted;
   final VoidCallback onBack;
+  final ValueChanged<bool>? onDirtyChanged;
 
   const ServerEditorView({
     super.key,
     required this.onSaved,
     required this.onDeleted,
     required this.onBack,
+    this.onDirtyChanged,
   });
 
   @override
@@ -43,6 +47,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   late ConnectionSecurity _security;
   late MinecraftEdition _edition;
   String _certificateContent = '';
+  String _iconAsset = serverIconAssets.first;
+  String _customIconBase64 = '';
   bool _secretVisible = false;
   bool _saving = false;
 
@@ -51,7 +57,9 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   /// the raw socket RCON needs.
   List<ConnectionSecurity> get _securityOptions =>
       ConnectionSecurity.values.where((value) {
-        if (value.requiresCertificate && !supportsCustomCertificate) return false;
+        if (value.requiresCertificate && !supportsCustomCertificate) {
+          return false;
+        }
         if (value.isDirectRcon) {
           return _edition == MinecraftEdition.java && supportsDirectRcon;
         }
@@ -68,6 +76,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     _portController.text = server.port.toString();
     _secretController.text = server.secretKey;
     _certificateContent = server.certificate;
+    _iconAsset = server.iconAsset;
+    _customIconBase64 = server.customIconBase64;
     _certificateController.text = server.certificate.isEmpty
         ? 'No certificate loaded'
         : 'Certificate loaded';
@@ -77,6 +87,29 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     _security = _securityOptions.contains(server.security)
         ? server.security
         : ConnectionSecurity.trustedCertificate;
+    for (final controller in [
+      _aliasController,
+      _hostController,
+      _portController,
+      _secretController,
+    ]) {
+      controller.addListener(_reportDirty);
+    }
+  }
+
+  void _reportDirty() {
+    final original = _model.selectedServer;
+    final dirty =
+        _aliasController.text != original.alias ||
+        _hostController.text != original.ip ||
+        _portController.text != original.port.toString() ||
+        _secretController.text != original.secretKey ||
+        _certificateContent != original.certificate ||
+        _security != original.security ||
+        _edition != original.edition ||
+        _iconAsset != original.iconAsset ||
+        _customIconBase64 != original.customIconBase64;
+    widget.onDirtyChanged?.call(dirty);
   }
 
   String get _connectionPreview {
@@ -84,7 +117,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     // that will actually be used while they are still looking at the field.
     final parsed = HostInput.parse(_hostController.text);
     final host = parsed.host;
-    final port = (parsed.port ?? int.tryParse(_portController.text.trim()))
+    final port =
+        (parsed.port ?? int.tryParse(_portController.text.trim()))
             ?.toString() ??
         '';
     final shownHost = host.isEmpty ? '<host>' : host;
@@ -99,7 +133,6 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     final suffix = _security.usesTls ? '' : '  (not encrypted)';
     return '$scheme://$shownHost:$shownPort$suffix';
   }
-
 
   Future<void> _pickCertificate() async {
     final result = await FilePicker.platform.pickFiles(
@@ -118,6 +151,93 @@ class _ServerEditorViewState extends State<ServerEditorView> {
       _certificateContent = content;
       _certificateController.text = 'Certificate loaded';
     });
+    _reportDirty();
+  }
+
+  Future<void> _pickServerIcon() async {
+    final selection = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Server logo'),
+        content: SizedBox(
+          width: 360,
+          child: GridView.count(
+            shrinkWrap: true,
+            crossAxisCount: 5,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            children: [
+              for (final asset in serverIconAssets)
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => Navigator.pop(context, asset),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Image.asset(
+                      asset,
+                      filterQuality: FilterQuality.none,
+                      isAntiAlias: false,
+                    ),
+                  ),
+                ),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => Navigator.pop(context, '__custom__'),
+                child: const Tooltip(
+                  message: 'Upload a 16 x 16 PNG',
+                  child: Icon(Icons.add_photo_alternate_outlined),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (selection == null || !mounted) return;
+    if (selection != '__custom__') {
+      setState(() {
+        _iconAsset = selection;
+        _customIconBase64 = '';
+      });
+      _reportDirty();
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png'],
+      withData: true,
+    );
+    final bytes = result?.files.single.bytes;
+    if (bytes == null || !mounted) return;
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final valid = frame.image.width == 16 && frame.image.height == 16;
+      frame.image.dispose();
+      codec.dispose();
+      if (!valid) {
+        ToastUtils.showToastError(
+          'Choose a PNG that is exactly 16 x 16 pixels.',
+        );
+        return;
+      }
+    } catch (_) {
+      ToastUtils.showToastError('That file is not a readable PNG image.');
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _iconAsset = '';
+      _customIconBase64 = base64Encode(bytes);
+    });
+    _reportDirty();
   }
 
   /// Reduces a pasted URL to the host, and takes the port with it.
@@ -146,7 +266,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_security.requiresCertificate && _certificateContent.isEmpty) {
       ToastUtils.showToastError(
-          'Load a server certificate or choose another security mode.');
+        'Load a server certificate or choose another security mode.',
+      );
       return;
     }
 
@@ -160,8 +281,11 @@ class _ServerEditorViewState extends State<ServerEditorView> {
         certificate: _certificateContent,
         connectionSecurity: _security,
         minecraftEdition: _edition,
+        iconAsset: _iconAsset,
+        customIconBase64: _customIconBase64,
       );
       await widget.onSaved();
+      widget.onDirtyChanged?.call(false);
       ToastUtils.showToastSuccess('Server saved.');
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -178,6 +302,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
       confirmLabel: 'Delete',
     );
     if (!confirmed) return;
+    widget.onDirtyChanged?.call(false);
     await _model.deleteServer(server.id);
     await widget.onDeleted();
   }
@@ -208,9 +333,10 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Edit server',
-                              style:
-                                  Theme.of(context).textTheme.headlineMedium),
+                          Text(
+                            'Edit server',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             'Connection details only affect ${_model.alias}.',
@@ -222,7 +348,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                     IconButton(
                       tooltip: 'Server setup guide',
                       onPressed: () => UrlUtils.openDocumentation(
-                          'getting-started/first-server/'),
+                        'getting-started/first-server/',
+                      ),
                       icon: const Icon(Icons.help_outline),
                     ),
                   ],
@@ -230,59 +357,107 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                 const SizedBox(height: 16),
                 _SectionCard(
                   title: 'General',
-                  subtitle: 'Name and Minecraft edition.',
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final wide = constraints.maxWidth >= 580;
-                      final alias = TextFormField(
-                        controller: _aliasController,
-                        decoration: const InputDecoration(labelText: 'Alias'),
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
+                  subtitle: 'Name, logo and Minecraft edition.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: ServerIcon(
+                              server: _model.selectedServer.copyWith(
+                                iconAsset: _iconAsset,
+                                customIconBase64: _customIconBase64,
+                              ),
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'A 16 px logo identifies this profile and is included in encrypted backups and Drive sync.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          TextButton.icon(
+                            onPressed: _pickServerIcon,
+                            icon: const Icon(Icons.image_outlined),
+                            label: const Text('Choose'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final wide = constraints.maxWidth >= 580;
+                          final alias = TextFormField(
+                            controller: _aliasController,
+                            decoration: const InputDecoration(
+                              labelText: 'Alias',
+                            ),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
                                 ? 'Enter a name for this server.'
                                 : null,
-                      );
-                      final edition = DropdownButtonFormField<MinecraftEdition>(
-                        initialValue: _edition,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: 'Minecraft edition',
-                          helperText: _edition.connectivityHint,
-                          helperMaxLines: 2,
-                        ),
-                        items: MinecraftEdition.values
-                            .map((value) => DropdownMenuItem(
-                                  value: value,
-                                  child: Text(value.label),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() {
-                            _edition = value;
-                            if (!_securityOptions.contains(_security)) {
-                              _security = ConnectionSecurity.privateNetwork;
-                              _portController.text =
-                                  _security.suggestedPort.toString();
-                            }
-                          });
+                          );
+                          final edition =
+                              DropdownButtonFormField<MinecraftEdition>(
+                                initialValue: _edition,
+                                isExpanded: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Minecraft edition',
+                                  helperText: _edition.connectivityHint,
+                                  helperMaxLines: 2,
+                                ),
+                                items: MinecraftEdition.values
+                                    .map(
+                                      (value) => DropdownMenuItem(
+                                        value: value,
+                                        child: Text(value.label),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _edition = value;
+                                    if (!_securityOptions.contains(_security)) {
+                                      _security =
+                                          ConnectionSecurity.privateNetwork;
+                                      _portController.text = _security
+                                          .suggestedPort
+                                          .toString();
+                                    }
+                                  });
+                                  _reportDirty();
+                                },
+                              );
+                          return wide
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: alias),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: edition),
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    alias,
+                                    const SizedBox(height: 12),
+                                    edition,
+                                  ],
+                                );
                         },
-                      );
-                      return wide
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: alias),
-                                const SizedBox(width: 12),
-                                Expanded(child: edition),
-                              ],
-                            )
-                          : Column(children: [
-                              alias,
-                              const SizedBox(height: 12),
-                              edition
-                            ]);
-                    },
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -296,12 +471,15 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                         initialValue: _security,
                         isExpanded: true,
                         decoration: const InputDecoration(
-                            labelText: 'Connection type'),
+                          labelText: 'Connection type',
+                        ),
                         items: _securityOptions
-                            .map((value) => DropdownMenuItem(
-                                  value: value,
-                                  child: Text(value.typeLabel),
-                                ))
+                            .map(
+                              (value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(value.typeLabel),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           if (value == null) return;
@@ -309,12 +487,15 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                             final previous = _security;
                             _security = value;
                             final current = int.tryParse(_portController.text);
-                            final wasADefault = current == null ||
+                            final wasADefault =
+                                current == null ||
                                 current == previous.suggestedPort;
                             if (wasADefault) {
-                              _portController.text = value.suggestedPort.toString();
+                              _portController.text = value.suggestedPort
+                                  .toString();
                             }
                           });
+                          _reportDirty();
                         },
                       ),
                       Padding(
@@ -322,14 +503,14 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_security.description,
-                                style: Theme.of(context).textTheme.bodySmall),
+                            Text(
+                              _security.description,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               _connectionPreview,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelLarge
+                              style: Theme.of(context).textTheme.labelLarge
                                   ?.copyWith(
                                     color: _security.usesTls
                                         ? Theme.of(context).colorScheme.primary
@@ -338,9 +519,12 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                             ),
                             TextButton.icon(
                               onPressed: () => UrlUtils.openDocumentation(
-                                  'guides/connection-fields/'),
-                              icon: const Icon(Icons.menu_book_outlined,
-                                  size: 18),
+                                'guides/connection-fields/',
+                              ),
+                              icon: const Icon(
+                                Icons.menu_book_outlined,
+                                size: 18,
+                              ),
                               label: const Text('What do these fields mean?'),
                             ),
                           ],
@@ -358,8 +542,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                             onChanged: (_) => setState(() {}),
                             validator: (value) =>
                                 value == null || value.trim().isEmpty
-                                    ? 'Enter the server host.'
-                                    : null,
+                                ? 'Enter the server host.'
+                                : null,
                           );
                           final port = TextFormField(
                             controller: _portController,
@@ -378,16 +562,20 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                             },
                           );
                           return wide
-                              ? Row(children: [
-                                  Expanded(flex: 3, child: host),
-                                  const SizedBox(width: 12),
-                                  Expanded(child: port),
-                                ])
-                              : Column(children: [
-                                  host,
-                                  const SizedBox(height: 12),
-                                  port
-                                ]);
+                              ? Row(
+                                  children: [
+                                    Expanded(flex: 3, child: host),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: port),
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    host,
+                                    const SizedBox(height: 12),
+                                    port,
+                                  ],
+                                );
                         },
                       ),
                       const SizedBox(height: 12),
@@ -403,11 +591,14 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           suffixIcon: IconButton(
                             tooltip:
                                 '${_secretVisible ? 'Hide' : 'Show'} ${_security.secretNoun}',
-                            icon: Icon(_secretVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility),
+                            icon: Icon(
+                              _secretVisible
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
                             onPressed: () => setState(
-                                () => _secretVisible = !_secretVisible),
+                              () => _secretVisible = !_secretVisible,
+                            ),
                           ),
                         ),
                         validator: (value) => value == null || value.isEmpty
@@ -433,11 +624,14 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                                 if (_certificateContent.isNotEmpty)
                                   IconButton(
                                     tooltip: 'Remove certificate',
-                                    onPressed: () => setState(() {
-                                      _certificateContent = '';
-                                      _certificateController.text =
-                                          'No certificate loaded';
-                                    }),
+                                    onPressed: () {
+                                      setState(() {
+                                        _certificateContent = '';
+                                        _certificateController.text =
+                                            'No certificate loaded';
+                                      });
+                                      _reportDirty();
+                                    },
                                     icon: const Icon(Icons.clear),
                                   ),
                               ],
@@ -474,9 +668,10 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           final details = Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Danger zone',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium),
+                              Text(
+                                'Danger zone',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
                               const SizedBox(height: 4),
                               const Text(
                                 'Remove this profile and its credentials from this device.',

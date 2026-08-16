@@ -12,22 +12,39 @@ import 'package:admincraft/models/world_state.dart';
 class ConsoleParser {
   static final RegExp _bedrockDaytime = RegExp(r'Daytime is (\d+)');
   static final RegExp _javaDaytime = RegExp(r'The time is (\d+)');
-  static final RegExp _gamerule =
-      RegExp(r'^\s*([A-Za-z]+)\s*=\s*(true|false|\d+)\s*$');
-  static final RegExp _javaGamerule =
-      RegExp(r'^Gamerule ([A-Za-z]+) is currently set to: (true|false|\d+)$');
-  static final RegExp _bedrockPlayerCount =
-      RegExp(r'There are (\d+)/(\d+) players online');
-  static final RegExp _javaPlayerCount =
-      RegExp(r'There are (\d+) of a max of (\d+) players online(?::\s*(.*))?');
-  static final RegExp _bedrockConnected =
-      RegExp(r'Player connected:\s*([^,]+)');
-  static final RegExp _bedrockDisconnected =
-      RegExp(r'Player disconnected:\s*([^,]+)');
-  static final RegExp _javaConnected =
-      RegExp(r':\s*([^:\r\n]+?) joined the game\s*$');
-  static final RegExp _javaDisconnected =
-      RegExp(r':\s*([^:\r\n]+?) left the game\s*$');
+  static final RegExp _gamerule = RegExp(
+    r'^\s*([A-Za-z]+)\s*=\s*(true|false|\d+)\s*$',
+  );
+  static final RegExp _javaGamerule = RegExp(
+    r'^Gamerule ([A-Za-z]+) is currently set to: (true|false|\d+)$',
+  );
+  static final RegExp _bedrockPlayerCount = RegExp(
+    r'There are (\d+)/(\d+) players online',
+  );
+  static final RegExp _javaPlayerCount = RegExp(
+    r'There are (\d+) of a max of (\d+) players online(?::\s*(.*))?',
+  );
+  static final RegExp _bedrockConnected = RegExp(
+    r'Player connected:\s*([^,]+)',
+  );
+  static final RegExp _bedrockDisconnected = RegExp(
+    r'Player disconnected:\s*([^,]+)',
+  );
+  static final RegExp _javaConnected = RegExp(
+    r':\s*([^:\r\n]+?) joined the game\s*$',
+  );
+  static final RegExp _javaDisconnected = RegExp(
+    r':\s*([^:\r\n]+?) left the game\s*$',
+  );
+  static final RegExp _difficulty = RegExp(
+    r'(?:the\s+)?difficulty(?:\s+is|\s+has been set to|\s+set to)?\s*:?\s*'
+    r'(peaceful|easy|normal|hard)',
+    caseSensitive: false,
+  );
+  static final RegExp _bedrockDifficulty = RegExp(
+    r'set game difficulty to\s+(peaceful|easy|normal|hard)',
+    caseSensitive: false,
+  );
 
   /// Strips the leading `[2026-08-09 19:31:04:922 INFO]` stamp so the patterns
   /// above only have to match the message itself.
@@ -49,8 +66,9 @@ class ConsoleParser {
       final line = stripPrefix(raw).trim();
       if (line.isEmpty) continue;
 
-      final timePattern =
-          edition == MinecraftEdition.java ? _javaDaytime : _bedrockDaytime;
+      final timePattern = edition == MinecraftEdition.java
+          ? _javaDaytime
+          : _bedrockDaytime;
       final time = timePattern.firstMatch(line);
       if (time != null) {
         result = result.copyWith(daytime: int.tryParse(time.group(1)!));
@@ -62,6 +80,15 @@ class ConsoleParser {
         result = result.copyWith(
           playersOnline: int.tryParse(players.group(1)!),
           playerLimit: int.tryParse(players.group(2)!),
+        );
+        continue;
+      }
+
+      final difficulty =
+          _difficulty.firstMatch(line) ?? _bedrockDifficulty.firstMatch(line);
+      if (difficulty != null) {
+        result = result.copyWith(
+          lastDifficulty: difficulty.group(1)!.toLowerCase(),
         );
         continue;
       }
@@ -123,19 +150,21 @@ class ConsoleParser {
     for (final raw in chunk.split('\n')) {
       final line = stripPrefix(raw);
 
-      final joined = (edition == MinecraftEdition.java
-              ? _javaConnected
-              : _bedrockConnected)
-          .firstMatch(line);
+      final joined =
+          (edition == MinecraftEdition.java
+                  ? _javaConnected
+                  : _bedrockConnected)
+              .firstMatch(line);
       if (joined != null) {
         changes.add((joined.group(1)!.trim(), true));
         continue;
       }
 
-      final left = (edition == MinecraftEdition.java
-              ? _javaDisconnected
-              : _bedrockDisconnected)
-          .firstMatch(line);
+      final left =
+          (edition == MinecraftEdition.java
+                  ? _javaDisconnected
+                  : _bedrockDisconnected)
+              .firstMatch(line);
       if (left != null) {
         changes.add((left.group(1)!.trim(), false));
       }

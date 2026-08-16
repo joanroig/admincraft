@@ -8,7 +8,7 @@ import 'package:admincraft/services/retry_policy.dart';
 import 'package:admincraft/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
 
-class ConnectionController with ChangeNotifier {
+class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   /// How many times a connection worth retrying is retried before the app
   /// stops and leaves it to the user.
   ///
@@ -22,6 +22,9 @@ class ConnectionController with ChangeNotifier {
 
   int _retries = 0;
   Timer? _retryTimer;
+  Model? _model;
+  bool _keepConnected = false;
+  bool _wasBackgrounded = false;
 
   /// The last thing that went wrong, kept so a view can show it instead of
   /// only flashing a toast that may be missed.
@@ -29,9 +32,12 @@ class ConnectionController with ChangeNotifier {
 
   ConnectionController() {
     connectionService.onConnectionLost = _handleConnectionLost;
+    WidgetsBinding.instance.addObserver(this);
   }
 
   Future<void> attemptConnection(Model model, {bool reconnect = false}) async {
+    _model = model;
+    _keepConnected = true;
     _retryTimer?.cancel();
 
     // A profile missing an address or a key cannot connect, so say so once
@@ -39,7 +45,8 @@ class ConnectionController with ChangeNotifier {
     if (!model.selectedServer.isComplete) {
       if (!reconnect) {
         ToastUtils.showToastError(
-            'This server is not set up yet. Add its address and key first.');
+          'This server is not set up yet. Add its address and key first.',
+        );
       }
       return;
     }
@@ -57,7 +64,10 @@ class ConnectionController with ChangeNotifier {
       await connectionService.connect(model, reconnect: reconnect);
       _retries = 0;
       lastFailure = null;
-      if (reconnect) ToastUtils.showToastSuccess('Reconnected.');
+      ToastUtils.showInfo(
+        reconnect ? 'Reconnected' : 'Connected',
+        '${model.alias} is connected.',
+      );
     } on ConnectionFailure catch (failure) {
       _reportAndMaybeRetry(model, failure);
     } catch (error) {
@@ -74,6 +84,13 @@ class ConnectionController with ChangeNotifier {
   /// says one is worth making.
   void _reportAndMaybeRetry(Model model, ConnectionFailure failure) {
     lastFailure = failure;
+
+    if (_wasBackgrounded) {
+      ToastUtils.showToastError(
+        '${failure.message} Admincraft will reconnect when you return.',
+      );
+      return;
+    }
 
     final decision = decideRetry(
       failure: failure,
@@ -98,8 +115,10 @@ class ConnectionController with ChangeNotifier {
     _retries = 0;
 
     if (status == ConnectionStatus.connected) {
+      _keepConnected = false;
       connectionService.disconnect(model);
       lastFailure = null;
+      ToastUtils.showInfo('Disconnected', '${model.alias} was disconnected.');
       notifyListeners();
       return;
     }
@@ -115,17 +134,44 @@ class ConnectionController with ChangeNotifier {
   }
 
   Future<void> disconnect(Model model) async {
+    _keepConnected = false;
     _retryTimer?.cancel();
     _retries = 0;
     connectionService.disconnect(model);
     notifyListeners();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _wasBackgrounded = true;
+      _retryTimer?.cancel();
+      return;
+    }
+
+    if (state != AppLifecycleState.resumed || !_wasBackgrounded) return;
+    _wasBackgrounded = false;
+    final model = _model;
+    if (!_keepConnected || model == null || !model.selectedServer.isComplete) {
+      return;
+    }
+
+    // Mobile operating systems may suspend sockets while an app is hidden.
+    // Replace the possibly stale transport immediately on resume instead of
+    // waiting for the next command to discover it died.
+    connectionService.disconnect(model);
+    notifyListeners();
+    unawaited(attemptConnection(model, reconnect: true));
+  }
+
   Future<void> restartServer(Model model) async {
     try {
       connectionService.executeCommand('admincraft restart-server');
       ToastUtils.showToastSuccess(
-          'Server restart initiated, reconnecting in 5 seconds...');
+        'Server restart initiated, reconnecting in 5 seconds...',
+      );
       await disconnect(model);
       await Future.delayed(const Duration(seconds: 5));
       await attemptConnection(model, reconnect: true);
@@ -157,6 +203,7 @@ class ConnectionController with ChangeNotifier {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _retryTimer?.cancel();
     super.dispose();
   }

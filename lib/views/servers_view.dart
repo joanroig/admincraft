@@ -4,6 +4,7 @@ import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:admincraft/views/widgets/server_icon.dart';
 
 class ServersView extends StatelessWidget {
   final Future<void> Function(String serverId) onSelect;
@@ -38,8 +39,10 @@ class ServersView extends StatelessWidget {
                   final heading = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Servers',
-                          style: Theme.of(context).textTheme.headlineMedium),
+                      Text(
+                        'Servers',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Choose a server or create another profile.',
@@ -60,7 +63,10 @@ class ServersView extends StatelessWidget {
                     );
                   }
                   return Row(
-                    children: [Expanded(child: heading), add],
+                    children: [
+                      Expanded(child: heading),
+                      add,
+                    ],
                   );
                 },
               ),
@@ -127,11 +133,7 @@ class _ServerTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                child: Icon(server.edition.name == 'java'
-                    ? Icons.coffee_outlined
-                    : Icons.view_in_ar_outlined),
-              ),
+              CircleAvatar(child: ServerIcon(server: server, size: 28)),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(

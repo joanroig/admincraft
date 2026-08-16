@@ -12,6 +12,8 @@ class ServerProfile {
   final String certificate;
   final ConnectionSecurity security;
   final MinecraftEdition edition;
+  final String iconAsset;
+  final String customIconBase64;
 
   const ServerProfile({
     required this.id,
@@ -22,18 +24,22 @@ class ServerProfile {
     required this.certificate,
     required this.security,
     this.edition = MinecraftEdition.bedrock,
+    this.iconAsset = 'docs/logo/variants/dirt.png',
+    this.customIconBase64 = '',
   });
 
   factory ServerProfile.empty(String id) => ServerProfile(
-        id: id,
-        alias: 'New Server',
-        ip: '',
-        port: 8080,
-        secretKey: '',
-        certificate: '',
-        security: ConnectionSecurity.privateNetwork,
-        edition: MinecraftEdition.bedrock,
-      );
+    id: id,
+    alias: 'New Server',
+    ip: '',
+    port: 8080,
+    secretKey: '',
+    certificate: '',
+    security: ConnectionSecurity.privateNetwork,
+    edition: MinecraftEdition.bedrock,
+    iconAsset: 'docs/logo/variants/dirt.png',
+    customIconBase64: '',
+  );
 
   ServerProfile copyWith({
     String? alias,
@@ -43,6 +49,8 @@ class ServerProfile {
     String? certificate,
     ConnectionSecurity? security,
     MinecraftEdition? edition,
+    String? iconAsset,
+    String? customIconBase64,
   }) {
     return ServerProfile(
       id: id,
@@ -53,6 +61,8 @@ class ServerProfile {
       certificate: certificate ?? this.certificate,
       security: security ?? this.security,
       edition: edition ?? this.edition,
+      iconAsset: iconAsset ?? this.iconAsset,
+      customIconBase64: customIconBase64 ?? this.customIconBase64,
     );
   }
 
@@ -62,15 +72,17 @@ class ServerProfile {
   /// [includeSecrets] must stay true for an encrypted export, which is useless
   /// without the key, and false for plain storage, where the key does not belong.
   Map<String, dynamic> toJson({bool includeSecrets = true}) => {
-        'id': id,
-        'alias': alias,
-        'ip': ip,
-        'port': port,
-        if (includeSecrets) 'secretKey': secretKey,
-        if (includeSecrets) 'certificate': certificate,
-        'security': security.name,
-        'edition': edition.name,
-      };
+    'id': id,
+    'alias': alias,
+    'ip': ip,
+    'port': port,
+    if (includeSecrets) 'secretKey': secretKey,
+    if (includeSecrets) 'certificate': certificate,
+    'security': security.name,
+    'edition': edition.name,
+    'iconAsset': iconAsset,
+    if (customIconBase64.isNotEmpty) 'customIconBase64': customIconBase64,
+  };
 
   factory ServerProfile.fromJson(Map<String, dynamic> json) {
     return ServerProfile(
@@ -92,6 +104,8 @@ class ServerProfile {
         (value) => value.name == json['edition'],
         orElse: () => MinecraftEdition.bedrock,
       ),
+      iconAsset: json['iconAsset'] as String? ?? 'docs/logo/variants/dirt.png',
+      customIconBase64: json['customIconBase64'] as String? ?? '',
     );
   }
 }

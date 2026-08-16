@@ -26,6 +26,12 @@ class PersistenceService {
   static const _fontSizeKey = 'fontSize';
   static const _commandHistoryKey = 'commandHistory';
   static const _userCommandsKey = 'userCommands';
+  static const _favoriteCommandsKey = 'favoriteCommands';
+  static const _terminalFontKey = 'terminalFont';
+  static const _terminalFontSizeKey = 'terminalFontSize';
+  static const _terminalAutoScrollKey = 'terminalAutoScroll';
+  static const _consoleTimestampModeKey = 'consoleTimestampMode';
+  static const _consoleFilterPatternKey = 'consoleFilterPattern';
 
   final SharedPreferences _prefs;
 
@@ -40,7 +46,10 @@ class PersistenceService {
     final stored = prefs.getStringList(_serversKey);
     if (stored == null) return const ['default'];
     return stored
-        .map((entry) => (jsonDecode(entry) as Map<String, dynamic>)['id'] as String)
+        .map(
+          (entry) =>
+              (jsonDecode(entry) as Map<String, dynamic>)['id'] as String,
+        )
         .toList();
   }
 
@@ -147,7 +156,7 @@ class PersistenceService {
         secretKey: secretKey,
         certificate: certificate,
         security: connectionSecurity,
-      )
+      ),
     ];
   }
 
@@ -171,8 +180,10 @@ class PersistenceService {
     await _set(
       _serversKey,
       servers
-          .map((server) =>
-              jsonEncode(server.toJson(includeSecrets: keepSecretsInline)))
+          .map(
+            (server) =>
+                jsonEncode(server.toJson(includeSecrets: keepSecretsInline)),
+          )
           .toList(),
     );
     await _set(
@@ -238,11 +249,34 @@ class PersistenceService {
 
   String get font => _prefs.getString(_fontKey) ?? 'Roboto';
   double get fontSize => _prefs.getDouble(_fontSizeKey) ?? 16;
+  String get terminalFont => _prefs.getString(_terminalFontKey) ?? 'Monocraft';
+  double get terminalFontSize => _prefs.getDouble(_terminalFontSizeKey) ?? 14;
+  bool get terminalAutoScroll => _prefs.getBool(_terminalAutoScrollKey) ?? true;
+  String get consoleTimestampMode =>
+      _prefs.getString(_consoleTimestampModeKey) ?? 'short';
+  String get consoleFilterPattern =>
+      _prefs.getString(_consoleFilterPatternKey) ?? '';
+
+  Future<void> saveTerminalFont(String value) => _set(_terminalFontKey, value);
+  Future<void> saveTerminalFontSize(double value) =>
+      _set(_terminalFontSizeKey, value);
+  Future<void> saveTerminalAutoScroll(bool value) =>
+      _set(_terminalAutoScrollKey, value);
+  Future<void> saveConsoleTimestampMode(String value) =>
+      _set(_consoleTimestampModeKey, value);
+  Future<void> saveConsoleFilterPattern(String value) =>
+      _set(_consoleFilterPatternKey, value);
 
   List<String> get commandHistory =>
       _prefs.getStringList(_commandHistoryKey) ?? [];
   Set<String> get userCommands =>
       _prefs.getStringList(_userCommandsKey)?.toSet() ?? {};
+  List<String> get favoriteCommands =>
+      _prefs.getStringList(_favoriteCommandsKey) ?? [];
+
+  Future<void> saveFavoriteCommands(List<String> commands) async {
+    await _set(_favoriteCommandsKey, commands);
+  }
 
   Future<void> addCommandToHistory(String command) async {
     final history = List<String>.from(commandHistory);

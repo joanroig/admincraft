@@ -35,4 +35,22 @@ void main() {
       MinecraftEdition.java,
     );
   });
+
+  test('custom server logo survives profile serialization', () {
+    const profile = ServerProfile(
+      id: 'logo',
+      alias: 'Logo server',
+      ip: 'example.com',
+      port: 8080,
+      secretKey: 'secret',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+      iconAsset: '',
+      customIconBase64: 'aWNvbg==',
+    );
+
+    final restored = ServerProfile.fromJson(profile.toJson());
+    expect(restored.iconAsset, isEmpty);
+    expect(restored.customIconBase64, 'aWNvbg==');
+  });
 }

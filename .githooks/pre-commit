@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+set -eu
+
+branch="$(git branch --show-current)"
+if [ "$branch" = "main" ] || [ "$branch" = "master" ]; then
+  echo "Direct commits to $branch are disabled. Commit on develop or a feature branch."
+  exit 1
+fi
+
+dart_files="$(git diff --cached --name-only --diff-filter=ACM -- '*.dart')"
+if [ -n "$dart_files" ]; then
+  # shellcheck disable=SC2086
+  dart format --output=none --set-exit-if-changed $dart_files
+fi
+flutter analyze
+flutter test

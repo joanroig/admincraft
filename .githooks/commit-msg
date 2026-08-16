@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+set -eu
+
+message="$(head -n 1 "$1")"
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([[:alnum:]_.-]+\))?!?: .+'
+
+if ! printf '%s' "$message" | grep -Eq "$pattern"; then
+  echo "Commit message must use Conventional Commits (for example: feat(ui): add server logos)."
+  exit 1
+fi
