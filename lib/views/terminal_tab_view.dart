@@ -2,7 +2,7 @@ import 'package:admincraft/controllers/terminal_controller.dart';
 import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
 import 'package:admincraft/models/model.dart';
-import 'package:admincraft/services/console_parser.dart';
+import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:admincraft/utils/command_completion.dart';
 import 'package:admincraft/utils/command_utils.dart';
 import 'package:admincraft/utils/completion_icons.dart';
@@ -167,71 +167,56 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
 
   List<Widget> _formatOutput(String output, Set<String> userCommands) {
     final widgets = <Widget>[];
-    final lines = output.split('\n');
-
-    final configuredFilter = _model.consoleFilterPattern.toLowerCase();
     final search = _searchController.text.trim().toLowerCase();
+    final lines = ConsoleOutputFormatter.visibleLines(
+      output,
+      hideCommonNoise: _model.hideCommonConsoleNoise,
+      containing: _model.consoleFilterPattern,
+    );
 
-    for (var line in lines) {
-      if (line.trim().isNotEmpty) {
-        final lower = line.toLowerCase();
-        if (configuredFilter.isNotEmpty && !lower.contains(configuredFilter)) {
-          continue;
-        }
-        if (search.isNotEmpty && !lower.contains(search)) continue;
-        // Check for non-empty lines
-        final isUserCommand = userCommands.contains(line);
-        final shown = _formatTimestamp(line);
-        widgets.add(
-          MouseRegion(
-            cursor: isUserCommand
-                ? SystemMouseCursors.click
-                : SystemMouseCursors.basic,
-            child: GestureDetector(
-              onTap: isUserCommand
-                  ? () {
-                      _setText(line);
-                    }
-                  : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 0.0),
-                child: Text(
-                  shown,
-                  style: TextStyle(
-                    fontFamily: _model.terminalFont,
-                    fontFamilyFallback: const ['monospace'],
-                    fontSize: _model.terminalFontSize,
-                    fontWeight: isUserCommand
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                    color: isUserCommand
-                        ? Colors.blue
-                        : Theme.of(context).textTheme.bodyMedium?.color,
-                    decoration: isUserCommand
-                        ? TextDecoration.underline
-                        : TextDecoration.none,
-                  ),
+    for (final line in lines) {
+      if (search.isNotEmpty && !line.toLowerCase().contains(search)) continue;
+      final isUserCommand = userCommands.contains(line);
+      final shown = ConsoleOutputFormatter.formatLine(
+        line,
+        _model.consoleTimestampMode,
+      );
+      widgets.add(
+        MouseRegion(
+          cursor: isUserCommand
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          child: GestureDetector(
+            onTap: isUserCommand
+                ? () {
+                    _setText(line);
+                  }
+                : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 0.0),
+              child: Text(
+                shown,
+                style: TextStyle(
+                  fontFamily: _model.terminalFont,
+                  fontFamilyFallback: const ['monospace'],
+                  fontSize: _model.terminalFontSize,
+                  fontWeight: isUserCommand
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color: isUserCommand
+                      ? Colors.blue
+                      : Theme.of(context).textTheme.bodyMedium?.color,
+                  decoration: isUserCommand
+                      ? TextDecoration.underline
+                      : TextDecoration.none,
                 ),
               ),
             ),
           ),
-        );
-      }
+        ),
+      );
     }
     return widgets;
-  }
-
-  String _formatTimestamp(String line) {
-    if (_model.consoleTimestampMode == 'hidden') {
-      return ConsoleParser.stripPrefix(line);
-    }
-    if (_model.consoleTimestampMode != 'short') return line;
-
-    final match = RegExp(
-      r'^\[\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2})(?::\d{2}[^\s]*)?\s+([^\]]+)\]\s*(.*)$',
-    ).firstMatch(line);
-    if (match == null) return line;
-    return '[${match.group(1)} ${match.group(2)}] ${match.group(3)}';
   }
 
   Widget _buildOutputTools() {

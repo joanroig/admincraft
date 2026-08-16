@@ -44,8 +44,10 @@ void main() {
     await tester.pump();
     expect(taps, 1);
 
-    ToastUtils.dismissPopups();
-    await tester.pump(const Duration(seconds: 1));
+    expect(find.byTooltip('Dismiss notification'), findsOneWidget);
+    await tester.tap(find.byTooltip('Dismiss notification'));
+    await tester.pump();
+    expect(find.text('Connected'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

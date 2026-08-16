@@ -53,6 +53,7 @@ class Model with ChangeNotifier {
   bool get terminalAutoScroll => _persistenceService.terminalAutoScroll;
   String get consoleTimestampMode => _persistenceService.consoleTimestampMode;
   String get consoleFilterPattern => _persistenceService.consoleFilterPattern;
+  bool get hideCommonConsoleNoise => _persistenceService.hideCommonConsoleNoise;
 
   // Provide read-only access to collections
   Set<String> get userCommands =>
@@ -398,6 +399,12 @@ class Model with ChangeNotifier {
   Future<void> setConsoleFilterPattern(String value) async {
     await _updatePersistenceService(
       () => _persistenceService.saveConsoleFilterPattern(value),
+    );
+  }
+
+  Future<void> setHideCommonConsoleNoise(bool value) async {
+    await _updatePersistenceService(
+      () => _persistenceService.saveHideCommonConsoleNoise(value),
     );
   }
 
