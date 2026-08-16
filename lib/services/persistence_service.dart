@@ -32,6 +32,7 @@ class PersistenceService {
   static const _terminalAutoScrollKey = 'terminalAutoScroll';
   static const _consoleTimestampModeKey = 'consoleTimestampMode';
   static const _consoleFilterPatternKey = 'consoleFilterPattern';
+  static const _hideCommonConsoleNoiseKey = 'hideCommonConsoleNoise';
 
   final SharedPreferences _prefs;
 
@@ -256,6 +257,8 @@ class PersistenceService {
       _prefs.getString(_consoleTimestampModeKey) ?? 'hidden';
   String get consoleFilterPattern =>
       _prefs.getString(_consoleFilterPatternKey) ?? '';
+  bool get hideCommonConsoleNoise =>
+      _prefs.getBool(_hideCommonConsoleNoiseKey) ?? true;
 
   Future<void> saveTerminalFont(String value) => _set(_terminalFontKey, value);
   Future<void> saveTerminalFontSize(double value) =>
@@ -266,6 +269,8 @@ class PersistenceService {
       _set(_consoleTimestampModeKey, value);
   Future<void> saveConsoleFilterPattern(String value) =>
       _set(_consoleFilterPatternKey, value);
+  Future<void> saveHideCommonConsoleNoise(bool value) =>
+      _set(_hideCommonConsoleNoiseKey, value);
 
   List<String> get commandHistory =>
       _prefs.getStringList(_commandHistoryKey) ?? [];

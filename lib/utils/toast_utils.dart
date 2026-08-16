@@ -65,19 +65,52 @@ class ToastUtils {
     required Duration duration,
   }) {
     // Popups are only a glanceable hint; the inbox keeps the durable copy.
-    // The entire overlay ignores pointers, not just the visible card, so its
-    // full-screen layout can never intercept controls underneath.
+    // The visual card ignores pointers so controls underneath remain usable.
+    // A separate, tightly bounded close button is the only interactive part
+    // of the overlay.
     dismissPopups();
     final overlay = navigatorKey.currentState?.overlay;
     if (overlay == null) return;
 
     _popupEntry = OverlayEntry(
-      builder: (context) => Positioned.fill(
-        child: IgnorePointer(
-          child: SafeArea(
-            bottom: false,
-            child: Align(
-              alignment: Alignment.topCenter,
+      builder: (context) => Stack(
+        children: [
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: SafeArea(
+                bottom: false,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      12,
+                      kToolbarHeight + 6,
+                      12,
+                      0,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 520),
+                      child: _CompactNotification(
+                        kind: kind,
+                        title: title,
+                        message: message,
+                        duration: duration,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                   12,
@@ -85,19 +118,30 @@ class ToastUtils {
                   12,
                   0,
                 ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  child: _CompactNotification(
-                    kind: kind,
-                    title: title,
-                    message: message,
-                    duration: duration,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 1, right: 3),
+                        child: IconButton(
+                          key: const ValueKey('dismiss-notification-popup'),
+                          tooltip: 'Dismiss notification',
+                          visualDensity: VisualDensity.compact,
+                          color: Theme.of(context).colorScheme.onInverseSurface,
+                          onPressed: dismissPopups,
+                          icon: const Icon(Icons.close, size: 18),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
     overlay.insert(_popupEntry!);
@@ -128,18 +172,32 @@ class _CompactNotification extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final (icon, color) = switch (kind) {
-      AppNotificationKind.error => (Icons.error_outline, scheme.error),
-      AppNotificationKind.warning => (Icons.warning_amber, Colors.orange),
-      AppNotificationKind.success => (Icons.check_circle_outline, Colors.green),
-      AppNotificationKind.info => (Icons.info_outline, scheme.primary),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final (icon, accent) = switch (kind) {
+      AppNotificationKind.error => (
+        Icons.error_outline,
+        dark ? Colors.red.shade300 : Colors.red.shade700,
+      ),
+      AppNotificationKind.warning => (
+        Icons.warning_amber,
+        dark ? Colors.orange.shade300 : Colors.orange.shade800,
+      ),
+      AppNotificationKind.success => (
+        Icons.check_circle_outline,
+        dark ? Colors.greenAccent.shade100 : Colors.green.shade800,
+      ),
+      AppNotificationKind.info => (Icons.info_outline, scheme.inversePrimary),
     };
     final detail = message?.trim();
 
     return Material(
       elevation: 6,
-      color: scheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(12),
+      color: scheme.inverseSurface,
+      shadowColor: Colors.black.withValues(alpha: 0.55),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: accent.withValues(alpha: 0.75)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -149,7 +207,7 @@ class _CompactNotification extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: color, size: 20),
+                Icon(icon, color: accent, size: 20),
                 const SizedBox(width: 10),
                 Flexible(
                   child: Column(
@@ -160,7 +218,9 @@ class _CompactNotification extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelLarge,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: scheme.onInverseSurface,
+                        ),
                       ),
                       if (detail != null &&
                           detail.isNotEmpty &&
@@ -169,11 +229,17 @@ class _CompactNotification extends StatelessWidget {
                           detail,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: scheme.onInverseSurface.withValues(
+                                  alpha: 0.82,
+                                ),
+                              ),
                         ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 30),
               ],
             ),
           ),
@@ -183,8 +249,8 @@ class _CompactNotification extends StatelessWidget {
             builder: (context, value, _) => LinearProgressIndicator(
               value: value,
               minHeight: 2,
-              color: color,
-              backgroundColor: color.withValues(alpha: 0.12),
+              color: accent,
+              backgroundColor: accent.withValues(alpha: 0.18),
             ),
           ),
         ],

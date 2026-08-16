@@ -6,7 +6,7 @@ import 'package:admincraft/data/java_ids.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/models/world_state.dart';
-import 'package:admincraft/services/console_parser.dart';
+import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:admincraft/utils/command_utils.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
 import 'package:admincraft/utils/toast_utils.dart';
@@ -130,8 +130,6 @@ class _ControlTabState extends State<ControlTab> {
 
   Future<void> _refreshWorld() async {
     await _connection.sendQuietly('time query daytime');
-    await Future.delayed(const Duration(milliseconds: 300));
-    await _connection.sendQuietly('difficulty');
     await Future.delayed(const Duration(milliseconds: 300));
     await _connection.sendQuietly('list');
   }
@@ -447,15 +445,19 @@ class _ControlTabState extends State<ControlTab> {
   }
 
   Widget _responsePanel(Model model) {
-    final lines = model.output
-        .split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .toList();
+    final lines = ConsoleOutputFormatter.visibleLines(
+      model.output,
+      hideCommonNoise: model.hideCommonConsoleNoise,
+      containing: model.consoleFilterPattern,
+    );
     final tail = lines.length <= 8 ? lines : lines.sublist(lines.length - 8);
 
     final latest = tail.isEmpty
         ? 'Waiting for output...'
-        : _formatResponseLine(tail.last, model.consoleTimestampMode);
+        : ConsoleOutputFormatter.formatLine(
+            tail.last,
+            model.consoleTimestampMode,
+          );
     final scheme = Theme.of(context).colorScheme;
     final consoleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
       fontFamily: model.terminalFont,
@@ -535,7 +537,7 @@ class _ControlTabState extends State<ControlTab> {
                           else
                             ...tail.map(
                               (line) => Text(
-                                _formatResponseLine(
+                                ConsoleOutputFormatter.formatLine(
                                   line,
                                   model.consoleTimestampMode,
                                 ),
@@ -550,16 +552,6 @@ class _ControlTabState extends State<ControlTab> {
         ],
       ),
     );
-  }
-
-  static String _formatResponseLine(String line, String timestampMode) {
-    if (timestampMode == 'hidden') return ConsoleParser.stripPrefix(line);
-    if (timestampMode != 'short') return line;
-    final match = RegExp(
-      r'^\[\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2})(?::\d{2}[^\s]*)?\s+([^\]]+)\]\s*(.*)$',
-    ).firstMatch(line);
-    if (match == null) return line;
-    return '[${match.group(1)} ${match.group(2)}] ${match.group(3)}';
   }
 
   @override
@@ -611,17 +603,23 @@ class _ControlTabState extends State<ControlTab> {
           ),
           _card(
             title: 'Difficulty',
-            trailing: IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh difficulty from server',
-              onPressed: () => _connection.sendQuietly('difficulty'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _choiceRow(_difficulties, world.lastDifficulty, (value) async {
+                  await _send('difficulty $value');
+                  _model.recordDifficulty(value);
+                }),
+                if (world.lastDifficulty == null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Updated when the server reports a difficulty or you change it here.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+              ],
             ),
-            child: _choiceRow(_difficulties, world.lastDifficulty, (
-              value,
-            ) async {
-              await _send('difficulty $value');
-              _model.recordDifficulty(value);
-            }),
           ),
           _playersCard(model),
           _favoritesCard(model),

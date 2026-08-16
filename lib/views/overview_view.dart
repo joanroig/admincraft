@@ -1,6 +1,7 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -22,10 +23,11 @@ class OverviewView extends StatelessWidget {
     final connection = context.watch<ConnectionController>();
     final connected = connection.status == ConnectionStatus.connected;
     final world = model.world;
-    final outputLines = model.output
-        .split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .toList();
+    final outputLines = ConsoleOutputFormatter.visibleLines(
+      model.output,
+      hideCommonNoise: model.hideCommonConsoleNoise,
+      containing: model.consoleFilterPattern,
+    );
     final recentLines = outputLines.length <= 4
         ? outputLines.reversed.toList()
         : outputLines.sublist(outputLines.length - 4).reversed.toList();
@@ -89,8 +91,10 @@ class OverviewView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Quick actions',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Quick actions',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Common server tasks stay together instead of being scattered through settings.',
@@ -127,8 +131,10 @@ class OverviewView extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text('Recent activity',
-                            style: Theme.of(context).textTheme.titleMedium),
+                        child: Text(
+                          'Recent activity',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
                       ),
                       TextButton(
                         onPressed: onOpenConsole,
@@ -153,9 +159,17 @@ class OverviewView extends StatelessWidget {
                         dense: true,
                         leading: const Icon(Icons.chevron_right, size: 18),
                         title: Text(
-                          line,
+                          ConsoleOutputFormatter.formatLine(
+                            line,
+                            model.consoleTimestampMode,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: model.terminalFont,
+                            fontFamilyFallback: const ['monospace'],
+                            fontSize: model.terminalFontSize,
+                          ),
                         ),
                       ),
                 ],
@@ -172,10 +186,7 @@ class _PageFrame extends StatelessWidget {
   final String title;
   final Widget child;
 
-  const _PageFrame({
-    required this.title,
-    required this.child,
-  });
+  const _PageFrame({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -223,10 +234,7 @@ class _SetupBanner extends StatelessWidget {
                 ],
               ),
             ),
-            FilledButton(
-              onPressed: onEditServer,
-              child: const Text('Set up'),
-            ),
+            FilledButton(onPressed: onEditServer, child: const Text('Set up')),
           ],
         ),
       ),

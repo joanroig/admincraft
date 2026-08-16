@@ -26,6 +26,7 @@ class _PreferencesViewState extends State<PreferencesView> {
   late String _terminalFont;
   late double _terminalFontSize;
   late bool _terminalAutoScroll;
+  late bool _hideCommonConsoleNoise;
   late String _timestampMode;
   String _version = '';
   bool _themesExpanded = false;
@@ -57,6 +58,7 @@ class _PreferencesViewState extends State<PreferencesView> {
     _terminalFont = model.terminalFont;
     _terminalFontSize = model.terminalFontSize;
     _terminalAutoScroll = model.terminalAutoScroll;
+    _hideCommonConsoleNoise = model.hideCommonConsoleNoise;
     _timestampMode = model.consoleTimestampMode;
     _maxLinesController.text = model.maxOutLines.toString();
     _consoleFilterController.text = model.consoleFilterPattern;
@@ -81,6 +83,7 @@ class _PreferencesViewState extends State<PreferencesView> {
     await _model.setTerminalAutoScroll(_terminalAutoScroll);
     await _model.setConsoleTimestampMode(_timestampMode);
     await _model.setConsoleFilterPattern(_consoleFilterController.text.trim());
+    await _model.setHideCommonConsoleNoise(_hideCommonConsoleNoise);
     ToastUtils.showToastSuccess('Console preferences saved.');
   }
 
@@ -327,6 +330,17 @@ class _PreferencesViewState extends State<PreferencesView> {
                         helperText:
                             'Case-insensitive; leave empty to show everything.',
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Hide routine server noise'),
+                      subtitle: const Text(
+                        'Filters common background messages such as AutoCompaction. Important events and command responses remain visible.',
+                      ),
+                      value: _hideCommonConsoleNoise,
+                      onChanged: (value) =>
+                          setState(() => _hideCommonConsoleNoise = value),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(

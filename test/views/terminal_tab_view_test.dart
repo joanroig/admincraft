@@ -39,10 +39,14 @@ void main() {
   ) async {
     await pumpTerminal(
       tester,
-      output: const ['[2026-08-16 15:28:39:683 INFO] Server ready'],
+      output: const [
+        '[2026-08-16 15:28:38:683 INFO] Running AutoCompaction...',
+        '[2026-08-16 15:28:39:683 INFO] Server ready',
+      ],
     );
 
     expect(find.text('Server ready'), findsOneWidget);
+    expect(find.textContaining('AutoCompaction'), findsNothing);
     expect(find.textContaining('2026-08-16'), findsNothing);
 
     final input = find.byType(TextField).last;
