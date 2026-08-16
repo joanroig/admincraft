@@ -2,10 +2,7 @@
   --admincraft-dirt: #805539;
   --admincraft-grass: #5f7f3b;
   --admincraft-ink: #252018;
-  --md-primary-fg-color: #6f4933;
-  --md-primary-fg-color--light: #94684a;
-  --md-primary-fg-color--dark: #4b3022;
-  --md-accent-fg-color: #658746;
+  --admincraft-sand: #e3d3bd;
 }
 
 /* Tint Material's own schemes rather than declaring new ones.
@@ -19,6 +16,13 @@
   --md-default-bg-color: #fbf9f4;
   --md-default-fg-color: var(--admincraft-ink);
   --md-code-bg-color: #eee9dd;
+  /* These sat on :root, where Material's own scheme block outranked them, so
+   * light mode kept the stock indigo for links and buttons under a brown and
+   * green header. They have to be set on the scheme itself to take. */
+  --md-primary-fg-color: #6f4933;
+  --md-primary-fg-color--light: #94684a;
+  --md-primary-fg-color--dark: #4b3022;
+  --md-accent-fg-color: #658746;
 }
 
 [data-md-color-scheme="slate"] {
@@ -91,6 +95,22 @@
 .md-button--primary {
   background-color: var(--admincraft-grass) !important;
   border-color: var(--admincraft-grass) !important;
+}
+
+/* An outlined button takes its text and border from --md-primary-fg-color,
+ * which is the header colour. That is a dark brown here, so on the dark page
+ * the secondary button sat at 1.7:1 against its own background: drawn, but not
+ * visible. Material's hover then paints it with the accent and writes on it in
+ * --md-accent-bg-color, which slate leaves as white, giving 2.1:1 on light
+ * green. Both need a foreground chosen for this background rather than
+ * inherited from the header. */
+[data-md-color-scheme="slate"] .md-button {
+  color: var(--admincraft-sand);
+}
+
+[data-md-color-scheme="slate"] .md-button:focus,
+[data-md-color-scheme="slate"] .md-button:hover {
+  color: var(--admincraft-ink);
 }
 
 @media (max-width: 44.9844em) {
