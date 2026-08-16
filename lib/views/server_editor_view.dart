@@ -7,6 +7,7 @@ import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/rcon_client.dart';
 import 'package:admincraft/services/websocket_connector.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
+import 'package:admincraft/utils/host_utils.dart';
 import 'package:admincraft/utils/toast_utils.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:file_picker/file_picker.dart';
@@ -79,8 +80,13 @@ class _ServerEditorViewState extends State<ServerEditorView> {
   }
 
   String get _connectionPreview {
-    final host = _hostController.text.trim();
-    final port = _portController.text.trim();
+    // Parsed rather than shown raw, so someone pasting a URL sees the address
+    // that will actually be used while they are still looking at the field.
+    final parsed = HostInput.parse(_hostController.text);
+    final host = parsed.host;
+    final port = (parsed.port ?? int.tryParse(_portController.text.trim()))
+            ?.toString() ??
+        '';
     final shownHost = host.isEmpty ? '<host>' : host;
     final shownPort = port.isEmpty ? '<port>' : port;
 
@@ -114,7 +120,29 @@ class _ServerEditorViewState extends State<ServerEditorView> {
     });
   }
 
+  /// Reduces a pasted URL to the host, and takes the port with it.
+  ///
+  /// Every guide to Tailscale, Funnel or a reverse proxy hands out a URL, so
+  /// that is what gets pasted. `https://host` used to be stored verbatim and
+  /// built into `wss://https://host`, which fails with nothing on screen to
+  /// explain why.
+  void _normaliseHost() {
+    final parsed = HostInput.parse(_hostController.text);
+    if (!parsed.wasCleaned) return;
+
+    setState(() {
+      _hostController.text = parsed.host;
+      if (parsed.port != null) _portController.text = parsed.port.toString();
+    });
+
+    ToastUtils.showToastSuccess(
+      'Address read as ${parsed.host}'
+      '${parsed.port != null ? ', port ${parsed.port}' : ''}.',
+    );
+  }
+
   Future<void> _save() async {
+    _normaliseHost();
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_security.requiresCertificate && _certificateContent.isEmpty) {
       ToastUtils.showToastError(
