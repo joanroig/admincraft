@@ -15,6 +15,7 @@ import 'package:admincraft/views/welcome_view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -574,7 +575,21 @@ void main() {
   });
 
   testWidgets('the app title opens preferences', (tester) async {
+    PackageInfo.setMockInitialValues(
+      appName: 'Admincraft',
+      packageName: 'com.joanroig.admincraft',
+      version: '2.3.1',
+      buildNumber: '1',
+      buildSignature: '',
+    );
     await pumpApp(tester, const Size(1280, 720));
+
+    final titleRect = tester.getRect(find.byKey(const ValueKey('app-title')));
+    final versionTooltipRect = tester.getRect(
+      find.byKey(const ValueKey('app-version-tooltip')),
+    );
+    expect(versionTooltipRect.width, lessThan(titleRect.width / 2));
+    expect(versionTooltipRect.left, greaterThan(titleRect.left));
 
     await tester.tap(find.byKey(const ValueKey('app-title')));
     await tester.pumpAndSettle();
