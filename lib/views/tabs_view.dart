@@ -6,6 +6,7 @@ import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/utils/build_info.dart';
 import 'package:admincraft/utils/url_utils.dart';
+import 'package:admincraft/utils/toast_utils.dart';
 import 'package:admincraft/views/control_tab_view.dart';
 import 'package:admincraft/views/data_sync_view.dart';
 import 'package:admincraft/views/more_view.dart';
@@ -18,7 +19,9 @@ import 'package:admincraft/views/terminal_tab_view.dart';
 import 'package:admincraft/views/widgets/pixel_backdrop.dart';
 import 'package:admincraft/views/widgets/server_switcher.dart';
 import 'package:admincraft/views/widgets/theme_logo.dart';
+import 'package:admincraft/views/widgets/notification_inbox.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
@@ -35,15 +38,15 @@ enum _WorkspaceDestination {
 
 extension on _WorkspaceDestination {
   String get label => switch (this) {
-        _WorkspaceDestination.overview => 'Overview',
-        _WorkspaceDestination.console => 'Console',
-        _WorkspaceDestination.controls => 'Controls',
-        _WorkspaceDestination.servers => 'Servers',
-        _WorkspaceDestination.serverEditor => 'Configuration',
-        _WorkspaceDestination.dataSync => 'Data & Sync',
-        _WorkspaceDestination.preferences => 'Preferences',
-        _WorkspaceDestination.more => 'Settings',
-      };
+    _WorkspaceDestination.overview => 'Overview',
+    _WorkspaceDestination.console => 'Console',
+    _WorkspaceDestination.controls => 'Controls',
+    _WorkspaceDestination.servers => 'Servers',
+    _WorkspaceDestination.serverEditor => 'Configuration',
+    _WorkspaceDestination.dataSync => 'Data & Sync',
+    _WorkspaceDestination.preferences => 'Preferences',
+    _WorkspaceDestination.more => 'Settings',
+  };
 
   /// Whether this page is meaningless without a configured server.
   ///
@@ -54,28 +57,26 @@ extension on _WorkspaceDestination {
   /// back, leaving the server editor bounced the user to the welcome screen
   /// and the settings hub could not be opened at all.
   bool get needsServer => switch (this) {
-        _WorkspaceDestination.overview ||
-        _WorkspaceDestination.console ||
-        _WorkspaceDestination.controls =>
-          true,
-        _WorkspaceDestination.servers ||
-        _WorkspaceDestination.serverEditor ||
-        _WorkspaceDestination.dataSync ||
-        _WorkspaceDestination.preferences ||
-        _WorkspaceDestination.more =>
-          false,
-      };
+    _WorkspaceDestination.overview ||
+    _WorkspaceDestination.console ||
+    _WorkspaceDestination.controls => true,
+    _WorkspaceDestination.servers ||
+    _WorkspaceDestination.serverEditor ||
+    _WorkspaceDestination.dataSync ||
+    _WorkspaceDestination.preferences ||
+    _WorkspaceDestination.more => false,
+  };
 
   IconData get icon => switch (this) {
-        _WorkspaceDestination.overview => Icons.dashboard_outlined,
-        _WorkspaceDestination.console => Icons.terminal,
-        _WorkspaceDestination.controls => Icons.tune,
-        _WorkspaceDestination.servers => Icons.dns_outlined,
-        _WorkspaceDestination.serverEditor => Icons.edit_outlined,
-        _WorkspaceDestination.dataSync => Icons.sync_outlined,
-        _WorkspaceDestination.preferences => Icons.palette_outlined,
-        _WorkspaceDestination.more => Icons.settings_outlined,
-      };
+    _WorkspaceDestination.overview => Icons.dashboard_outlined,
+    _WorkspaceDestination.console => Icons.terminal,
+    _WorkspaceDestination.controls => Icons.tune,
+    _WorkspaceDestination.servers => Icons.dns_outlined,
+    _WorkspaceDestination.serverEditor => Icons.edit_outlined,
+    _WorkspaceDestination.dataSync => Icons.sync_outlined,
+    _WorkspaceDestination.preferences => Icons.palette_outlined,
+    _WorkspaceDestination.more => Icons.settings_outlined,
+  };
 }
 
 class Tabs extends StatefulWidget {
@@ -91,6 +92,8 @@ class _TabsState extends State<Tabs> {
   late final PageController _pageController;
   final _pageViewKey = GlobalKey();
   _WorkspaceDestination _destination = _WorkspaceDestination.overview;
+  final List<_WorkspaceDestination> _navigationHistory = [];
+  bool _serverEditorDirty = false;
 
   @override
   void initState() {
@@ -110,21 +113,92 @@ class _TabsState extends State<Tabs> {
       if (!mounted) return;
       final model = context.read<Model>();
       final driveSync = context.read<GoogleDriveSyncController>();
-      unawaited(
-        driveSync.initialize(model, onRemoteApplied: _serversImported),
-      );
+      unawaited(driveSync.initialize(model, onRemoteApplied: _serversImported));
       if (model.selectedServer.isComplete) {
-        context
-            .read<ConnectionController>()
-            .attemptConnection(model, reconnect: false);
+        context.read<ConnectionController>().attemptConnection(
+          model,
+          reconnect: false,
+        );
       }
     });
   }
 
   void _go(_WorkspaceDestination destination) {
     if (_destination == destination) return;
+    if (_destination == _WorkspaceDestination.serverEditor &&
+        destination != _WorkspaceDestination.serverEditor &&
+        _serverEditorDirty) {
+      ToastUtils.showInfo(
+        'Unsaved server changes',
+        'Your draft is still here. Return to Configuration and save it.',
+      );
+    }
+    _performGo(destination);
+  }
+
+  void _performGo(_WorkspaceDestination destination) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _navigationHistory.add(_destination);
+      _destination = destination;
+    });
+    _syncPage();
+  }
+
+  void _goWithoutHistory(_WorkspaceDestination destination) {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _destination = destination);
     _syncPage();
+  }
+
+  Future<void> _back() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (_destination == _WorkspaceDestination.serverEditor) {
+      _go(_WorkspaceDestination.servers);
+      return;
+    }
+    if (_destination == _WorkspaceDestination.servers ||
+        _destination == _WorkspaceDestination.dataSync ||
+        _destination == _WorkspaceDestination.preferences) {
+      _go(_WorkspaceDestination.more);
+      return;
+    }
+    if (_navigationHistory.isNotEmpty) {
+      final previous = _navigationHistory.removeLast();
+      _goWithoutHistory(previous);
+      return;
+    }
+    if (_destination != _WorkspaceDestination.overview) {
+      _goWithoutHistory(_WorkspaceDestination.overview);
+      return;
+    }
+
+    final close =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Close Admincraft?'),
+            content: const Text(
+              'Press Close app to disconnect and leave Admincraft.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Stay'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Close app'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!close || !mounted) return;
+    await context.read<ConnectionController>().disconnect(
+      context.read<Model>(),
+    );
+    await SystemNavigator.pop();
   }
 
   /// Moves the page host onto the current destination.
@@ -209,51 +283,47 @@ class _TabsState extends State<Tabs> {
     }
   }
 
-  Widget _pageAt(
-    int index,
-    Model model,
-    ConnectionController connection,
-  ) {
+  Widget _pageAt(int index, Model model, ConnectionController connection) {
     final destination = _WorkspaceDestination.values[index];
     return switch (destination) {
       _WorkspaceDestination.overview => OverviewView(
-          onOpenConsole: () => _go(_WorkspaceDestination.console),
-          onOpenControls: () => _go(_WorkspaceDestination.controls),
-          onEditServer: () => _go(_WorkspaceDestination.serverEditor),
-        ),
+        onOpenConsole: () => _go(_WorkspaceDestination.console),
+        onOpenControls: () => _go(_WorkspaceDestination.controls),
+        onEditServer: () => _go(_WorkspaceDestination.serverEditor),
+      ),
       _WorkspaceDestination.console => TerminalTab(
-          isEnabled: connection.status == ConnectionStatus.connected,
-        ),
+        isEnabled: connection.status == ConnectionStatus.connected,
+      ),
       _WorkspaceDestination.controls => ControlTab(
-          isEnabled: connection.status == ConnectionStatus.connected,
-        ),
+        isEnabled: connection.status == ConnectionStatus.connected,
+      ),
       _WorkspaceDestination.servers => ServersView(
-          onSelect: _selectServer,
-          onAdd: _addServer,
-          onEditSelected: () => _go(_WorkspaceDestination.serverEditor),
-        ),
+        onSelect: _selectServer,
+        onAdd: _addServer,
+        onEditSelected: () => _go(_WorkspaceDestination.serverEditor),
+      ),
       _WorkspaceDestination.serverEditor => ServerEditorView(
-          key: ValueKey(model.selectedServerId),
-          onSaved: _serverSaved,
-          onDeleted: _serverDeleted,
-          onBack: () => _go(_WorkspaceDestination.servers),
-        ),
-      _WorkspaceDestination.dataSync =>
-        DataSyncView(onServersChanged: _serversImported),
+        key: ValueKey(model.selectedServerId),
+        onSaved: _serverSaved,
+        onDeleted: _serverDeleted,
+        onBack: () => _go(_WorkspaceDestination.servers),
+        onDirtyChanged: (dirty) => _serverEditorDirty = dirty,
+      ),
+      _WorkspaceDestination.dataSync => DataSyncView(
+        onServersChanged: _serversImported,
+      ),
       _WorkspaceDestination.preferences => const PreferencesView(),
       _WorkspaceDestination.more => MoreView(
-          onServers: () => _go(_WorkspaceDestination.servers),
-          onDataSync: () => _go(_WorkspaceDestination.dataSync),
-          onPreferences: () => _go(_WorkspaceDestination.preferences),
-          onDocumentation: () => UrlUtils.openDocumentation(),
-        ),
+        onServers: () => _go(_WorkspaceDestination.servers),
+        onDataSync: () => _go(_WorkspaceDestination.dataSync),
+        onPreferences: () => _go(_WorkspaceDestination.preferences),
+        onDocumentation: () => UrlUtils.openDocumentation(),
+      ),
     };
   }
 
   Widget _pageHost(Model model, ConnectionController connection) {
-    return PixelBackdrop(
-      child: _pages(model, connection),
-    );
+    return PixelBackdrop(child: _pages(model, connection));
   }
 
   Widget _pages(Model model, ConnectionController connection) {
@@ -262,9 +332,8 @@ class _TabsState extends State<Tabs> {
       controller: _pageController,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _WorkspaceDestination.values.length,
-      itemBuilder: (context, index) => _KeepAlivePage(
-        child: _pageAt(index, model, connection),
-      ),
+      itemBuilder: (context, index) =>
+          _KeepAlivePage(child: _pageAt(index, model, connection)),
     );
   }
 
@@ -297,13 +366,19 @@ class _TabsState extends State<Tabs> {
           );
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final desktop = constraints.maxWidth >= _desktopBreakpoint;
-            return desktop
-                ? _buildDesktop(context, model, connection)
-                : _buildMobile(context, model, connection);
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (!didPop) unawaited(_back());
           },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final desktop = constraints.maxWidth >= _desktopBreakpoint;
+              return desktop
+                  ? _buildDesktop(context, model, connection)
+                  : _buildMobile(context, model, connection);
+            },
+          ),
         );
       },
     );
@@ -337,9 +412,7 @@ class _TabsState extends State<Tabs> {
                   connection: connection,
                 ),
                 const Divider(height: 1),
-                Expanded(
-                  child: _pageHost(model, connection),
-                ),
+                Expanded(child: _pageHost(model, connection)),
               ],
             ),
           ),
@@ -367,15 +440,18 @@ class _TabsState extends State<Tabs> {
                 tooltip: _destination == _WorkspaceDestination.serverEditor
                     ? 'Back to Servers'
                     : 'Back to Settings',
-                onPressed: () => _go(
-                  _destination == _WorkspaceDestination.serverEditor
-                      ? _WorkspaceDestination.servers
-                      : _WorkspaceDestination.more,
-                ),
+                onPressed: _back,
                 icon: const Icon(Icons.arrow_back),
               )
-            : null,
-        titleSpacing: secondary ? 0 : 12,
+            : Padding(
+                padding: const EdgeInsets.all(12),
+                child: Image.asset(
+                  'assets/logo.png',
+                  filterQuality: FilterQuality.none,
+                  isAntiAlias: false,
+                ),
+              ),
+        titleSpacing: 0,
         title: secondary
             ? Text(_destination.label)
             : ServerSwitcher(
@@ -384,7 +460,10 @@ class _TabsState extends State<Tabs> {
                 onSelect: _selectServer,
                 onAdd: _addServer,
               ),
-        actions: [_ConnectionAction(model: model, connection: connection)],
+        actions: [
+          const NotificationInboxButton(),
+          _ConnectionAction(model: model, connection: connection),
+        ],
       ),
       body: _pageHost(model, connection),
       bottomNavigationBar: NavigationBar(
@@ -421,11 +500,11 @@ class _TabsState extends State<Tabs> {
   }
 
   int get _mobileIndex => switch (_destination) {
-        _WorkspaceDestination.overview => 0,
-        _WorkspaceDestination.console => 1,
-        _WorkspaceDestination.controls => 2,
-        _ => 3,
-      };
+    _WorkspaceDestination.overview => 0,
+    _WorkspaceDestination.console => 1,
+    _WorkspaceDestination.controls => 2,
+    _ => 3,
+  };
 }
 
 class _WorkspaceSidebar extends StatelessWidget {
@@ -532,19 +611,18 @@ class _WorkspaceHeader extends StatelessWidget {
   });
 
   String get _subtitle => switch (destination) {
-        _WorkspaceDestination.overview ||
-        _WorkspaceDestination.console ||
-        _WorkspaceDestination.controls ||
-        _WorkspaceDestination.serverEditor =>
-          model.ip.isEmpty
-              ? model.selectedServer.edition.label
-              : '${model.selectedServer.edition.label} · ${model.ip}:${model.port}',
-        _WorkspaceDestination.servers => 'Manage saved server profiles',
-        _WorkspaceDestination.dataSync =>
-          'Back up and transfer application data',
-        _WorkspaceDestination.preferences => 'Application-wide settings',
-        _WorkspaceDestination.more => 'Application tools and settings',
-      };
+    _WorkspaceDestination.overview ||
+    _WorkspaceDestination.console ||
+    _WorkspaceDestination.controls ||
+    _WorkspaceDestination.serverEditor =>
+      model.ip.isEmpty
+          ? model.selectedServer.edition.label
+          : '${model.selectedServer.edition.label} · ${model.ip}:${model.port}',
+    _WorkspaceDestination.servers => 'Manage saved server profiles',
+    _WorkspaceDestination.dataSync => 'Back up and transfer application data',
+    _WorkspaceDestination.preferences => 'Application-wide settings',
+    _WorkspaceDestination.more => 'Application tools and settings',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -573,6 +651,8 @@ class _WorkspaceHeader extends StatelessWidget {
             ),
             _StatusLabel(status: connection.status),
             const SizedBox(width: 8),
+            const NotificationInboxButton(),
+            const SizedBox(width: 4),
             _ConnectionAction(model: model, connection: connection),
           ],
         ),
@@ -600,8 +680,9 @@ class _NavigationTile extends StatelessWidget {
         color: Colors.transparent,
         child: ListTile(
           dense: true,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           selected: selected,
           selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
           leading: Icon(destination.icon, size: 21),
@@ -639,7 +720,8 @@ class _AppTitleState extends State<_AppTitle> {
     if (!mounted) return;
     setState(() {
       _version = info.version;
-      _tooltip = 'Admincraft ${info.version}+${info.buildNumber}'
+      _tooltip =
+          'Admincraft ${info.version}+${info.buildNumber}'
           '${BuildInfo.isKnown ? '\n${BuildInfo.description}' : ''}';
     });
   }
@@ -682,8 +764,9 @@ class _AppTitleState extends State<_AppTitle> {
                     child: Text(
                       _version,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant
-                            .withValues(alpha: 0.45),
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.45,
+                        ),
                       ),
                     ),
                   ),
@@ -709,8 +792,8 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -735,8 +818,9 @@ class _ActionTile extends StatelessWidget {
         color: Colors.transparent,
         child: ListTile(
           dense: true,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           leading: Icon(icon, size: 21),
           title: Text(label),
           trailing: const Icon(Icons.open_in_new, size: 16),
@@ -799,13 +883,17 @@ class _ConnectionAction extends StatelessWidget {
     // Colour says what the connection is; the icon says what pressing will do.
     // Neither alone was enough before: a single tonal button looked the same
     // whether the server was live or not.
-    final (Color background, Color foreground) = switch ((ready, connecting, connected)) {
+    final (Color background, Color foreground) = switch ((
+      ready,
+      connecting,
+      connected,
+    )) {
       (false, _, false) => (scheme.surfaceContainerHighest, scheme.outline),
       (_, true, _) => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
       (_, _, true) => (
-          (dark ? _connectedDark : _connectedLight).withValues(alpha: 0.20),
-          dark ? _connectedDark : _connectedLight,
-        ),
+        (dark ? _connectedDark : _connectedLight).withValues(alpha: 0.20),
+        dark ? _connectedDark : _connectedLight,
+      ),
       _ => (scheme.errorContainer, scheme.onErrorContainer),
     };
 
@@ -815,7 +903,8 @@ class _ConnectionAction extends StatelessWidget {
           : switch (connection.status) {
               ConnectionStatus.connected => 'Connected. Press to disconnect.',
               ConnectionStatus.connecting => 'Connecting…',
-              ConnectionStatus.disconnected => 'Disconnected. Press to connect.',
+              ConnectionStatus.disconnected =>
+                'Disconnected. Press to connect.',
             },
       child: IconButton(
         onPressed: connecting || (!ready && !connected)

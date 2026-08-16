@@ -66,3 +66,14 @@ Releases are created periodically from the `main` branch.
 ---
 
 Thanks again for contributing to Admincraft! We look forward to your contributions.
+# Local quality checks
+
+Enable the repository's Git hooks once per checkout:
+
+```powershell
+./tool/setup-git-hooks.ps1
+```
+
+On macOS or Linux, run `./tool/setup-git-hooks.sh`. The hooks prevent direct
+commits to `main`, enforce Conventional Commits, format/analyze Dart, and run
+the test suite. Pull requests run the same checks in GitHub Actions.

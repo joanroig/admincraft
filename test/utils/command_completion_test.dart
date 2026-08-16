@@ -3,6 +3,15 @@ import 'package:admincraft/utils/command_completion.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('numeric arguments offer common stack amounts', () {
+    final values = CommandCompletion.suggest(
+      'give Steve diamond ',
+      onlinePlayers: {'Steve'},
+    ).map((completion) => completion.value);
+
+    expect(values, ['1', '5', '10', '20', '64', '128']);
+  });
+
   test('Java completion includes Java-only commands', () {
     final java = CommandCompletion.suggest(
       'ban',

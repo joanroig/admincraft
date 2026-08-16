@@ -6,6 +6,7 @@ import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/models/world_state.dart';
 import 'package:admincraft/services/console_parser.dart';
+import 'package:admincraft/services/android_widget_service.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:flutter/material.dart';
 
@@ -31,9 +32,9 @@ class Model with ChangeNotifier {
   bool get onboardingCompleted => _persistenceService.onboardingCompleted;
 
   ServerProfile get selectedServer => _servers.firstWhere(
-        (server) => server.id == _selectedServerId,
-        orElse: () => _servers.first,
-      );
+    (server) => server.id == _selectedServerId,
+    orElse: () => _servers.first,
+  );
 
   String get alias => selectedServer.alias;
   String get ip => selectedServer.ip;
@@ -47,12 +48,19 @@ class Model with ChangeNotifier {
   AppTheme get appTheme => _persistenceService.appTheme;
   String get font => _persistenceService.font;
   double get fontSize => _persistenceService.fontSize;
+  String get terminalFont => _persistenceService.terminalFont;
+  double get terminalFontSize => _persistenceService.terminalFontSize;
+  bool get terminalAutoScroll => _persistenceService.terminalAutoScroll;
+  String get consoleTimestampMode => _persistenceService.consoleTimestampMode;
+  String get consoleFilterPattern => _persistenceService.consoleFilterPattern;
 
   // Provide read-only access to collections
   Set<String> get userCommands =>
       Set.unmodifiable(_persistenceService.userCommands);
   List<String> get commandHistory =>
       List.unmodifiable(_persistenceService.commandHistory);
+  List<String> get favoriteCommands =>
+      List.unmodifiable(_persistenceService.favoriteCommands);
 
   Model(this._persistenceService) {
     _servers = _persistenceService.servers;
@@ -117,7 +125,8 @@ class Model with ChangeNotifier {
   /// Returns how many were added and how many were updated, since the user
   /// otherwise has no way to tell what an import actually did.
   Future<({int added, int updated})> importServers(
-      List<ServerProfile> incoming) async {
+    List<ServerProfile> incoming,
+  ) async {
     var added = 0;
     var updated = 0;
 
@@ -152,7 +161,8 @@ class Model with ChangeNotifier {
   }
 
   Future<void> _updatePersistenceService(
-      Future<void> Function() updateAction) async {
+    Future<void> Function() updateAction,
+  ) async {
     await updateAction();
     notifyListeners();
   }
@@ -166,37 +176,47 @@ class Model with ChangeNotifier {
     required String certificate,
     required ConnectionSecurity connectionSecurity,
     required MinecraftEdition minecraftEdition,
+    String? iconAsset,
+    String? customIconBase64,
   }) async {
     _servers = _servers
-        .map((server) => server.id == _selectedServerId
-            ? server.copyWith(
-                alias: alias,
-                ip: ip,
-                port: port,
-                secretKey: secretKey,
-                certificate: certificate,
-                security: connectionSecurity,
-                edition: minecraftEdition,
-              )
-            : server)
+        .map(
+          (server) => server.id == _selectedServerId
+              ? server.copyWith(
+                  alias: alias,
+                  ip: ip,
+                  port: port,
+                  secretKey: secretKey,
+                  certificate: certificate,
+                  security: connectionSecurity,
+                  edition: minecraftEdition,
+                  iconAsset: iconAsset,
+                  customIconBase64: customIconBase64,
+                )
+              : server,
+        )
         .toList();
     await _persistenceService.markOnboardingCompleted();
     await _persistServers();
+    await AndroidWidgetService.update(selectedServer, _world);
   }
 
   Future<void> setMaxOutputLines(int lines) async {
     await _updatePersistenceService(
-        () => _persistenceService.saveMaxOutLines(lines));
+      () => _persistenceService.saveMaxOutLines(lines),
+    );
   }
 
   Future<void> setThemeMode(ThemeMode themeMode) async {
     await _updatePersistenceService(
-        () => _persistenceService.saveThemeMode(themeMode));
+      () => _persistenceService.saveThemeMode(themeMode),
+    );
   }
 
   Future<void> setAppTheme(AppTheme appTheme) async {
     await _updatePersistenceService(
-        () => _persistenceService.saveAppTheme(appTheme));
+      () => _persistenceService.saveAppTheme(appTheme),
+    );
   }
 
   Future<void> setFont(String font) async {
@@ -205,12 +225,14 @@ class Model with ChangeNotifier {
 
   Future<void> setFontSize(double fontSize) async {
     await _updatePersistenceService(
-        () => _persistenceService.saveFontSize(fontSize));
+      () => _persistenceService.saveFontSize(fontSize),
+    );
   }
 
   Future<void> setCommandHistory(List<String> history) async {
     await _updatePersistenceService(
-        () => _persistenceService.saveCommandHistory(history));
+      () => _persistenceService.saveCommandHistory(history),
+    );
   }
 
   Map<String, int> _commandUsage = {};
@@ -228,12 +250,14 @@ class Model with ChangeNotifier {
 
   Future<void> addUserCommand(String command) async {
     await _updatePersistenceService(
-        () => _persistenceService.addUserCommand(command));
+      () => _persistenceService.addUserCommand(command),
+    );
   }
 
   Future<void> removeUserCommand(String command) async {
     await _updatePersistenceService(
-        () => _persistenceService.removeUserCommand(command));
+      () => _persistenceService.removeUserCommand(command),
+    );
   }
 
   /// Players currently connected, tracked from the server log so that command
@@ -262,6 +286,7 @@ class Model with ChangeNotifier {
     _output = '';
     _onlinePlayers.clear();
     _world = const WorldState();
+    unawaited(AndroidWidgetService.update(selectedServer, _world));
   }
 
   void clearOutput() => _resetSession();
@@ -304,12 +329,14 @@ class Model with ChangeNotifier {
   }
 
   void appendOutputCommand(String command) {
+    final previousPlayers = _world.playersOnline;
+    final previousLimit = _world.playerLimit;
     _trackPlayers(command);
-    _world = ConsoleParser.apply(
-      _world,
-      command,
-      edition: minecraftEdition,
-    );
+    _world = ConsoleParser.apply(_world, command, edition: minecraftEdition);
+    if (_world.playersOnline != previousPlayers ||
+        _world.playerLimit != previousLimit) {
+      unawaited(AndroidWidgetService.update(selectedServer, _world));
+    }
     _output += "$command\n";
     final lines = _output.split('\n');
     if (lines.length > _persistenceService.maxOutLines) {
@@ -322,21 +349,74 @@ class Model with ChangeNotifier {
 
   Future<void> addCommandToHistory(String command) async {
     await _updatePersistenceService(
-        () => _persistenceService.addCommandToHistory(command));
+      () => _persistenceService.addCommandToHistory(command),
+    );
   }
 
   Future<void> removeCommandFromHistory(int index) async {
     await _updatePersistenceService(
-        () => _persistenceService.removeCommandFromHistory(index));
+      () => _persistenceService.removeCommandFromHistory(index),
+    );
   }
 
   Future<void> clearCommandHistory() async {
     await _updatePersistenceService(
-        () => _persistenceService.clearCommandHistory());
+      () => _persistenceService.clearCommandHistory(),
+    );
   }
 
   Future<void> clearUserCommands() async {
     await _updatePersistenceService(
-        () => _persistenceService.clearUserCommands());
+      () => _persistenceService.clearUserCommands(),
+    );
+  }
+
+  Future<void> setTerminalFont(String value) async {
+    await _updatePersistenceService(
+      () => _persistenceService.saveTerminalFont(value),
+    );
+  }
+
+  Future<void> setTerminalFontSize(double value) async {
+    await _updatePersistenceService(
+      () => _persistenceService.saveTerminalFontSize(value),
+    );
+  }
+
+  Future<void> setTerminalAutoScroll(bool value) async {
+    await _updatePersistenceService(
+      () => _persistenceService.saveTerminalAutoScroll(value),
+    );
+  }
+
+  Future<void> setConsoleTimestampMode(String value) async {
+    await _updatePersistenceService(
+      () => _persistenceService.saveConsoleTimestampMode(value),
+    );
+  }
+
+  Future<void> setConsoleFilterPattern(String value) async {
+    await _updatePersistenceService(
+      () => _persistenceService.saveConsoleFilterPattern(value),
+    );
+  }
+
+  Future<void> addFavoriteCommand(String command) async {
+    final normalized = command.trim();
+    if (normalized.isEmpty || favoriteCommands.contains(normalized)) return;
+    await _updatePersistenceService(
+      () => _persistenceService.saveFavoriteCommands([
+        ...favoriteCommands,
+        normalized,
+      ]),
+    );
+  }
+
+  Future<void> removeFavoriteCommand(String command) async {
+    await _updatePersistenceService(
+      () => _persistenceService.saveFavoriteCommands(
+        favoriteCommands.where((value) => value != command).toList(),
+      ),
+    );
   }
 }

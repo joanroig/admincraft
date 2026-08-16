@@ -43,12 +43,21 @@ class _ControlTabState extends State<ControlTab> {
   String? _lastCommand;
   bool _loadingRules = false;
   bool _refreshedOnce = false;
+  bool _responseExpanded = false;
 
   static final List<_PromptedAction> _promptedActions = [
     _PromptedAction(
-        'Whitelist', Icons.person_add, 'player', (p) => 'whitelist add $p'),
-    _PromptedAction('Unwhitelist', Icons.person_remove, 'player',
-        (p) => 'whitelist remove $p'),
+      'Whitelist',
+      Icons.person_add,
+      'player',
+      (p) => 'whitelist add $p',
+    ),
+    _PromptedAction(
+      'Unwhitelist',
+      Icons.person_remove,
+      'player',
+      (p) => 'whitelist remove $p',
+    ),
     _PromptedAction('Kick', Icons.logout, 'player', (p) => 'kick $p'),
     _PromptedAction('Announce', Icons.campaign, 'message', (m) => 'say $m'),
   ];
@@ -93,6 +102,17 @@ class _ControlTabState extends State<ControlTab> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant ControlTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isEnabled) {
+      _refreshedOnce = false;
+    } else if (!oldWidget.isEnabled && !_refreshedOnce) {
+      _refreshedOnce = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshWorld());
+    }
+  }
+
   ConnectionController get _connection =>
       Provider.of<ConnectionController>(context, listen: false);
   Model get _model => Provider.of<Model>(context, listen: false);
@@ -110,6 +130,8 @@ class _ControlTabState extends State<ControlTab> {
 
   Future<void> _refreshWorld() async {
     await _connection.sendQuietly('time query daytime');
+    await Future.delayed(const Duration(milliseconds: 300));
+    await _connection.sendQuietly('difficulty');
     await Future.delayed(const Duration(milliseconds: 300));
     await _connection.sendQuietly('list');
   }
@@ -141,6 +163,50 @@ class _ControlTabState extends State<ControlTab> {
     await _send(action.build(value.trim()));
   }
 
+  Future<void> _addFavorite() async {
+    final command = await DialogUtils.promptForInput(
+      context,
+      'favorite command',
+    );
+    if (command == null || !mounted) return;
+    if (!CommandUtils.isAccepted(command)) {
+      ToastUtils.showToastError(CommandUtils.rejectionMessage);
+      return;
+    }
+    await _model.addFavoriteCommand(command);
+  }
+
+  Widget _favoritesCard(Model model) {
+    return _card(
+      title: 'Live commands',
+      trailing: IconButton(
+        tooltip: 'Add favorite command',
+        onPressed: _addFavorite,
+        icon: const Icon(Icons.add),
+      ),
+      child: model.favoriteCommands.isEmpty
+          ? Text(
+              'Add commands you use often. Tap one to run it immediately.',
+              style: Theme.of(context).textTheme.bodySmall,
+            )
+          : Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: model.favoriteCommands
+                  .map(
+                    (command) => InputChip(
+                      avatar: const Icon(Icons.play_arrow, size: 18),
+                      label: Text(command),
+                      tooltip: 'Run $command',
+                      onPressed: () => _send(command),
+                      onDeleted: () => model.removeFavoriteCommand(command),
+                    ),
+                  )
+                  .toList(),
+            ),
+    );
+  }
+
   Future<void> _restartServer() async {
     final confirmed = await DialogUtils.confirmAction(
       context,
@@ -157,8 +223,11 @@ class _ControlTabState extends State<ControlTab> {
   // Building blocks
   // ---------------------------------------------------------------------------
 
-  Widget _card(
-      {required String title, Widget? trailing, required Widget child}) {
+  Widget _card({
+    required String title,
+    Widget? trailing,
+    required Widget child,
+  }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -169,8 +238,11 @@ class _ControlTabState extends State<ControlTab> {
             Row(
               children: [
                 Expanded(
-                    child: Text(title,
-                        style: Theme.of(context).textTheme.titleMedium)),
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
                 if (trailing != null) trailing,
               ],
             ),
@@ -184,8 +256,11 @@ class _ControlTabState extends State<ControlTab> {
 
   /// A row of choices where the active one is filled in, so the current value
   /// is visible rather than only settable.
-  Widget _choiceRow(List<_Choice> choices, String? selected,
-      Future<void> Function(String) onPick) {
+  Widget _choiceRow(
+    List<_Choice> choices,
+    String? selected,
+    Future<void> Function(String) onPick,
+  ) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -225,8 +300,10 @@ class _ControlTabState extends State<ControlTab> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(world.timeLabel,
-                      style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    world.timeLabel,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   Text(
                     world.daytime == null
                         ? 'Not queried yet'
@@ -276,10 +353,12 @@ class _ControlTabState extends State<ControlTab> {
               spacing: 8,
               runSpacing: 8,
               children: names
-                  .map((name) => Chip(
-                        avatar: const Icon(Icons.person, size: 16),
-                        label: Text(name),
-                      ))
+                  .map(
+                    (name) => Chip(
+                      avatar: const Icon(Icons.person, size: 16),
+                      label: Text(name),
+                    ),
+                  )
                   .toList(),
             ),
           ],
@@ -288,11 +367,13 @@ class _ControlTabState extends State<ControlTab> {
             spacing: 8,
             runSpacing: 8,
             children: _promptedActions
-                .map((action) => ActionChip(
-                      avatar: Icon(action.icon, size: 18),
-                      label: Text(action.label),
-                      onPressed: () => _promptAndSend(action),
-                    ))
+                .map(
+                  (action) => ActionChip(
+                    avatar: Icon(action.icon, size: 18),
+                    label: Text(action.label),
+                    onPressed: () => _promptAndSend(action),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -309,7 +390,8 @@ class _ControlTabState extends State<ControlTab> {
           ? const SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2))
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : IconButton(
               icon: const Icon(Icons.download),
               tooltip: 'Load current values',
@@ -326,67 +408,135 @@ class _ControlTabState extends State<ControlTab> {
               children: known.entries
                   .where((e) => e.value == 'true' || e.value == 'false')
                   .map((entry) {
-                final info = BedrockGamerules.forName(entry.key);
-                return SwitchListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(info.label,
-                      style: Theme.of(context).textTheme.bodyMedium),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (info.description.isNotEmpty)
-                        Text(info.description,
-                            style: Theme.of(context).textTheme.bodySmall),
-                      // The raw name still matters: it is what you type into a
-                      // command, and what the server reports back.
-                      Text(
-                        entry.key,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontFamily: 'Monocraft',
-                              color: Theme.of(context).hintColor,
-                            ),
+                    final info = BedrockGamerules.forName(entry.key);
+                    return SwitchListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        info.label,
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                    ],
-                  ),
-                  isThreeLine: info.description.isNotEmpty,
-                  value: entry.value == 'true',
-                  onChanged: (next) => _send('gamerule ${entry.key} $next'),
-                );
-              }).toList(),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (info.description.isNotEmpty)
+                            Text(
+                              info.description,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          // The raw name still matters: it is what you type into a
+                          // command, and what the server reports back.
+                          Text(
+                            entry.key,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontFamily: 'Monocraft',
+                                  color: Theme.of(context).hintColor,
+                                ),
+                          ),
+                        ],
+                      ),
+                      isThreeLine: info.description.isNotEmpty,
+                      value: entry.value == 'true',
+                      onChanged: (next) => _send('gamerule ${entry.key} $next'),
+                    );
+                  })
+                  .toList(),
             ),
     );
   }
 
-  Widget _responseCard(Model model) {
+  Widget _responsePanel(Model model) {
     final lines = model.output
         .split('\n')
         .where((line) => line.trim().isNotEmpty)
         .toList();
     final tail = lines.length <= 5 ? lines : lines.sublist(lines.length - 5);
 
-    return _card(
-      title: 'Server response',
+    final latest = tail.isEmpty ? 'Waiting for output...' : tail.last;
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_lastCommand != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                'Last sent: $_lastCommand',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+          InkWell(
+            onTap: () => setState(() => _responseExpanded = !_responseExpanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              child: Row(
+                children: [
+                  const Icon(Icons.terminal, size: 19),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Server response',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        if (!_responseExpanded)
+                          Text(
+                            latest,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                      ],
                     ),
+                  ),
+                  Icon(
+                    _responseExpanded
+                        ? Icons.keyboard_arrow_down
+                        : Icons.keyboard_arrow_up,
+                  ),
+                ],
               ),
             ),
-          if (tail.isEmpty)
-            Text('Waiting for output...',
-                style: Theme.of(context).textTheme.bodySmall)
-          else
-            ...tail.map((line) =>
-                Text(line, style: Theme.of(context).textTheme.bodySmall)),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            child: !_responseExpanded
+                ? const SizedBox.shrink()
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_lastCommand != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text(
+                                'Last sent: $_lastCommand',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                    ),
+                              ),
+                            ),
+                          if (tail.isEmpty)
+                            Text(
+                              latest,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            )
+                          else
+                            ...tail.map(
+                              (line) => Text(
+                                line,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
         ],
       ),
     );
@@ -410,7 +560,7 @@ class _ControlTabState extends State<ControlTab> {
         Expanded(child: _buildCards(model, world)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: _responseCard(model),
+          child: _responsePanel(model),
         ),
       ],
     );
@@ -445,13 +595,20 @@ class _ControlTabState extends State<ControlTab> {
           ),
           _card(
             title: 'Difficulty',
-            child:
-                _choiceRow(_difficulties, world.lastDifficulty, (value) async {
+            trailing: IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh difficulty from server',
+              onPressed: () => _connection.sendQuietly('difficulty'),
+            ),
+            child: _choiceRow(_difficulties, world.lastDifficulty, (
+              value,
+            ) async {
               await _send('difficulty $value');
               _model.recordDifficulty(value);
             }),
           ),
           _playersCard(model),
+          _favoritesCard(model),
           _gamerulesCard(world),
           // Restarting is the bridge's job, so the control is absent rather
           // than present and broken when connected straight to RCON.

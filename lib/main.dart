@@ -1,7 +1,9 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/controllers/google_drive_sync_controller.dart';
+import 'package:admincraft/controllers/notification_controller.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:admincraft/services/theme_service.dart';
+import 'package:admincraft/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +27,8 @@ void main() async {
     const PlatformSecureValueStore(),
   );
   final persistentDataManager = PersistenceService(prefs, secrets);
+  final notificationController = NotificationController(prefs);
+  ToastUtils.initialize(notificationController);
 
   // Move any profile still holding its key in plain storage, and only drop the
   // plain copy once the keystore proves it can hand the key back.
@@ -36,12 +40,11 @@ void main() async {
         ChangeNotifierProvider(
           create: (context) => Model(persistentDataManager),
         ),
-        ChangeNotifierProvider(
-          create: (context) => ConnectionController(),
-        ),
+        ChangeNotifierProvider(create: (context) => ConnectionController()),
         ChangeNotifierProvider(
           create: (context) => GoogleDriveSyncController(prefs),
         ),
+        ChangeNotifierProvider.value(value: notificationController),
       ],
       child: const Admincraft(),
     ),
@@ -72,28 +75,28 @@ class Admincraft extends StatelessWidget {
     // where the page is already the darkest tone available.
     final light = brightness == Brightness.light;
     final pageColor = light ? scheme.surfaceContainer : scheme.surface;
-    final raisedColor =
-        light ? scheme.surfaceContainerLowest : scheme.surfaceContainerLow;
+    final raisedColor = light
+        ? scheme.surfaceContainerLowest
+        : scheme.surfaceContainerLow;
 
     return base.copyWith(
       scaffoldBackgroundColor: pageColor,
       cardTheme: CardThemeData(color: raisedColor),
-      textTheme: ThemeService.textThemeFromStyles(model).apply(
-        bodyColor: scheme.onSurface,
-        displayColor: scheme.onSurface,
-      ),
+      textTheme: ThemeService.textThemeFromStyles(
+        model,
+      ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: raisedColor,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: scheme.outlineVariant),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
       ),
     );
   }

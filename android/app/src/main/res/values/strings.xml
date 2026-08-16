@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Admincraft</string>
+    <string name="widget_description">Connected players on the selected Admincraft server</string>
+    <string name="widget_open_to_refresh">Open Admincraft to refresh</string>
+    <string name="widget_updated">Updated %1$s</string>
+</resources>

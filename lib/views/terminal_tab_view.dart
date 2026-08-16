@@ -2,6 +2,7 @@ import 'package:admincraft/controllers/terminal_controller.dart';
 import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/console_parser.dart';
 import 'package:admincraft/utils/command_completion.dart';
 import 'package:admincraft/utils/command_utils.dart';
 import 'package:admincraft/utils/completion_icons.dart';
@@ -24,14 +25,16 @@ class TerminalTab extends StatefulWidget {
   State<TerminalTab> createState() => _TerminalTabState();
 }
 
-class _TerminalTabState extends State<TerminalTab> {
+class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   late TerminalController _terminalController;
   final TextEditingController _commandController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   int _historyIndex = 0;
   late Model _model;
   List<Completion> _suggestions = const [];
+  bool _searchVisible = false;
 
   void _refreshSuggestions() {
     setState(() {
@@ -72,6 +75,7 @@ class _TerminalTabState extends State<TerminalTab> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _model = Provider.of<Model>(context, listen: false);
 
     // Initialize controllers with context
@@ -91,15 +95,21 @@ class _TerminalTabState extends State<TerminalTab> {
   }
 
   @override
+  void didChangeMetrics() {
+    if (!_model.terminalAutoScroll) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (!widget.isEnabled) {
       return _buildDisabledState();
     }
 
     // Auto-scroll to bottom when logs are updated
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToBottom();
-    });
+    if (_model.terminalAutoScroll) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -110,13 +120,16 @@ class _TerminalTabState extends State<TerminalTab> {
             // than centred on the width of its own text.
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _buildOutputTools(),
               Expanded(
                 child: _model.output.isEmpty
                     ? _buildLoadingAnimation()
                     : ListView(
                         controller: _scrollController,
-                        children:
-                            _formatOutput(_model.output, _model.userCommands),
+                        children: _formatOutput(
+                          _model.output,
+                          _model.userCommands,
+                        ),
                       ),
               ),
               const SizedBox(height: 10),
@@ -141,19 +154,26 @@ class _TerminalTabState extends State<TerminalTab> {
   }
 
   Widget _buildLoadingAnimation() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 
   List<Widget> _formatOutput(String output, Set<String> userCommands) {
     final widgets = <Widget>[];
     final lines = output.split('\n');
 
+    final configuredFilter = _model.consoleFilterPattern.toLowerCase();
+    final search = _searchController.text.trim().toLowerCase();
+
     for (var line in lines) {
       if (line.trim().isNotEmpty) {
+        final lower = line.toLowerCase();
+        if (configuredFilter.isNotEmpty && !lower.contains(configuredFilter)) {
+          continue;
+        }
+        if (search.isNotEmpty && !lower.contains(search)) continue;
         // Check for non-empty lines
         final isUserCommand = userCommands.contains(line);
+        final shown = _formatTimestamp(line);
         widgets.add(
           MouseRegion(
             cursor: isUserCommand
@@ -168,10 +188,13 @@ class _TerminalTabState extends State<TerminalTab> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 0.0),
                 child: Text(
-                  line,
+                  shown,
                   style: TextStyle(
-                    fontWeight:
-                        isUserCommand ? FontWeight.bold : FontWeight.normal,
+                    fontFamily: _model.terminalFont,
+                    fontSize: _model.terminalFontSize,
+                    fontWeight: isUserCommand
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                     color: isUserCommand
                         ? Colors.blue
                         : Theme.of(context).textTheme.bodyMedium?.color,
@@ -187,6 +210,69 @@ class _TerminalTabState extends State<TerminalTab> {
       }
     }
     return widgets;
+  }
+
+  String _formatTimestamp(String line) {
+    if (_model.consoleTimestampMode == 'hidden') {
+      return ConsoleParser.stripPrefix(line);
+    }
+    if (_model.consoleTimestampMode != 'short') return line;
+
+    final match = RegExp(
+      r'^\[\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2})(?::\d{2}[^\s]*)?\s+([^\]]+)\]\s*(.*)$',
+    ).firstMatch(line);
+    if (match == null) return line;
+    return '[${match.group(1)} ${match.group(2)}] ${match.group(3)}';
+  }
+
+  Widget _buildOutputTools() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          if (_searchVisible)
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Search console output',
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    tooltip: 'Close search',
+                    onPressed: () => setState(() {
+                      _searchController.clear();
+                      _searchVisible = false;
+                    }),
+                    icon: const Icon(Icons.close),
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            )
+          else
+            TextButton.icon(
+              onPressed: () => setState(() => _searchVisible = true),
+              icon: const Icon(Icons.search),
+              label: const Text('Search output'),
+            ),
+          if (_searchVisible) const SizedBox(width: 6),
+          IconButton(
+            tooltip: _model.terminalAutoScroll
+                ? 'Disable automatic scrolling'
+                : 'Enable automatic scrolling',
+            onPressed: () =>
+                _model.setTerminalAutoScroll(!_model.terminalAutoScroll),
+            icon: Icon(
+              _model.terminalAutoScroll
+                  ? Icons.vertical_align_bottom
+                  : Icons.pause_circle_outline,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCommandControls() {
@@ -222,11 +308,11 @@ class _TerminalTabState extends State<TerminalTab> {
           icon: const Icon(Icons.history),
           onPressed: _model.commandHistory.isNotEmpty
               ? () => DialogUtils.showHistoryPopup(
-                    context,
-                    _commandController,
-                    () => _resetHistoryIndex(),
-                    () => _setCursorToEnd(),
-                  )
+                  context,
+                  _commandController,
+                  () => _resetHistoryIndex(),
+                  () => _setCursorToEnd(),
+                )
               : null,
           tooltip: 'Show command history',
         ),
@@ -281,7 +367,8 @@ class _TerminalTabState extends State<TerminalTab> {
           // category instead so the strip is still readable at a glance.
           final command = suggestion.type == null
               ? MinecraftCommands.byName(
-                  _model.minecraftEdition)[suggestion.value]
+                  _model.minecraftEdition,
+                )[suggestion.value]
               : null;
 
           // Items get their real pixel artwork; everything else keeps a
@@ -292,7 +379,9 @@ class _TerminalTabState extends State<TerminalTab> {
                   command != null
                       ? _categoryIcon(command.category)
                       : CompletionIcons.forType(
-                          suggestion.type, suggestion.value),
+                          suggestion.type,
+                          suggestion.value,
+                        ),
                   size: 18,
                   color: color,
                 );
@@ -336,8 +425,10 @@ class _TerminalTabState extends State<TerminalTab> {
           if (command != null)
             _syntaxLine(command, CommandCompletion.activeArgIndex(text), base),
           if (command != null)
-            Text(command.description,
-                style: base?.copyWith(fontStyle: FontStyle.italic)),
+            Text(
+              command.description,
+              style: base?.copyWith(fontStyle: FontStyle.italic),
+            ),
           if (rejected)
             Text(
               CommandUtils.rejectionMessage,
@@ -351,21 +442,24 @@ class _TerminalTabState extends State<TerminalTab> {
   Widget _syntaxLine(BedrockCommand command, int activeIndex, TextStyle? base) {
     final spans = <TextSpan>[
       TextSpan(
-          text: command.name,
-          style: base?.copyWith(fontWeight: FontWeight.bold)),
+        text: command.name,
+        style: base?.copyWith(fontWeight: FontWeight.bold),
+      ),
     ];
 
     for (var i = 0; i < command.args.length; i++) {
       final isActive = i == activeIndex;
-      spans.add(TextSpan(
-        text: ' ${command.args[i].hint}',
-        style: base?.copyWith(
-          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          color: isActive
-              ? Theme.of(context).colorScheme.primary
-              : base.color?.withValues(alpha: 0.6),
+      spans.add(
+        TextSpan(
+          text: ' ${command.args[i].hint}',
+          style: base?.copyWith(
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            color: isActive
+                ? Theme.of(context).colorScheme.primary
+                : base.color?.withValues(alpha: 0.6),
+          ),
         ),
-      ));
+      );
     }
 
     return RichText(text: TextSpan(children: spans));
@@ -379,19 +473,20 @@ class _TerminalTabState extends State<TerminalTab> {
           // would otherwise consume it to move focus out of the field.
           child: Shortcuts(
             shortcuts: const {
-              SingleActivator(LogicalKeyboardKey.tab): _AcceptCompletionIntent()
+              SingleActivator(LogicalKeyboardKey.tab):
+                  _AcceptCompletionIntent(),
             },
             child: Actions(
               actions: {
                 _AcceptCompletionIntent:
                     CallbackAction<_AcceptCompletionIntent>(
-                  onInvoke: (_) {
-                    if (_suggestions.isNotEmpty) {
-                      _applySuggestion(_suggestions.first.value);
-                    }
-                    return null;
-                  },
-                ),
+                      onInvoke: (_) {
+                        if (_suggestions.isNotEmpty) {
+                          _applySuggestion(_suggestions.first.value);
+                        }
+                        return null;
+                      },
+                    ),
               },
               child: TextField(
                 controller: _commandController,
@@ -403,7 +498,9 @@ class _TerminalTabState extends State<TerminalTab> {
                 onChanged: (_) => _refreshSuggestions(),
                 onSubmitted: (command) async {
                   await _terminalController.executeCommand(
-                      command, _commandController);
+                    command,
+                    _commandController,
+                  );
                   _resetHistoryIndex();
                   _setText('');
                 },
@@ -416,7 +513,9 @@ class _TerminalTabState extends State<TerminalTab> {
           icon: const Icon(Icons.play_arrow, color: Colors.white),
           onPressed: () async {
             await _terminalController.executeCommand(
-                _commandController.text, _commandController);
+              _commandController.text,
+              _commandController,
+            );
             _resetHistoryIndex();
             _focusNode.requestFocus();
           },
@@ -435,8 +534,9 @@ class _TerminalTabState extends State<TerminalTab> {
       // disappeared against it.
       child: FloatingActionButton(
         onPressed: _scrollToBottom,
-        backgroundColor:
-            Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.85),
+        backgroundColor: Theme.of(
+          context,
+        ).colorScheme.secondaryContainer.withValues(alpha: 0.85),
         foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
         child: const Icon(Icons.arrow_downward),
       ),
@@ -480,9 +580,11 @@ class _TerminalTabState extends State<TerminalTab> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _focusNode.dispose();
     _scrollController.dispose();
     _commandController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 }

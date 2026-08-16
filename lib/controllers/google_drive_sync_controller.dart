@@ -6,6 +6,7 @@ import 'package:admincraft/services/google_auth_provider.dart';
 import 'package:admincraft/services/google_drive_api.dart';
 import 'package:admincraft/services/secure_value_store.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,9 +36,9 @@ class GoogleDriveSyncController with ChangeNotifier {
     GoogleAuthProvider? auth,
     SecureValueStore? secureValues,
     DriveApiBuilder? driveApiBuilder,
-  })  : _auth = auth ?? createGoogleAuthProvider(),
-        _secureValues = secureValues ?? const PlatformSecureValueStore(),
-        _driveApiBuilder = driveApiBuilder ?? GoogleDriveApi.new;
+  }) : _auth = auth ?? createGoogleAuthProvider(),
+       _secureValues = secureValues ?? const PlatformSecureValueStore(),
+       _driveApiBuilder = driveApiBuilder ?? GoogleDriveApi.new;
 
   bool get configured => _auth.configured;
   bool get signedIn => _auth.signedIn;
@@ -84,7 +85,10 @@ class GoogleDriveSyncController with ChangeNotifier {
     // is what makes Android raise an account sheet, and doing it on every
     // start put that in front of people who had never opened Data & Sync,
     // during onboarding, before anything had offered them sync at all.
-    if (_everConnected) {
+    // The web flow must initialize Google Identity Services before its sign-in
+    // button can be rendered. Unlike Android, doing that does not raise an
+    // account chooser, so first-time web users can be prepared safely here.
+    if (_everConnected || kIsWeb) {
       await _auth.initialize();
     }
 
@@ -192,12 +196,7 @@ class GoogleDriveSyncController with ChangeNotifier {
       final passphrase = await _requiredPassphrase();
       final api = await _api(interactive: true);
       try {
-        await _upload(
-          api,
-          model,
-          passphrase,
-          existing: await api.findConfig(),
-        );
+        await _upload(api, model, passphrase, existing: await api.findConfig());
         await _recordSync();
       } finally {
         api.close();
@@ -242,7 +241,8 @@ class GoogleDriveSyncController with ChangeNotifier {
 
         final remoteChanged =
             lastSync == null || remote.modifiedAt.isAfter(lastSync);
-        final localChanged = localUpdated != null &&
+        final localChanged =
+            localUpdated != null &&
             (lastSync == null || localUpdated.isAfter(lastSync));
 
         if (remoteChanged && localChanged) {

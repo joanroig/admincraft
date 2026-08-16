@@ -12,16 +12,22 @@ const bool supportsCustomCertificate = true;
 ///
 /// Rebuilt on every connection so that changing the mode or the certificate in
 /// the settings takes effect right away, without restarting the app.
-SecurityContext _buildSecurityContext(ConnectionSecurity security, String certificateData) {
+SecurityContext _buildSecurityContext(
+  ConnectionSecurity security,
+  String certificateData,
+) {
   // Loading a certificate is a deliberate pin: trust it and nothing else, so
   // a self-signed setup cannot be silently satisfied by a public authority.
-  final context = SecurityContext(withTrustedRoots: !security.requiresCertificate);
+  final context = SecurityContext(
+    withTrustedRoots: !security.requiresCertificate,
+  );
 
   if (security.requiresCertificate && certificateData.isNotEmpty) {
     try {
       context.setTrustedCertificatesBytes(utf8.encode(certificateData));
-    } catch (e) {
-      print('Error loading certificate: $e');
+    } catch (_) {
+      // The connection layer turns an unusable certificate into a diagnostic
+      // message with the server address and security mode.
     }
   }
 
@@ -35,6 +41,10 @@ WebSocketChannel connectWebSocket({
 }) {
   return IOWebSocketChannel.connect(
     uri,
-    customClient: security.usesTls ? HttpClient(context: _buildSecurityContext(security, certificate)) : null,
+    // Keep idle native connections observable across mobile network changes.
+    pingInterval: const Duration(seconds: 20),
+    customClient: security.usesTls
+        ? HttpClient(context: _buildSecurityContext(security, certificate))
+        : null,
   );
 }
