@@ -16,7 +16,12 @@ Image and shape
 - Shape: VM.Standard.A1.Flex
 - OCPU count: 2
 - Network bandwidth (Gbps): 2
-- Memory (GB): 12
+- Memory (GB): 16
+
+This uses the current Always Free maximum shown for an Ampere instance: 2
+OCPUs and 16 GB of memory. Confirm that the Oracle console still marks the
+shape as Always Free before creating it, because service limits and available
+capacity can vary by account and region.
 
 Primary VNIC information
 - Virtual cloud network -> Choose one or create for later editing

@@ -24,7 +24,11 @@ An HTTPS page cannot connect to `ws://`. Use a `wss://` endpoint with **Public c
 
 ## A self-signed certificate works natively but not in the browser
 
-This is a browser limitation. The web app cannot pin the certificate. Use the Windows or Android app, trust the endpoint certificate at the operating-system/browser level and select **Public certificate**, or use a publicly trusted TLS endpoint.
+This is a browser limitation. Admincraft preserves a synced self-signed profile
+but does not reinterpret or connect it on the web. Use an installed app, trust
+the endpoint certificate in the browser or operating system and select
+**Public certificate**, or use a publicly trusted TLS endpoint. See the
+[web-app certificate guide](guides/web-app.md#self-signed-certificates).
 
 ## Certificate validation fails
 

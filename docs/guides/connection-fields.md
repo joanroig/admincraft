@@ -1,11 +1,16 @@
 # What each connection field means
 
-One idea makes the rest of this page obvious:
+One distinction makes the rest of this page easier:
 
-!!! tip "Every field describes the bridge, not the Minecraft server"
-    Admincraft never talks to Minecraft directly. It talks to the **Admincraft WebSocket bridge**, and the bridge talks to Minecraft. So **Host**, **Port** and **Secret key** always describe the bridge container, on both editions.
+!!! tip "Bridge profiles and direct RCON describe different endpoints"
+    With the normal Bedrock or Java bridge setup, **Address**, **Port**, and
+    **Secret key** describe the **Admincraft WebSocket bridge**. Only **Direct
+    RCON** describes the Minecraft server itself. The app relabels these fields
+    when you change the connection type.
 
-This is the part that catches people out. A Java server has an RCON port and an RCON password, and neither of them goes in Admincraft.
+This is the part that catches people out. With a bridge profile, a Java
+server's RCON port and password belong in the bridge configuration, not in
+Admincraft. A direct RCON profile is intentionally different.
 
 ## The fields
 
@@ -33,7 +38,9 @@ Choosing **Java Edition** changes which backend the *bridge* uses, not where Adm
 
 RCON stays on the internal Docker network and is never published to a host port. That is deliberate: RCON has no encryption, so exposing it would hand out server control in plain text.
 
-So the edition selector is a statement about your server, and the RCON password never leaves the machine it runs on.
+In this bridge setup, the edition selector describes your server and the RCON
+password stays on the server host. Direct RCON below deliberately sends the
+password from the installed app over your private network instead.
 
 ## Direct RCON, with no bridge
 
@@ -45,8 +52,8 @@ type, and the fields then describe the Minecraft server rather than a bridge.
 | --- | --- |
 | Minecraft edition | `Java Edition` |
 | Address of the Minecraft server | the server, over Tailscale, a VPN or a LAN |
-| Bridge port | `25575`, or whatever `rcon.port` in `server.properties` says |
-| Bridge secret key | the `rcon.password` from `server.properties` |
+| RCON port | `25575`, or whatever `rcon.port` in `server.properties` says |
+| RCON password | the `rcon.password` from `server.properties` |
 | Connection type | `Direct RCON, no bridge (Java only)` |
 
 Enable it on the server first:
@@ -108,5 +115,8 @@ Work down the chain, since each step rules out everything before it:
 1. **Is the preview the address you expect?** It is shown live under the security dropdown.
 2. **Is the port the bridge's port?** Not `19132` (Bedrock game), not `25575` (Java RCON).
 3. **Is the key the bridge's `SECRET_KEY`?** Not the RCON password, not the Minecraft allowlist.
-4. **Does the connection type match the address?** `Private network` gives `ws://` and only works over a private route. A trusted certificate needs a **hostname**: a bare IP can never validate, because certificates are issued to names.
+4. **Does the connection type match the address?** `Private network` gives
+   `ws://` and only works over a private route. For **Public certificate**, use
+   the exact hostname or IP address covered by the certificate; a hostname is
+   the usual and most portable choice.
 5. **Can the device reach the host at all?** With Tailscale, both ends must be on the tailnet and connected.

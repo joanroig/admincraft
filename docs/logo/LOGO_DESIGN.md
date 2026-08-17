@@ -1,4 +1,8 @@
-## ![Admincraft logo](variants/dirt.png) Logo Design
+# Logo and brand assets
+
+This page is for contributors changing the assets in an Admincraft build. App
+users can choose an included color theme in **Settings → Preferences** without
+editing these files.
 
 The `variants` folder contains the Admincraft logo and its alternative versions. The official logo can be found at [variants/dirt.png](variants/dirt.png).
 

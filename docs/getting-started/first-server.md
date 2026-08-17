@@ -40,6 +40,8 @@ The preview under the connection type shows the address that will be used, so yo
 Two things the app will not let you do, so you are not left guessing:
 
 - **A profile missing an address or key cannot connect.** The connect button stays disabled and says so, rather than failing at the transport.
-- **A trusted certificate needs a hostname.** A bare IP can never validate, because certificates are issued to names.
+- **A trusted certificate must cover the address you enter.** Use the exact
+  hostname or IP address listed in the certificate. A hostname is the usual
+  and most portable choice.
 
 If the connection fails, see [Troubleshooting](../troubleshooting.md).

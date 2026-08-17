@@ -51,7 +51,6 @@
   margin: 0 0 2rem;
   padding: clamp(1.5rem, 4vw, 3.5rem);
   overflow: hidden;
-  border: 1px solid rgb(128 85 57 / 35%);
   text-align: center;
   border: 1px solid color-mix(in srgb, var(--admincraft-dirt) 35%, transparent);
   border-radius: 1rem;
@@ -113,18 +112,19 @@
   color: var(--admincraft-ink);
 }
 
-/* Legal and generator credits should remain available on every page without
- * competing with the article or navigation. */
+/* The footer is only a quiet project/license marker. Detailed legal and tool
+ * credits live on the About page, and the repository link already lives in
+ * Material's navigation panel. */
 .md-copyright {
-  max-width: 58rem;
-  font-size: 0.56rem;
-  line-height: 1.35;
-  opacity: 0.68;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  opacity: 0.62;
 }
 
 .md-footer-meta__inner {
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
+  min-height: 0;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
 }
 
 @media (max-width: 44.9844em) {

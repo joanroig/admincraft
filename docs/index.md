@@ -16,7 +16,7 @@ Built for [itzg's Minecraft containers](https://github.com/itzg/docker-minecraft
 
 <div class="admincraft-hero__actions">
   <a class="md-button md-button--primary" href="https://joanroig.github.io/admincraft/">Open Admincraft</a>
-  <a class="md-button" href="getting-started/">Get started</a>
+  <a class="md-button" href="getting-started/install/">Get started</a>
 </div>
 
 </div>
@@ -29,7 +29,7 @@ Built for [itzg's Minecraft containers](https://github.com/itzg/docker-minecraft
 
     Install Admincraft or open it in a browser, then connect your first Minecraft server.
 
-    [:octicons-arrow-right-24: Start here](getting-started/index.md)
+    [:octicons-arrow-right-24: Start here](getting-started/install.md)
 
 -   :material-shield-lock:{ .lg .middle } **Choose safe transport**
 

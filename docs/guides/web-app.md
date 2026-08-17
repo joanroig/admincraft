@@ -24,7 +24,9 @@ Use **[Tailscale Funnel](../server/SERVER_SETUP.md#alternative-tailscale-funnel-
 - **Port:** `443`
 - **Connection type:** `Public address, trusted certificate`
 
-The private tailnet address still works in the Windows and Android builds, which are not subject to mixed-content rules. So the rule of thumb is Funnel for the browser, tailnet address for the installed app.
+The private tailnet address still works in installed apps, which are not
+subject to browser mixed-content rules. The practical rule is Funnel for the
+hosted web app and the private tailnet address for an installed app.
 
 ## Self-signed certificates
 
@@ -40,7 +42,9 @@ only when the same hostname presents a certificate the browser already trusts.
 If the browser needs another hostname or port, add a separate browser profile
 and keep the native self-signed profile unchanged.
 
-If the browser or operating system already trusts the endpoint certificate, use **Public certificate**. Otherwise use the Windows or Android build, or place the WebSocket behind a publicly trusted TLS endpoint.
+If the browser already trusts the endpoint certificate, use **Public
+certificate**. Otherwise use an installed app, or place the WebSocket behind a
+publicly trusted TLS endpoint.
 
 ## Clipboard and downloads
 

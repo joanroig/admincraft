@@ -10,15 +10,15 @@ The web app installs nothing and receives updates automatically. Profiles are st
 
 Review the [web app limitations](../guides/web-app.md) before choosing a connection security mode.
 
-## Windows and Android
+## Installed apps
 
-Download the latest Windows or Android build from [GitHub Releases](https://github.com/joanroig/admincraft/releases/latest).
+Download the latest build from [GitHub Releases](https://github.com/joanroig/admincraft/releases/latest).
 
 === "Windows"
 
-    1. Download the Windows ZIP.
-    2. Extract the whole archive; the executable needs the files beside it.
-    3. Run `admincraft.exe`.
+    - Use the installer for the normal setup experience.
+    - Or download the portable ZIP, extract the whole archive, and run
+      `admincraft.exe`. The executable needs the files beside it.
 
 === "Android"
 
@@ -26,9 +26,23 @@ Download the latest Windows or Android build from [GitHub Releases](https://gith
     2. Allow installation from your browser or file manager if Android asks.
     3. Open the APK and install Admincraft.
 
+=== "macOS"
+
+    - Open the DMG and copy Admincraft to Applications, or use the portable
+      ZIP.
+    - Current builds are not notarized. On first launch, macOS may require
+      **Control-click → Open** and confirmation in **Privacy & Security**.
+
+=== "Linux"
+
+    - Install the `.deb` package on Debian or Ubuntu.
+    - Or download the AppImage, run `chmod +x` on it, and launch it directly.
+
 !!! tip
 
-    Windows and Android can use self-signed certificates. Browsers cannot load a certificate directly, so web users normally use a public certificate or a compatible private-network setup.
+    Installed apps can use self-signed certificates. Browsers cannot load a
+    certificate directly, so web users normally use a public certificate or a
+    compatible private-network setup.
 
 ## Next step
 

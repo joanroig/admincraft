@@ -35,7 +35,9 @@ Admincraft is a multiplatform app for managing Minecraft Bedrock and Java Editio
 ### Current project status
 
 - Bedrock is optimized for [docker-minecraft-bedrock-server](https://github.com/itzg/docker-minecraft-bedrock-server/tree/master); Java is optimized for [docker-minecraft-server](https://github.com/itzg/docker-minecraft-server).
-- Development is focused on Android and Windows; other platforms may be unstable.
+- Releases are available for Android, Windows, macOS, and Linux. The hosted web
+  app runs from the same Flutter codebase with browser-specific networking and
+  certificate restrictions.
 - Runs in the browser too (`flutter run -d chrome`), with two limitations the browser imposes: self-signed certificates cannot be loaded, because the browser validates TLS itself and exposes no way to add a trust anchor, and a page served over HTTPS cannot open an unencrypted `ws://` connection, so the `Private network` option only works when the app itself is served over `http://` (such as a local build).
 
 ## ![Admincraft logo](docs/logo/variants/pig.png) Getting Started
@@ -46,9 +48,15 @@ Once you have your server ready, [download Admincraft for your platform](https:/
 
 In the app settings, pick the **Connection Security** option matching your setup: `Private network` for Tailscale, a VPN or a LAN, `Public certificate` for a server with a publicly trusted certificate, and `Self-signed certificate` to load your own. The [server setup guide](docs/server/SERVER_SETUP.md#choosing-how-to-connect) walks through each one.
 
-The **Backup & Transfer** section can copy/paste or export/import all saved server profiles. Transfers include server secret keys, so Admincraft always encrypts them with a passphrase you choose.
+**Settings → Data & Sync** can copy/paste or export/import all saved server
+profiles. Transfers include server secret keys, so Admincraft always encrypts
+them with a passphrase you choose.
 
 ## ![Admincraft logo](docs/logo/variants/obsidian.png) Development
+
+This section is for contributors and custom-build maintainers. App users should
+start with the [user documentation](https://joanroig.github.io/admincraft/docs/getting-started/install/);
+server operators should use the [server setup guides](https://joanroig.github.io/admincraft/docs/getting-started/).
 
 - Follow the official [Flutter installation guide](https://docs.flutter.dev/get-started/install).
 - Open the project in the IDE of your choice ([VSCode](https://code.visualstudio.com/) is recommended) and run the app by following [this guide](https://docs.flutter.dev/tools/vs-code#running-and-debugging).
@@ -77,7 +85,7 @@ Pushes to `main` automatically test, build, and deploy both through the **Deploy
 Admincraft uses GitHub Actions to automate building and releasing the app. New releases are triggered by running the "Bump Version & Release" workflow from the GitHub Actions tab. This will automatically start the build and release process. The process consists of two workflows:
 
 - **Bump Version & Release** ([.github/workflows/bump-version-and-release.yml](.github/workflows/bump-version-and-release.yml)): This workflow bumps the version in `pubspec.yaml`, commits the change, and creates a new tag. It can be triggered manually and supports major, minor, or patch version increments.
-- **Build and Release** ([.github/workflows/build-and-release.yml](.github/workflows/build-and-release.yml)): This workflow is triggered manually or automatically after the completion of the "Bump Version & Release" workflow. It builds the app for Android and Windows, names the artifacts with the version, and uploads them to the [GitHub Releases page](https://github.com/joanroig/admincraft/releases) as downloadable files.
+- **Build and Release** ([.github/workflows/build-and-release-app.yml](.github/workflows/build-and-release-app.yml)): This workflow builds the release artifacts, names them with the version, and uploads them to the [GitHub Releases page](https://github.com/joanroig/admincraft/releases).
 
 ## ![Admincraft logo](docs/logo/variants/grass.png) Feature Roadmap
 

@@ -4,12 +4,9 @@ site_url: !ENV [MKDOCS_SITE_URL, "http://127.0.0.1:8000/"]
 repo_url: https://github.com/joanroig/admincraft
 repo_name: joanroig/admincraft
 edit_uri: edit/main/docs/
-# Shown in the footer of every page, which is the only way to state this once
-# and have it reach a reader who arrives on a single guide from a search.
-copyright: >-
-  Admincraft is licensed under PolyForm Shield 1.0.0. NOT AN OFFICIAL MINECRAFT PRODUCT. NOT
-  APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Minecraft is a trademark
-  of Mojang Synergies AB. Made with Material for MkDocs.
+# Keep the repeated footer quiet. Full licensing, trademark, and attribution
+# text lives on the About page instead of competing with every article.
+copyright: Admincraft · PolyForm Shield 1.0.0
 
 theme:
   name: material
@@ -45,25 +42,29 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting started:
-      - Overview: getting-started/index.md
+  - Use Admincraft:
       - Install Admincraft: getting-started/install.md
       - Connect your first server: getting-started/first-server.md
-      - Add to an existing server: getting-started/existing-server.md
-      - Bedrock on Oracle free tier: server/SERVER_SETUP.md
-      - Java server setup: getting-started/java-server.md
-  - Guides:
-      - Connection fields explained: guides/connection-fields.md
-      - Connection security: guides/connection-security.md
+      - Interface tour: guides/interface.md
       - Server profiles: guides/server-profiles.md
+      - Connection fields: guides/connection-fields.md
+      - Connection security: guides/connection-security.md
       - Backup and transfer: guides/backup-transfer.md
       - Google Drive sync: guides/google-drive-sync.md
-      - Using the web app: guides/web-app.md
-  - Troubleshooting: troubleshooting.md
+      - Web app: guides/web-app.md
+  - Set up a server:
+      - Choose your setup: getting-started/index.md
+      - Add to an existing server: getting-started/existing-server.md
+      - New Java server with Docker: getting-started/java-server.md
+      - Bedrock on Oracle Cloud: server/SERVER_SETUP.md
+  - Help & project:
+      - Troubleshooting: troubleshooting.md
+      - About, license, and trademarks: about.md
   - Development:
+      - Developer documentation: development/index.md
       - Build from source: development/building.md
-      - Configure Google Drive OAuth: development/google-drive-oauth.md
-      - Logo design: logo/LOGO_DESIGN.md
+      - Google Drive OAuth for custom builds: development/google-drive-oauth.md
+      - Logo and brand assets: logo/LOGO_DESIGN.md
   - Open Admincraft ↗: https://joanroig.github.io/admincraft/
 
 plugins:
@@ -88,7 +89,6 @@ extra_css:
   - stylesheets/extra.css
 
 extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/joanroig/admincraft
-      name: Admincraft on GitHub
+  # The theme otherwise adds a second "Made with Material for MkDocs" line.
+  # Material is credited on the About page instead.
+  generator: false

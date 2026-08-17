@@ -1,5 +1,9 @@
 # Build from source
 
+This page is for contributors and people producing a custom Admincraft build.
+If you only want to use Admincraft, follow [Install Admincraft](../getting-started/install.md)
+instead.
+
 ## App prerequisites
 
 - Flutter stable
@@ -40,6 +44,18 @@ Choose Chrome for the web app, Windows for the desktop app, or a connected Andro
 
     ```bash
     flutter build apk --release
+    ```
+
+=== "macOS"
+
+    ```bash
+    flutter build macos --release
+    ```
+
+=== "Linux"
+
+    ```bash
+    flutter build linux --release
     ```
 
 The `/admincraft/` base path matches GitHub Project Pages. Use `/` when deploying to the root of a custom domain.

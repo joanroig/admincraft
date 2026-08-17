@@ -18,12 +18,14 @@ Each profile stores everything Admincraft needs to connect to one server:
 
 ## Switch servers
 
-Open the server selector and choose a profile. Admincraft disconnects the current WebSocket, clears session-specific output and world state, and connects using the selected profile.
+Open the server selector and choose a profile. Admincraft disconnects the
+current connection, resets live world state, loads that profile's saved console
+transcript, and connects using the selected profile.
 
 ## Edit or delete a profile
 
 - Edit the selected profile in **Settings → Servers**, then select **Save changes**.
-- Use the delete icon beside **Server Settings** to remove it.
+- Use **Danger zone → Delete server** in the configuration page to remove it.
 - Admincraft always keeps at least one profile so the settings form has a selected server.
 
 ## Move profiles to another device

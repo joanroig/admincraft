@@ -1,4 +1,8 @@
-# Getting started
+# Choose your server setup
+
+This section is for the person running the Minecraft server or its Admincraft
+bridge. If that infrastructure already exists and you only need to use the
+app, start with [Install Admincraft](install.md) instead.
 
 Admincraft is built around [itzg's Minecraft containers](https://github.com/itzg/docker-minecraft-bedrock-server), which is where it does the most: a live console, world controls and a restart button, on Bedrock and Java alike. It also speaks plain RCON, so an existing Java server can be managed without changing anything about how it runs.
 

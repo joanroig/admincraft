@@ -1,4 +1,4 @@
-# Configure Google Drive OAuth
+# Configure Google Drive OAuth for a custom build
 
 This page is for Admincraft developers and self-hosters building the app. End
 users should follow [Sync server profiles with Google Drive](../guides/google-drive-sync.md).

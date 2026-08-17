@@ -6,7 +6,7 @@ Exports contain server secret keys and may contain pinned certificates. Admincra
 
 ## Export profiles
 
-1. Open **Settings → Backup & Transfer**.
+1. Open **Settings → Data & Sync**.
 2. Choose **Copy config** or **Export file**.
 3. Enter the same passphrase twice.
 4. Move the copied text or `admincraft-servers.json` file to the other device.
@@ -15,7 +15,7 @@ Use a long passphrase that you do not use elsewhere. The passphrase is not store
 
 ## Import on another device
 
-1. Open **Settings → Backup & Transfer**.
+1. Open **Settings → Data & Sync**.
 2. Choose **Paste config** or **Import file**.
 3. Enter the export passphrase.
 4. Review the number of profiles and confirm the import.
