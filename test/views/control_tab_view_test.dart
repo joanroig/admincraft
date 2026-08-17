@@ -76,6 +76,36 @@ void main() {
     expect(find.byTooltip('Refresh difficulty from server'), findsNothing);
   });
 
+  testWidgets('time selection updates immediately before server confirmation', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    final connection = _RecordingConnectionController();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider<ConnectionController>.value(value: connection),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: ControlTab(isEnabled: true)),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Night'));
+    await tester.pump();
+
+    expect(model.world.daytime, 13000);
+    expect(model.world.timeLabel, 'Night');
+    expect(connection.sentCommands, ['time set night']);
+    await tester.pump(const Duration(milliseconds: 500));
+  });
+
   testWidgets('game rules start collapsed to keep server actions reachable', (
     tester,
   ) async {
@@ -97,6 +127,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Live commands'), findsNothing);
     expect(find.byKey(const ValueKey('gamerules-card')), findsOneWidget);
     expect(find.byType(SwitchListTile), findsNothing);
     await tester.ensureVisible(find.text('Game rules'));
@@ -219,6 +250,16 @@ void main() {
 
 class _RecordingConnectionController extends ConnectionController {
   final List<String> quietCommands = [];
+  final List<String> sentCommands = [];
+
+  @override
+  Future<void> executeMinecraftCommand(
+    Model model,
+    String command, {
+    String source = 'terminal',
+  }) async {
+    sentCommands.add(command);
+  }
 
   @override
   Future<void> sendQuietly(String command) async {

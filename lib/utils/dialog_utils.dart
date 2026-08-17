@@ -2,10 +2,30 @@ import 'package:admincraft/models/model.dart';
 import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
 import 'package:admincraft/models/connection_security.dart';
+import 'package:admincraft/utils/command_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class DialogUtils {
+  /// Keeps the catalogue's existing section order while making each section
+  /// predictable to scan. Sorting the complete list would mix the categories.
+  static List<BedrockCommand> sortCommandsWithinCategories(
+    Iterable<BedrockCommand> commands,
+  ) {
+    final source = commands.toList();
+    final categories = source
+        .map((command) => command.category)
+        .toSet()
+        .toList();
+    return [
+      for (final category in categories)
+        ...([...source.where((command) => command.category == category)]..sort(
+          (left, right) =>
+              left.name.toLowerCase().compareTo(right.name.toLowerCase()),
+        )),
+    ];
+  }
+
   static IconData _categoryIcon(String category) {
     switch (category) {
       case 'Players':
@@ -42,6 +62,41 @@ class DialogUtils {
     );
   }
 
+  static List<Widget> _commandRows(
+    List<BedrockCommand> commands,
+    ThemeData theme,
+    ValueChanged<String> onCommandSelected,
+  ) {
+    return [
+      for (var index = 0; index < commands.length; index++) ...[
+        InkWell(
+          onTap: () => onCommandSelected(commands[index].name),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _syntax(commands[index], theme),
+                const SizedBox(height: 2),
+                Text(
+                  commands[index].description,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (index < commands.length - 1)
+          Divider(
+            height: 1,
+            indent: 8,
+            endIndent: 8,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+          ),
+      ],
+    ];
+  }
+
   /// Browsable command reference, grouped by category and searchable by name
   /// or description.
   static void showDefaultCommandsPopup(
@@ -53,14 +108,16 @@ class DialogUtils {
       builder: (BuildContext context) {
         final theme = Theme.of(context);
         final model = Provider.of<Model>(context, listen: false);
-        final commands = MinecraftCommands.all(
-          model.minecraftEdition,
-          includeMinecraftCommands:
-              model.connectionSecurity.isDirectRcon ||
-              model.supportsBridgeCapability('commands'),
-          includeBridgeManagement:
-              model.connectionSecurity.supportsServerManagement,
-          bridgeCapabilities: model.advertisedBridgeCommandCapabilities,
+        final commands = sortCommandsWithinCategories(
+          MinecraftCommands.all(
+            model.minecraftEdition,
+            includeMinecraftCommands:
+                model.connectionSecurity.isDirectRcon ||
+                model.supportsBridgeCapability('commands'),
+            includeBridgeManagement:
+                model.connectionSecurity.supportsServerManagement,
+            bridgeCapabilities: model.advertisedBridgeCommandCapabilities,
+          ),
         );
         var query = '';
 
@@ -86,6 +143,7 @@ class DialogUtils {
                 children: [
                   Text('Commands (${matches.length})'),
                   IconButton(
+                    tooltip: 'Close commands',
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -146,36 +204,19 @@ class DialogUtils {
                                         ],
                                       ),
                                     ),
-                                    for (final command in matches.where(
-                                      (c) => c.category == category,
-                                    ))
-                                      InkWell(
-                                        onTap: () {
-                                          Navigator.of(context).pop();
-                                          // Only the name: the arguments are
-                                          // what completion is for.
-                                          onCommandSelected(command.name);
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 8,
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              _syntax(command, theme),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                command.description,
-                                                style:
-                                                    theme.textTheme.bodySmall,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
+                                    ..._commandRows(
+                                      matches
+                                          .where(
+                                            (command) =>
+                                                command.category == category,
+                                          )
+                                          .toList(),
+                                      theme,
+                                      (command) {
+                                        Navigator.of(context).pop();
+                                        onCommandSelected(command);
+                                      },
+                                    ),
                                   ],
                                 ],
                               ),
@@ -479,6 +520,7 @@ class DialogUtils {
                 children: [
                   const Text('Command History'),
                   IconButton(
+                    tooltip: 'Close history',
                     icon: const Icon(Icons.close),
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -492,20 +534,49 @@ class DialogUtils {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Expanded(
-                      child: ListView.builder(
+                      child: ListView.separated(
                         itemCount: model.commandHistory.length,
+                        separatorBuilder: (context, index) => Divider(
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outlineVariant.withValues(alpha: 0.55),
+                        ),
                         itemBuilder: (context, index) {
                           final command = model.commandHistory[index];
+                          final favorite = model.favoriteCommands.contains(
+                            command,
+                          );
                           return ListTile(
                             title: Text(command),
+                            leading: IconButton(
+                              tooltip: favorite
+                                  ? 'Remove from favorites'
+                                  : 'Add to favorites',
+                              icon: Icon(
+                                favorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                              ),
+                              onPressed: () async {
+                                if (favorite) {
+                                  await model.removeFavoriteCommand(command);
+                                } else {
+                                  await model.addFavoriteCommand(command);
+                                }
+                                setState(() {});
+                              },
+                            ),
                             trailing: IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () {
-                                setState(() {
-                                  model.removeCommandFromHistory(index);
-                                  commandController.clear();
-                                  resetHistoryIndex();
-                                });
+                              tooltip: 'Delete from history',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () async {
+                                await model.removeCommandFromHistory(index);
+                                commandController.clear();
+                                resetHistoryIndex();
+                                setState(() {});
                               },
                             ),
                             onTap: () {
@@ -534,6 +605,232 @@ class DialogUtils {
           },
         );
       },
+    );
+  }
+
+  static void showFavoritesPopup(
+    BuildContext context,
+    TextEditingController commandController,
+    Function resetHistoryIndex,
+    Function setCursorToEnd,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => _FavoritesDialog(
+        commandController: commandController,
+        resetHistoryIndex: resetHistoryIndex,
+        setCursorToEnd: setCursorToEnd,
+      ),
+    );
+  }
+}
+
+class _FavoritesDialog extends StatefulWidget {
+  final TextEditingController commandController;
+  final Function resetHistoryIndex;
+  final Function setCursorToEnd;
+
+  const _FavoritesDialog({
+    required this.commandController,
+    required this.resetHistoryIndex,
+    required this.setCursorToEnd,
+  });
+
+  @override
+  State<_FavoritesDialog> createState() => _FavoritesDialogState();
+}
+
+class _FavoritesDialogState extends State<_FavoritesDialog> {
+  final TextEditingController _editor = TextEditingController();
+  String? _editingOriginal;
+  bool _showAddEditor = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _editor.dispose();
+    super.dispose();
+  }
+
+  void _startAdding() {
+    setState(() {
+      _showAddEditor = true;
+      _editingOriginal = null;
+      _editor.clear();
+      _error = null;
+    });
+  }
+
+  void _startEditing(String command) {
+    setState(() {
+      _showAddEditor = false;
+      _editingOriginal = command;
+      _editor.text = command;
+      _editor.selection = TextSelection.collapsed(offset: command.length);
+      _error = null;
+    });
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _showAddEditor = false;
+      _editingOriginal = null;
+      _editor.clear();
+      _error = null;
+    });
+  }
+
+  Future<void> _save(Model model) async {
+    final command = _editor.text.trim();
+    if (command.isEmpty) {
+      setState(() => _error = 'Enter a command.');
+      return;
+    }
+    if (!CommandUtils.isAccepted(command)) {
+      setState(() => _error = CommandUtils.rejectionMessage);
+      return;
+    }
+    if (model.favoriteCommands.any(
+      (favorite) => favorite == command && favorite != _editingOriginal,
+    )) {
+      setState(() => _error = 'This command is already a favorite.');
+      return;
+    }
+
+    final previous = _editingOriginal;
+    if (previous == null) {
+      await model.addFavoriteCommand(command);
+    } else {
+      await model.updateFavoriteCommand(previous, command);
+    }
+    if (mounted) _cancelEditing();
+  }
+
+  void _select(String command) {
+    widget.resetHistoryIndex();
+    widget.commandController.text = command;
+    widget.setCursorToEnd();
+    Navigator.of(context).pop();
+  }
+
+  Widget _editorField(Model model, {required bool inline}) {
+    return TextField(
+      key: const ValueKey('favorite-command-editor'),
+      controller: _editor,
+      autofocus: true,
+      decoration: InputDecoration(
+        labelText: inline ? 'Edit favorite command' : 'New favorite command',
+        errorText: _error,
+        border: const OutlineInputBorder(),
+        isDense: inline,
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Cancel editing',
+              onPressed: _cancelEditing,
+              icon: const Icon(Icons.close),
+            ),
+            IconButton(
+              tooltip: 'Save favorite command',
+              onPressed: () => _save(model),
+              icon: const Icon(Icons.check),
+            ),
+          ],
+        ),
+      ),
+      onSubmitted: (_) => _save(model),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final model = context.watch<Model>();
+    final favorites = model.favoriteCommands;
+    final scheme = Theme.of(context).colorScheme;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.favorite),
+          const SizedBox(width: 10),
+          const Expanded(child: Text('Favorite commands')),
+          IconButton(
+            tooltip: 'Add favorite command',
+            onPressed: _startAdding,
+            icon: const Icon(Icons.add),
+          ),
+          IconButton(
+            tooltip: 'Close favorites',
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: MediaQuery.sizeOf(context).height * 0.58,
+        child: Column(
+          children: [
+            if (_showAddEditor) ...[
+              _editorField(model, inline: false),
+              const SizedBox(height: 12),
+            ],
+            Expanded(
+              child: favorites.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No favorites yet. Add one here or use a heart in command history.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: favorites.length,
+                      separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                        color: scheme.outlineVariant.withValues(alpha: 0.55),
+                      ),
+                      itemBuilder: (context, index) {
+                        final command = favorites[index];
+                        if (_editingOriginal == command) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: _editorField(model, inline: true),
+                          );
+                        }
+                        return ListTile(
+                          leading: const Icon(Icons.favorite),
+                          title: Text(command),
+                          onTap: () => _select(command),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Edit favorite',
+                                onPressed: () => _startEditing(command),
+                                icon: const Icon(Icons.edit_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete favorite',
+                                onPressed: () =>
+                                    model.removeFavoriteCommand(command),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

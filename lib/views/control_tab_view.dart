@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/data/bedrock_gamerules.dart';
 import 'package:admincraft/models/connection_security.dart';
@@ -92,6 +94,15 @@ class _ControlTabState extends State<ControlTab> {
     _Choice('Hard', Icons.local_fire_department, 'hard'),
   ];
 
+  static const Map<String, int> _timeTicks = {
+    'sunrise': 0,
+    'day': 1000,
+    'noon': 6000,
+    'sunset': 12000,
+    'night': 13000,
+    'midnight': 18000,
+  };
+
   ConnectionController get _connection =>
       Provider.of<ConnectionController>(context, listen: false);
   Model get _model => Provider.of<Model>(context, listen: false);
@@ -117,17 +128,33 @@ class _ControlTabState extends State<ControlTab> {
     final rules = _model.minecraftEdition == MinecraftEdition.java
         ? JavaIds.gamerules
         : BedrockIds.gamerules;
-    for (final rule in rules) {
-      if (!mounted) return;
-      await _connection.sendQuietly('gamerule $rule');
-      await Future.delayed(const Duration(milliseconds: 300));
+    _model.beginGameruleRefresh();
+    try {
+      for (final rule in rules) {
+        if (!mounted) return;
+        await _connection.sendQuietly('gamerule $rule');
+        // Four requests per second stays below the bridge's shared limit while
+        // finishing sooner than the former three-per-second loop.
+        await Future.delayed(const Duration(milliseconds: 250));
+      }
+      // Bedrock's send-command helper returns before its console reply. Give
+      // the final rule a moment to arrive before publishing the batch.
+      await Future.delayed(const Duration(milliseconds: 400));
+    } finally {
+      _model.completeGameruleRefresh();
+      if (mounted) setState(() => _loadingRules = false);
     }
-    if (mounted) setState(() => _loadingRules = false);
   }
 
   Future<void> _setTime(String value) async {
+    final ticks = _timeTicks[value];
+    if (ticks != null) _model.recordDaytime(ticks);
     await _send('time set $value');
-    await Future.delayed(const Duration(milliseconds: 400));
+    unawaited(_refreshTimeAfterCommand());
+  }
+
+  Future<void> _refreshTimeAfterCommand() async {
+    await Future.delayed(const Duration(milliseconds: 500));
     await _connection.sendQuietly('time query daytime');
   }
 
@@ -141,50 +168,6 @@ class _ControlTabState extends State<ControlTab> {
     );
     if (value == null || !mounted) return;
     await _send(action.build(value.trim()));
-  }
-
-  Future<void> _addFavorite() async {
-    final command = await DialogUtils.promptForInput(
-      context,
-      'favorite command',
-    );
-    if (command == null || !mounted) return;
-    if (!CommandUtils.isAccepted(command)) {
-      ToastUtils.showToastError(CommandUtils.rejectionMessage);
-      return;
-    }
-    await _model.addFavoriteCommand(command);
-  }
-
-  Widget _favoritesCard(Model model) {
-    return _card(
-      title: 'Live commands',
-      trailing: IconButton(
-        tooltip: 'Add favorite command',
-        onPressed: _addFavorite,
-        icon: const Icon(Icons.add),
-      ),
-      child: model.favoriteCommands.isEmpty
-          ? Text(
-              'Add commands you use often. Tap one to run it immediately.',
-              style: Theme.of(context).textTheme.bodySmall,
-            )
-          : Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: model.favoriteCommands
-                  .map(
-                    (command) => InputChip(
-                      avatar: const Icon(Icons.play_arrow, size: 18),
-                      label: Text(command),
-                      tooltip: 'Run $command',
-                      onPressed: () => _send(command),
-                      onDeleted: () => model.removeFavoriteCommand(command),
-                    ),
-                  )
-                  .toList(),
-            ),
-    );
   }
 
   Future<void> _restartServer() async {
@@ -639,8 +622,8 @@ class _ControlTabState extends State<ControlTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _choiceRow(_weathers, world.lastWeather, (value) async {
-                  await _send('weather $value');
                   _model.recordWeather(value);
+                  await _send('weather $value');
                 }),
                 if (world.lastWeather == null)
                   Padding(
@@ -659,8 +642,8 @@ class _ControlTabState extends State<ControlTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _choiceRow(_difficulties, world.lastDifficulty, (value) async {
-                  await _send('difficulty $value');
                   _model.recordDifficulty(value);
+                  await _send('difficulty $value');
                 }),
                 if (world.lastDifficulty == null)
                   Padding(
@@ -674,7 +657,6 @@ class _ControlTabState extends State<ControlTab> {
             ),
           ),
           _playersCard(model),
-          _favoritesCard(model),
           _gamerulesCard(world),
           if (model.connectionSecurity.supportsServerManagement &&
               (model.supportsBridgeCapability('start') ||

@@ -571,40 +571,67 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                           _reportDirty();
                         },
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                        child: Column(
+                      const SizedBox(height: 10),
+                      Container(
+                        key: const ValueKey('connection-summary'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              _security.description,
-                              style: Theme.of(context).textTheme.bodySmall,
+                            Icon(
+                              _security.usesTls
+                                  ? Icons.lock_outline
+                                  : Icons.warning_amber_rounded,
+                              size: 19,
+                              color: _security.usesTls
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.error,
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _connectionPreview,
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: _security.usesTls
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context).colorScheme.error,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _connectionPreview,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          color: _security.usesTls
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.primary
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.error,
+                                        ),
                                   ),
-                            ),
-                            TextButton.icon(
-                              onPressed: () => UrlUtils.openDocumentation(
-                                'guides/connection-fields/',
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _security.description,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ],
                               ),
-                              icon: const Icon(
-                                Icons.menu_book_outlined,
-                                size: 18,
-                              ),
-                              label: const Text('What do these fields mean?'),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(height: 16),
                       if (!_supportsSecurity(_security)) ...[
-                        const SizedBox(height: 10),
                         Container(
                           key: const ValueKey('connection-platform-warning'),
                           padding: const EdgeInsets.all(14),
@@ -629,6 +656,7 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 16),
                       ],
                       LayoutBuilder(
                         builder: (context, constraints) {
@@ -748,6 +776,18 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                               : null,
                         ),
                       ],
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          key: const ValueKey('connection-fields-guide'),
+                          onPressed: () => UrlUtils.openDocumentation(
+                            'guides/connection-fields/',
+                          ),
+                          icon: const Icon(Icons.menu_book_outlined, size: 18),
+                          label: const Text('Connection fields guide'),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -766,7 +806,8 @@ class _ServerEditorViewState extends State<ServerEditorView> {
                     label: Text(_saving ? 'Saving…' : 'Save changes'),
                   ),
                 ),
-                if (_model.servers.length > 1) ...[
+                if (_model.servers.length > 1 ||
+                    _model.selectedServer.isComplete) ...[
                   const SizedBox(height: 14),
                   Card(
                     color: Theme.of(context).colorScheme.errorContainer,

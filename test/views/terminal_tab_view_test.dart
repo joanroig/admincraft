@@ -1,5 +1,6 @@
 import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:admincraft/views/terminal_tab_view.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ void main() {
   Future<Model> pumpTerminal(
     WidgetTester tester, {
     List<String> output = const [],
+    bool isEnabled = true,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
@@ -25,8 +27,8 @@ void main() {
           ChangeNotifierProvider.value(value: model),
           ChangeNotifierProvider(create: (_) => ConnectionController()),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: TerminalTab(isEnabled: true)),
+        child: MaterialApp(
+          home: Scaffold(body: TerminalTab(isEnabled: isEnabled)),
         ),
       ),
     );
@@ -89,12 +91,103 @@ void main() {
     );
   });
 
+  testWidgets('disconnecting keeps the saved transcript mounted', (
+    tester,
+  ) async {
+    await pumpTerminal(
+      tester,
+      output: List.generate(40, (index) => 'Saved line $index'),
+      isEnabled: false,
+    );
+
+    expect(find.text('Saved line 39'), findsOneWidget);
+    expect(find.byKey(const ValueKey('console-output-list')), findsOneWidget);
+    expect(
+      find.text('Disconnected — saved console output remains available.'),
+      findsNothing,
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).enabled,
+      isNot(false),
+    );
+    expect(
+      tester
+          .widget<IconButton>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is IconButton && widget.tooltip == 'Send command',
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.enterText(find.byType(TextField).last, 'say after reconnect');
+    expect(find.text('say after reconnect'), findsOneWidget);
+  });
+
+  testWidgets('send is enabled only for a connected non-empty command', (
+    tester,
+  ) async {
+    await pumpTerminal(tester, output: const ['Server ready']);
+    final input = find.byType(TextField).last;
+    final send = find.byWidgetPredicate(
+      (widget) => widget is IconButton && widget.tooltip == 'Send command',
+    );
+
+    expect(tester.widget<IconButton>(send).onPressed, isNull);
+    await tester.enterText(input, 'say hello');
+    await tester.pump();
+    expect(tester.widget<IconButton>(send).onPressed, isNotNull);
+    await tester.enterText(input, '   ');
+    await tester.pump();
+    expect(tester.widget<IconButton>(send).onPressed, isNull);
+  });
+
+  test('history replay notifies listeners once after the snapshot', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    model.beginConsoleHistoryLoad();
+    var notifications = 0;
+    model.addListener(() => notifications++);
+
+    model.appendOutputCommand('First history line', eventId: 'history-1');
+    model.appendOutputCommand('Second history line', eventId: 'history-2');
+    expect(notifications, 0);
+
+    model.completeConsoleHistoryLoad();
+    expect(notifications, 1);
+  });
+
+  test('bulk console observations notify listeners only once', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    model.appendOutputCommand('keepInventory = false');
+    model.appendOutputCommand('Player joined the game');
+    var notifications = 0;
+    model.addListener(() => notifications++);
+
+    model.beginGameruleRefresh();
+    model.appendOutputCommand('keepInventory = true');
+    model.appendOutputCommand('doDaylightCycle = false');
+    expect(notifications, 0);
+
+    model.completeGameruleRefresh();
+    expect(notifications, 1);
+    expect(model.world.gamerules['keepInventory'], 'true');
+    expect(model.world.gamerules['doDaylightCycle'], 'false');
+    expect(model.output, contains('Player joined the game'));
+    expect(model.output, isNot(contains('keepInventory')));
+    expect(model.output, isNot(contains('doDaylightCycle')));
+  });
+
   testWidgets('saved command text uses a clickable mouse cursor', (
     tester,
   ) async {
     final model = await pumpTerminal(tester);
     await model.addUserCommand('say reusable command');
-    model.appendOutputCommand('say reusable command');
+    model.appendOutputCommand('say reusable command', isUserCommand: true);
     await tester.pump();
 
     final textElement = find.text('say reusable command').evaluate().single;
@@ -113,6 +206,84 @@ void main() {
     });
     expect(nearestMouseRegion?.cursor, SystemMouseCursors.click);
     expect(nearestSelectionContainer?.delegate, isNull);
+
+    await tester.tap(find.text('say reusable command'));
+    await tester.pump();
+    final input = tester.widget<TextField>(find.byType(TextField).last);
+    expect(input.controller?.text, 'say reusable command');
+    expect(
+      input.controller?.text,
+      isNot(contains(ConsoleOutputFormatter.userCommandMarker)),
+    );
+  });
+
+  testWidgets('history hearts commands and favorites can be added and edited', (
+    tester,
+  ) async {
+    final model = await pumpTerminal(tester);
+    await model.addCommandToHistory('say from history');
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Show command history'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Add to favorites'));
+    await tester.pump();
+    expect(model.favoriteCommands, contains('say from history'));
+    await tester.tap(find.byTooltip('Close history'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Show favorite commands'));
+    await tester.pumpAndSettle();
+    expect(find.text('Favorite commands'), findsOneWidget);
+    expect(find.text('Clear All'), findsNothing);
+
+    await tester.tap(find.byTooltip('Add favorite command'));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('favorite-command-editor')),
+      'time set day',
+    );
+    await tester.tap(find.byTooltip('Save favorite command'));
+    await tester.pumpAndSettle();
+    expect(model.favoriteCommands, contains('time set day'));
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(Divider),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byTooltip('Edit favorite').first);
+    await tester.pump();
+    final inlineEditor = find.byKey(const ValueKey('favorite-command-editor'));
+    expect(
+      find.ancestor(of: inlineEditor, matching: find.byType(ListView)),
+      findsOneWidget,
+    );
+    await tester.enterText(inlineEditor, 'say edited favorite');
+    await tester.tap(find.byTooltip('Save favorite command'));
+    await tester.pumpAndSettle();
+    expect(model.favoriteCommands, contains('say edited favorite'));
+    expect(model.favoriteCommands, isNot(contains('say from history')));
+
+    await tester.tap(find.text('say edited favorite'));
+    await tester.pumpAndSettle();
+    final input = tester.widget<TextField>(find.byType(TextField).last);
+    expect(input.controller?.text, 'say edited favorite');
+  });
+
+  testWidgets('help output is not styled as a command previously sent', (
+    tester,
+  ) async {
+    final model = await pumpTerminal(tester);
+    model.appendOutputCommand('admincraft help', isUserCommand: true);
+    model.appendOutputCommand('Admincraft bridge commands:');
+    model.appendOutputCommand('admincraft status');
+    await tester.pump();
+
+    expect(find.text(r'$'), findsOneWidget);
+    expect(find.text('›'), findsNWidgets(2));
   });
 
   testWidgets('scroll-to-bottom action appears only away from the tail', (
@@ -120,30 +291,59 @@ void main() {
   ) async {
     await pumpTerminal(
       tester,
-      output: List.generate(80, (index) => 'Output line $index'),
+      output: List.generate(
+        300,
+        (index) => index.isEven
+            ? 'Output line $index'
+            : 'Wrapped output line $index with enough detail to occupy more than one visual row in a narrow console.',
+      ),
     );
 
     const button = ValueKey('console-scroll-bottom');
     expect(find.byKey(button), findsNothing);
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, 500));
+    await tester.drag(
+      find.byKey(const ValueKey('console-output-list')),
+      const Offset(0, 5000),
+    );
     await tester.pumpAndSettle();
     expect(find.byKey(button), findsOneWidget);
 
-    await tester.tap(find.byKey(button));
-    await tester.pumpAndSettle();
-    expect(find.byKey(button), findsNothing);
     final scrollable = tester.state<ScrollableState>(
       find.descendant(
         of: find.byKey(const ValueKey('console-output-list')),
         matching: find.byType(Scrollable),
       ),
     );
+    final before = scrollable.position.pixels;
+    final bottom = scrollable.position.minScrollExtent;
+
+    await tester.tap(find.byKey(button));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(scrollable.position.pixels, lessThan(before));
+    expect(scrollable.position.pixels, greaterThan(bottom));
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(button), findsNothing);
     expect(
       scrollable.position.pixels,
-      moreOrLessEquals(scrollable.position.maxScrollExtent, epsilon: 1),
+      moreOrLessEquals(scrollable.position.minScrollExtent, epsilon: 1),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('large transcripts build only the visible console rows', (
+    tester,
+  ) async {
+    await pumpTerminal(
+      tester,
+      output: List.generate(1000, (index) => 'Virtualized line $index'),
+    );
+
+    final builtRows = find.textContaining('Virtualized line').evaluate().length;
+    expect(builtRows, lessThan(100));
+    expect(find.text('Virtualized line 999'), findsOneWidget);
   });
 
   testWidgets('known incomplete commands remain editable instead of running', (
@@ -182,10 +382,30 @@ void main() {
     );
     expect(
       find.text(
-        'Inspect and manage the Admincraft bridge and Minecraft server',
+        'Inspect and manage the bridge; logs accepts an optional line count',
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('log count appears only for the admincraft logs action', (
+    tester,
+  ) async {
+    await pumpTerminal(tester);
+    final input = find.byType(TextField).last;
+
+    await tester.enterText(input, 'admincraft status');
+    await tester.pump();
+    Finder syntaxContaining(String value) => find.byWidgetPredicate(
+      (widget) =>
+          widget is RichText && widget.text.toPlainText().contains(value),
+    );
+    expect(syntaxContaining('[count]'), findsNothing);
+
+    await tester.enterText(input, 'admincraft logs ');
+    await tester.pump();
+    expect(syntaxContaining('[count]'), findsOneWidget);
+    expect(find.textContaining('default 250'), findsOneWidget);
   });
 
   testWidgets('console tools and long lines fit a narrow viewport', (

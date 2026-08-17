@@ -26,17 +26,9 @@ class MinecraftCommands {
               .toList();
     return BedrockCommand(
       'admincraft',
-      'Inspect and manage the Admincraft bridge and Minecraft server',
+      'Inspect and manage the bridge; logs accepts an optional line count',
       'Server',
-      args: [
-        CommandArg('action', ArgType.literal, options: actions),
-        const CommandArg(
-          'count',
-          ArgType.number,
-          required: false,
-          options: ['50', '100', '250', '500', '1000'],
-        ),
-      ],
+      args: [CommandArg('action', ArgType.literal, options: actions)],
     );
   }
 

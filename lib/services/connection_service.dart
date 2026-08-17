@@ -238,6 +238,7 @@ class ConnectionService {
                         (player) => player.toString(),
                       )
                     : null,
+                difficulty: decoded['difficulty']?.toString(),
               );
             }
             return;

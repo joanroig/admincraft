@@ -46,6 +46,7 @@ void main() {
           'playersOnline': 2,
           'playerLimit': 10,
           'onlinePlayers': ['Alex', 'Steve'],
+          'difficulty': 'normal',
         }),
       );
     });
@@ -81,6 +82,7 @@ void main() {
     expect(model.world.daytime, 7076);
     expect(model.world.playersOnline, 2);
     expect(model.world.playerLimit, 10);
+    expect(model.world.lastDifficulty, 'normal');
     expect(model.onlinePlayers, containsAll(['Alex', 'Steve']));
     expect(model.lastLogAt, isNotNull);
   });

@@ -6,6 +6,7 @@ import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/connection_failure.dart';
 import 'package:admincraft/services/connection_platform_capabilities.dart';
 import 'package:admincraft/services/connection_service.dart';
+import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:admincraft/services/retry_policy.dart';
 import 'package:admincraft/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
@@ -314,6 +315,10 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
     String command, {
     String source = 'terminal',
   }) async {
+    // User commands carry a private marker while stored in the transcript.
+    // Never allow that presentation metadata to cross the command boundary,
+    // even if a saved transcript row or pasted value reaches this method.
+    command = ConsoleOutputFormatter.stripUserCommandMarker(command);
     final bridgeDiagnostic = command.toLowerCase().startsWith('admincraft ');
     if (!bridgeDiagnostic &&
         !model.connectionSecurity.isDirectRcon &&
@@ -330,7 +335,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
     }
     await model.addUserCommand(command);
     await model.recordCommandUsage(command);
-    model.appendOutputCommand(command);
+    model.appendOutputCommand(command, isUserCommand: true);
     final sent = connectionService.executeCommand(command);
     await model.recordCommandAudit(
       command,

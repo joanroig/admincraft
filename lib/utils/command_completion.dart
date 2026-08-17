@@ -67,11 +67,15 @@ class CommandCompletion {
     final argIndex = atNewWord ? words.length - 1 : words.length - 2;
     final prefix = atNewWord ? '' : words.last;
 
-    if (command.name == 'admincraft' &&
-        argIndex == 1 &&
-        words.length > 1 &&
-        words[1].toLowerCase() != 'logs') {
-      return const [];
+    if (command.name == 'admincraft' && argIndex == 1) {
+      if (words.length <= 1 || words[1].toLowerCase() != 'logs') {
+        return const [];
+      }
+      const counts = ['50', '100', '250', '500', '1000'];
+      return counts
+          .where((value) => value.startsWith(prefix))
+          .map((value) => Completion(value, 'log lines', ArgType.number))
+          .toList();
     }
 
     final arg = command.argAt(argIndex);

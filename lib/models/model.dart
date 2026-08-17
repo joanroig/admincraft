@@ -7,6 +7,7 @@ import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/models/world_state.dart';
 import 'package:admincraft/services/console_parser.dart';
+import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:admincraft/services/android_widget_service.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,8 @@ class Model with ChangeNotifier {
   String _output = '';
   final Set<String> _seenConsoleEventIds = {};
   bool _consoleHistoryLoading = false;
+  int _gameruleRefreshDepth = 0;
+  bool _gameruleRefreshDirty = false;
   List<CommandAuditEntry> _commandAudit = [];
   final Set<String> _bridgeCapabilities = {};
   int? _bridgeProtocol;
@@ -130,6 +133,7 @@ class Model with ChangeNotifier {
     int? playersOnline,
     int? playerLimit,
     Iterable<String>? onlinePlayers,
+    String? difficulty,
   }) {
     _serverRuntimeState = state;
     _lastServerStateAt = observedAt ?? DateTime.now();
@@ -137,6 +141,7 @@ class Model with ChangeNotifier {
       daytime: daytime,
       playersOnline: playersOnline,
       playerLimit: playerLimit,
+      lastDifficulty: difficulty,
     );
     if (onlinePlayers != null) {
       _onlinePlayers
@@ -166,7 +171,38 @@ class Model with ChangeNotifier {
   void completeConsoleHistoryLoad() {
     if (!_consoleHistoryLoading) return;
     _consoleHistoryLoading = false;
+    _gameruleRefreshDirty = false;
     notifyListeners();
+  }
+
+  /// Keeps automatic gamerule discovery out of the user-facing console and
+  /// coalesces its many state updates into one rebuild at the end.
+  void beginGameruleRefresh() {
+    _gameruleRefreshDepth++;
+    if (_gameruleRefreshDepth != 1) return;
+
+    final lines = _output.split('\n');
+    final cleaned = lines
+        .where(
+          (line) =>
+              !ConsoleParser.isGameruleReply(line, edition: minecraftEdition),
+        )
+        .join('\n');
+    if (cleaned == _output) return;
+    _output = cleaned;
+    _gameruleRefreshDirty = true;
+    unawaited(
+      _persistenceService.saveConsoleOutput(_selectedServerId, _output),
+    );
+  }
+
+  void completeGameruleRefresh() {
+    if (_gameruleRefreshDepth == 0) return;
+    _gameruleRefreshDepth--;
+    if (_gameruleRefreshDepth == 0 && _gameruleRefreshDirty) {
+      _gameruleRefreshDirty = false;
+      if (!_consoleHistoryLoading) notifyListeners();
+    }
   }
 
   List<ServerProfile> get servers => List.unmodifiable(_servers);
@@ -207,6 +243,7 @@ class Model with ChangeNotifier {
   String get consoleTimestampMode => _persistenceService.consoleTimestampMode;
   String get consoleFilterPattern => _persistenceService.consoleFilterPattern;
   bool get hideCommonConsoleNoise => _persistenceService.hideCommonConsoleNoise;
+  String get workspaceDestination => _persistenceService.workspaceDestination;
 
   // Provide read-only access to collections
   Set<String> get userCommands =>
@@ -271,14 +308,25 @@ class Model with ChangeNotifier {
     return created;
   }
 
-  /// Removes a server. The last one is kept: with none left there would be
-  /// nothing for the connection getters to read.
+  /// Removes a server. The model keeps an internal blank profile when the last
+  /// real server is removed so connection getters remain safe while the UI
+  /// returns to onboarding.
   Future<void> deleteServer(String id) async {
-    if (_servers.length <= 1) return;
-    _servers = _servers.where((server) => server.id != id).toList();
+    if (!_servers.any((server) => server.id == id)) return;
     await _persistenceService.forgetServerSecrets(id);
     await _persistenceService.forgetConsoleOutput(id);
-    if (_selectedServerId == id) {
+
+    if (_servers.length == 1) {
+      final blank = ServerProfile.empty(_newId());
+      _servers = [blank];
+      _selectedServerId = blank.id;
+      _resetSession();
+      await _persistenceService.saveSelectedServerId(_selectedServerId);
+      await _persistenceService.resetOnboarding();
+    } else {
+      _servers = _servers.where((server) => server.id != id).toList();
+    }
+    if (!_servers.any((server) => server.id == _selectedServerId)) {
       _selectedServerId = _servers.first.id;
       _resetSession();
       await _persistenceService.saveSelectedServerId(_selectedServerId);
@@ -453,6 +501,13 @@ class Model with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Applies a time selected in Controls immediately. The server's later
+  /// state event remains authoritative and will correct this if necessary.
+  void recordDaytime(int daytime) {
+    _world = _world.copyWith(daytime: daytime % 24000);
+    notifyListeners();
+  }
+
   /// Resets live state when the selected server changes. Each profile keeps
   /// its own transcript, so locally echoed commands do not disappear between
   /// app launches or server switches.
@@ -560,6 +615,7 @@ class Model with ChangeNotifier {
     String command, {
     bool visible = true,
     String? eventId,
+    bool isUserCommand = false,
   }) {
     if (eventId != null && !_seenConsoleEventIds.add(eventId)) return;
     while (_seenConsoleEventIds.length > 2000) {
@@ -573,8 +629,15 @@ class Model with ChangeNotifier {
         _world.playerLimit != previousLimit) {
       unawaited(AndroidWidgetService.update(selectedServer, _world));
     }
-    if (visible) {
-      _output += "$command\n";
+    final showInConsole =
+        visible &&
+        !(_gameruleRefreshDepth > 0 &&
+            ConsoleParser.isGameruleReply(command, edition: minecraftEdition));
+    if (showInConsole) {
+      final stored = isUserCommand
+          ? ConsoleOutputFormatter.markUserCommand(command)
+          : command;
+      _output += "$stored\n";
       final lines = _output.split('\n');
       if (lines.length > _persistenceService.maxOutLines) {
         _output = lines
@@ -593,7 +656,15 @@ class Model with ChangeNotifier {
         ),
       );
     }
-    notifyListeners();
+    // Protocol-v2 history can contain hundreds of lines. Rebuilding the
+    // terminal for every one paints it repeatedly at intermediate heights and
+    // produces the visible top-to-bottom bounce. The completion event emits
+    // one notification after the bounded snapshot has arrived.
+    if (_consoleHistoryLoading || _gameruleRefreshDepth > 0) {
+      _gameruleRefreshDirty = true;
+    } else {
+      notifyListeners();
+    }
   }
 
   Future<void> addCommandToHistory(String command) async {
@@ -656,6 +727,9 @@ class Model with ChangeNotifier {
     );
   }
 
+  Future<void> setWorkspaceDestination(String value) =>
+      _persistenceService.saveWorkspaceDestination(value);
+
   Future<void> addFavoriteCommand(String command) async {
     final normalized = command.trim();
     if (normalized.isEmpty || favoriteCommands.contains(normalized)) return;
@@ -672,6 +746,21 @@ class Model with ChangeNotifier {
       () => _persistenceService.saveFavoriteCommands(
         favoriteCommands.where((value) => value != command).toList(),
       ),
+    );
+  }
+
+  Future<void> updateFavoriteCommand(String previous, String command) async {
+    final normalized = command.trim();
+    if (normalized.isEmpty) return;
+    final favorites = favoriteCommands.toList();
+    final index = favorites.indexOf(previous);
+    if (index < 0) return;
+    if (favorites.any((value) => value == normalized && value != previous)) {
+      return;
+    }
+    favorites[index] = normalized;
+    await _updatePersistenceService(
+      () => _persistenceService.saveFavoriteCommands(favorites),
     );
   }
 }

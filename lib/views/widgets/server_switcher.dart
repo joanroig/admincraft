@@ -1,4 +1,5 @@
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/models/server_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:admincraft/views/widgets/server_icon.dart';
 
@@ -73,27 +74,10 @@ class ServerSwitcher extends StatelessWidget {
           children: [
             ServerIcon(server: selected, size: compact ? 20 : 32),
             const SizedBox(width: 9),
-            Flexible(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    selected.alias.isEmpty ? 'Unnamed server' : selected.alias,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall,
-                  ),
-                  if (!compact)
-                    Text(
-                      selected.edition.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                ],
-              ),
-            ),
+            if (compact)
+              Flexible(child: _serverLabel(theme, selected))
+            else
+              Expanded(child: _serverLabel(theme, selected)),
             const SizedBox(width: 4),
             const Icon(Icons.unfold_more, size: 18),
           ],
@@ -101,4 +85,24 @@ class ServerSwitcher extends StatelessWidget {
       ),
     );
   }
+
+  Widget _serverLabel(ThemeData theme, ServerProfile selected) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        selected.alias.isEmpty ? 'Unnamed server' : selected.alias,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.titleSmall,
+      ),
+      if (!compact)
+        Text(
+          selected.edition.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall,
+        ),
+    ],
+  );
 }

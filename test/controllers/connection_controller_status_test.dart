@@ -9,11 +9,54 @@ import 'package:admincraft/services/connection_service.dart';
 import 'package:admincraft/services/connection_failure.dart';
 import 'package:admincraft/services/connection_platform_capabilities.dart';
 import 'package:admincraft/services/persistence_service.dart';
+import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('transcript markers never reach the Minecraft command boundary', (
+    tester,
+  ) async {
+    const server = ServerProfile(
+      id: 'marker-test',
+      alias: 'Marker test',
+      ip: 'server.test',
+      port: 8080,
+      secretKey: 'secret',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+    );
+    SharedPreferences.setMockInitialValues({
+      'servers': [jsonEncode(server.toJson())],
+      'selectedServer': server.id,
+      'onboardingCompleted': true,
+    });
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    final service = _RecordingConnectionService();
+    final controller = ConnectionController(connectionService: service);
+
+    await controller.attemptConnection(model);
+    await controller.executeMinecraftCommand(
+      model,
+      ConsoleOutputFormatter.markUserCommand('time set night'),
+    );
+
+    expect(service.regularCommands, ['time set night']);
+    expect(model.output, contains('time set night'));
+    expect(
+      model.output,
+      isNot(
+        contains(
+          '${ConsoleOutputFormatter.userCommandMarker}${ConsoleOutputFormatter.userCommandMarker}',
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    controller.dispose();
+  });
+
   testWidgets('a connection monitors status through quiet commands', (
     tester,
   ) async {

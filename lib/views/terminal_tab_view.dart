@@ -37,7 +37,15 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   List<Completion> _suggestions = const [];
   bool _searchVisible = false;
   bool _showScrollToBottom = false;
+  bool _consolePositionReady = false;
+  bool _positioningScheduled = false;
   String _lastRenderedOutput = '';
+  late String _lastServerId;
+  String _cachedOutput = '';
+  String _cachedSearch = '';
+  String _cachedFilter = '';
+  bool? _cachedHideCommonNoise;
+  List<String> _cachedVisibleLines = const [];
 
   void _refreshSuggestions() {
     setState(() {
@@ -86,6 +94,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _model = Provider.of<Model>(context, listen: false);
+    _lastServerId = _model.selectedServerId;
     _scrollController.addListener(_syncScrollButton);
 
     // Initialize controllers with context
@@ -113,7 +122,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   @override
   void didChangeMetrics() {
     if (!_model.terminalAutoScroll) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
   }
 
   @override
@@ -121,19 +130,32 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     // The terminal must react directly to streamed logs and to the explicit
     // history-loading boundary instead of relying on an ancestor to rebuild.
     context.watch<Model>();
-    if (!widget.isEnabled) {
-      return _buildDisabledState();
+    if (_lastServerId != _model.selectedServerId) {
+      _lastServerId = _model.selectedServerId;
+      _lastRenderedOutput = '';
+      _cachedOutput = '';
+      _cachedVisibleLines = const [];
+      _consolePositionReady = false;
+      _showScrollToBottom = false;
     }
 
     final outputChanged = _lastRenderedOutput != _model.output;
     _lastRenderedOutput = _model.output;
-    // Follow new output, but do not yank the console down on unrelated
-    // rebuilds after the user has deliberately scrolled up.
-    if (_model.terminalAutoScroll && outputChanged && !_showScrollToBottom) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    // Do not paint a newly attached transcript at line one and visibly jump
+    // it to the tail a frame later. Position it while transparent first.
+    if (_model.output.isNotEmpty && !_consolePositionReady) {
+      _scheduleInitialConsolePosition();
+    } else if (_model.terminalAutoScroll &&
+        outputChanged &&
+        !_showScrollToBottom) {
+      // Follow new live output, but do not animate the entire transcript into
+      // place. A jump after layout keeps the console visually stationary and
+      // avoids the conspicuous top-to-bottom catch-up when a tab is revealed.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncScrollButton());
     }
+    final visibleLines = _visibleOutputLines(_model.output);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
@@ -163,17 +185,21 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
                       ? (_model.consoleHistoryLoading
                             ? _buildLoadingAnimation()
                             : _buildEmptyState())
-                      : SelectionArea(
-                          child: ListView(
-                            key: const ValueKey('console-output-list'),
-                            controller: _scrollController,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            children: _formatOutput(
-                              _model.output,
-                              _model.userCommands,
+                      : Opacity(
+                          opacity: _consolePositionReady ? 1 : 0,
+                          child: SelectionArea(
+                            child: ListView.builder(
+                              key: const ValueKey('console-output-list'),
+                              controller: _scrollController,
+                              reverse: true,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              itemCount: visibleLines.length,
+                              itemBuilder: (context, index) => _buildOutputRow(
+                                visibleLines[visibleLines.length - 1 - index],
+                              ),
                             ),
                           ),
                         ),
@@ -195,8 +221,18 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildDisabledState() {
-    return const Center(child: Text('Connect to enable the Terminal.'));
+  void _scheduleInitialConsolePosition() {
+    if (_positioningScheduled) return;
+    _positioningScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _positioningScheduled = false;
+      if (!mounted) return;
+      if (!_scrollController.hasClients) {
+        _scheduleInitialConsolePosition();
+        return;
+      }
+      setState(() => _consolePositionReady = true);
+    });
   }
 
   Widget _buildLoadingAnimation() {
@@ -224,123 +260,133 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     );
   }
 
-  List<Widget> _formatOutput(String output, Set<String> userCommands) {
-    final widgets = <Widget>[];
+  List<String> _visibleOutputLines(String output) {
     final search = _searchController.text.trim().toLowerCase();
+    final filter = _model.consoleFilterPattern;
+    final hideCommonNoise = _model.hideCommonConsoleNoise;
+    if (_cachedOutput == output &&
+        _cachedSearch == search &&
+        _cachedFilter == filter &&
+        _cachedHideCommonNoise == hideCommonNoise) {
+      return _cachedVisibleLines;
+    }
+
     final lines = ConsoleOutputFormatter.visibleLines(
       output,
-      hideCommonNoise: _model.hideCommonConsoleNoise,
-      containing: _model.consoleFilterPattern,
+      hideCommonNoise: hideCommonNoise,
+      containing: filter,
     );
+    _cachedOutput = output;
+    _cachedSearch = search;
+    _cachedFilter = filter;
+    _cachedHideCommonNoise = hideCommonNoise;
+    _cachedVisibleLines = search.isEmpty
+        ? lines
+        : lines
+              .where((line) => line.toLowerCase().contains(search))
+              .toList(growable: false);
+    return _cachedVisibleLines;
+  }
 
-    for (final line in lines) {
-      if (search.isNotEmpty && !line.toLowerCase().contains(search)) continue;
-      final isUserCommand = userCommands.contains(line);
-      final shown = ConsoleOutputFormatter.formatLine(
-        line,
-        _model.consoleTimestampMode,
-      );
-      final normalized = shown.toLowerCase();
-      final isError =
-          normalized.contains('error') ||
-          normalized.contains('failed') ||
-          normalized.contains('exception') ||
-          normalized.contains('unexpected');
-      final foreground = isUserCommand
-          ? Theme.of(context).colorScheme.primary
-          : isError
-          ? Theme.of(context).colorScheme.error
-          : Theme.of(context).colorScheme.onSurface;
-      final outputRow = MouseRegion(
-        cursor: isUserCommand
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
-        child: GestureDetector(
-          onTap: isUserCommand
-              ? () {
-                  _setText(line);
-                }
+  Widget _buildOutputRow(String line) {
+    final isUserCommand = ConsoleOutputFormatter.isUserCommand(line);
+    final shown = ConsoleOutputFormatter.formatLine(
+      line,
+      _model.consoleTimestampMode,
+    );
+    final normalized = shown.toLowerCase();
+    final isError =
+        normalized.contains('error') ||
+        normalized.contains('failed') ||
+        normalized.contains('exception') ||
+        normalized.contains('unexpected');
+    final foreground = isUserCommand
+        ? Theme.of(context).colorScheme.primary
+        : isError
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurface;
+    final outputRow = MouseRegion(
+      cursor: isUserCommand
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: isUserCommand
+            ? () {
+                _setText(ConsoleOutputFormatter.stripUserCommandMarker(line));
+              }
+            : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          decoration: isUserCommand
+              ? BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(4),
+                )
               : null,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            decoration: isUserCommand
-                ? BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(4),
-                  )
-                : null,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 22,
-                  child: MouseRegion(
-                    cursor: isUserCommand
-                        ? SystemMouseCursors.click
-                        : MouseCursor.defer,
-                    child: Text(
-                      isUserCommand ? r'$' : (isError ? '!' : '›'),
-                      style: TextStyle(
-                        fontFamily: _model.terminalFont,
-                        fontFamilyFallback: const ['Miracode', 'monospace'],
-                        fontSize: _model.terminalFontSize,
-                        height: 1.25,
-                        fontWeight: FontWeight.bold,
-                        color: foreground.withValues(alpha: 0.78),
-                      ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 22,
+                child: MouseRegion(
+                  cursor: isUserCommand
+                      ? SystemMouseCursors.click
+                      : MouseCursor.defer,
+                  child: Text(
+                    isUserCommand ? r'$' : (isError ? '!' : '›'),
+                    style: TextStyle(
+                      fontFamily: _model.terminalFont,
+                      fontFamilyFallback: const ['Miracode', 'monospace'],
+                      fontSize: _model.terminalFontSize,
+                      height: 1.25,
+                      fontWeight: FontWeight.bold,
+                      color: foreground.withValues(alpha: 0.78),
                     ),
                   ),
                 ),
-                Expanded(
-                  child: MouseRegion(
-                    cursor: isUserCommand
-                        ? SystemMouseCursors.click
-                        : MouseCursor.defer,
-                    child: Text(
-                      shown,
-                      softWrap: true,
-                      style: TextStyle(
-                        fontFamily: _model.terminalFont,
-                        fontFamilyFallback: const ['Miracode', 'monospace'],
-                        fontSize: _model.terminalFontSize,
-                        height: 1.25,
-                        fontWeight: isUserCommand
-                            ? FontWeight.w600
-                            : FontWeight.normal,
-                        color: foreground,
-                        decoration: isUserCommand
-                            ? TextDecoration.underline
-                            : TextDecoration.none,
-                        decorationColor: isUserCommand
-                            ? foreground.withValues(alpha: 0.8)
-                            : null,
-                      ),
+              ),
+              Expanded(
+                child: MouseRegion(
+                  cursor: isUserCommand
+                      ? SystemMouseCursors.click
+                      : MouseCursor.defer,
+                  child: Text(
+                    shown,
+                    softWrap: true,
+                    style: TextStyle(
+                      fontFamily: _model.terminalFont,
+                      fontFamilyFallback: const ['Miracode', 'monospace'],
+                      fontSize: _model.terminalFontSize,
+                      height: 1.25,
+                      fontWeight: isUserCommand
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      color: foreground,
+                      decoration: isUserCommand
+                          ? TextDecoration.underline
+                          : TextDecoration.none,
+                      decorationColor: isUserCommand
+                          ? foreground.withValues(alpha: 0.8)
+                          : null,
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-      if (isUserCommand) {
-        // SelectionArea installs its own text cursor over selectable glyphs,
-        // which otherwise wins over the row MouseRegion on Flutter web.
-        // Commands are actions (click to reuse), so exclude just those rows
-        // from selection and let their click cursor apply over the glyphs too.
-        widgets.add(
-          Tooltip(
-            message: 'Click to reuse this command',
-            child: SelectionContainer.disabled(child: outputRow),
-          ),
-        );
-      } else {
-        widgets.add(outputRow);
-      }
-    }
-    return widgets;
+      ),
+    );
+    if (!isUserCommand) return outputRow;
+    // SelectionArea installs its own text cursor over selectable glyphs,
+    // which otherwise wins over the row MouseRegion on Flutter web. Commands
+    // are actions, so exclude just those rows from text selection.
+    return Tooltip(
+      message: 'Click to reuse this command',
+      child: SelectionContainer.disabled(child: outputRow),
+    );
   }
 
   Widget _buildOutputTools() {
@@ -389,7 +435,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
             onPressed: () async {
               final enabled = !_model.terminalAutoScroll;
               await _model.setTerminalAutoScroll(enabled);
-              if (enabled) _scrollToBottom(animate: true);
+              if (enabled) _jumpToBottom();
             },
             icon: Icon(
               _model.terminalAutoScroll
@@ -442,6 +488,16 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
                 )
               : null,
           tooltip: 'Show command history',
+        ),
+        IconButton(
+          icon: const Icon(Icons.favorite),
+          onPressed: () => DialogUtils.showFavoritesPopup(
+            context,
+            _commandController,
+            () => _resetHistoryIndex(),
+            () => _setCursorToEnd(),
+          ),
+          tooltip: 'Show favorite commands',
         ),
       ],
     );
@@ -563,10 +619,26 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (command != null)
-            _syntaxLine(command, CommandCompletion.activeArgIndex(text), base),
+            _syntaxLine(
+              command,
+              CommandCompletion.activeArgIndex(text),
+              base,
+              includeLogCount:
+                  command.name == 'admincraft' &&
+                  RegExp(
+                    r'^\s*admincraft\s+logs(?:\s|$)',
+                    caseSensitive: false,
+                  ).hasMatch(text),
+            ),
           if (command != null)
             Text(
-              command.description,
+              command.name == 'admincraft' &&
+                      RegExp(
+                        r'^\s*admincraft\s+logs(?:\s|$)',
+                        caseSensitive: false,
+                      ).hasMatch(text)
+                  ? 'Replay recent server logs; count is the optional number of lines (1–1000, default 250).'
+                  : command.description,
               style: base?.copyWith(fontStyle: FontStyle.italic),
             ),
           if (rejected)
@@ -579,7 +651,12 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     );
   }
 
-  Widget _syntaxLine(BedrockCommand command, int activeIndex, TextStyle? base) {
+  Widget _syntaxLine(
+    BedrockCommand command,
+    int activeIndex,
+    TextStyle? base, {
+    bool includeLogCount = false,
+  }) {
     final spans = <TextSpan>[
       TextSpan(
         text: command.name,
@@ -602,10 +679,26 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
       );
     }
 
+    if (includeLogCount) {
+      spans.add(
+        TextSpan(
+          text: ' [count]',
+          style: base?.copyWith(
+            fontWeight: activeIndex == 1 ? FontWeight.bold : FontWeight.normal,
+            color: activeIndex == 1
+                ? Theme.of(context).colorScheme.primary
+                : base.color?.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
     return RichText(text: TextSpan(children: spans));
   }
 
   Widget _buildCommandInput() {
+    final canSend =
+        widget.isEnabled && _commandController.text.trim().isNotEmpty;
     // Tab is the conventional completion key in a console, and Flutter would
     // otherwise consume it to move focus out of the field.
     return Shortcuts(
@@ -633,32 +726,50 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
             suffixIcon: IconButton(
               tooltip: 'Send command',
               icon: const Icon(Icons.send_rounded),
-              onPressed: () => _submitCommand(_commandController.text),
+              onPressed: canSend
+                  ? () => _submitCommand(_commandController.text)
+                  : null,
             ),
           ),
           onChanged: (_) => _refreshSuggestions(),
-          onSubmitted: _submitCommand,
+          onSubmitted: canSend ? _submitCommand : null,
         ),
       ),
     );
   }
 
   Widget _buildScrollToBottomButton() {
-    if (!_showScrollToBottom) return const SizedBox.shrink();
     return Positioned(
       bottom: 120,
       right: 16,
-      // Translucent so the log stays partly visible behind it, but tinted from
-      // the scheme: a fixed black stayed dark in light mode and its icon
-      // disappeared against it.
-      child: FloatingActionButton(
-        key: const ValueKey('console-scroll-bottom'),
-        onPressed: () => _scrollToBottom(animate: true),
-        backgroundColor: Theme.of(
-          context,
-        ).colorScheme.secondaryContainer.withValues(alpha: 0.85),
-        foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-        child: const Icon(Icons.arrow_downward),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        reverseDuration: const Duration(milliseconds: 140),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.88, end: 1).animate(animation),
+            child: child,
+          ),
+        ),
+        child: _showScrollToBottom
+            ? FloatingActionButton(
+                key: const ValueKey('console-scroll-bottom'),
+                tooltip: 'Scroll to latest output',
+                onPressed: _animateToBottom,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.secondaryContainer.withValues(alpha: 0.85),
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onSecondaryContainer,
+                child: const Icon(Icons.arrow_downward),
+              )
+            : const SizedBox.shrink(
+                key: ValueKey('console-scroll-bottom-hidden'),
+              ),
       ),
     );
   }
@@ -686,45 +797,36 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
 
   void _setCursorToEnd() => _setText(_commandController.text);
 
-  void _scrollToBottom({bool animate = false}) {
+  void _jumpToBottom() {
     if (!_scrollController.hasClients) return;
-    final target = _scrollController.position.maxScrollExtent;
-    if (!animate) {
-      _scrollController.jumpTo(target);
-      _finishScrollToBottom();
-      return;
-    }
-
-    _scrollController
-        .animateTo(
-          target,
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-        )
-        .whenComplete(_finishScrollToBottom);
+    final target = _scrollController.position.minScrollExtent;
+    _scrollController.jumpTo(target);
   }
 
-  void _finishScrollToBottom() {
-    if (!mounted) return;
-    // The command area and wrapped log lines may settle one frame after the
-    // animation measured its target. Snap only that small remainder instead
-    // of rebuilding the list at an outdated extent, which caused a blank
-    // flash followed by the log appearing from the top.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  Future<void> _animateToBottom() async {
+    if (!_scrollController.hasClients) return;
+    // A new server line can arrive during the animation. Re-measure after the
+    // frame and continue smoothly instead of snapping the small remainder.
+    for (var pass = 0; pass < 3; pass++) {
       if (!mounted || !_scrollController.hasClients) return;
       final position = _scrollController.position;
-      if (position.extentAfter > 1) {
-        position.jumpTo(position.maxScrollExtent);
-      }
-      if (_showScrollToBottom) {
-        setState(() => _showScrollToBottom = false);
-      }
-    });
+      final target = position.minScrollExtent;
+      final distance = (target - position.pixels).abs();
+      if (distance <= 1) return;
+      final milliseconds = (220 + distance / 8).round().clamp(280, 650);
+      await position.animateTo(
+        target,
+        duration: Duration(milliseconds: milliseconds),
+        curve: Curves.easeInOutCubic,
+      );
+      await WidgetsBinding.instance.endOfFrame;
+    }
   }
 
   void _syncScrollButton() {
     if (!_scrollController.hasClients || !mounted) return;
-    final show = _scrollController.position.extentAfter > 48;
+    final position = _scrollController.position;
+    final show = (position.pixels - position.minScrollExtent).abs() > 48;
     if (show != _showScrollToBottom) {
       setState(() => _showScrollToBottom = show);
     }

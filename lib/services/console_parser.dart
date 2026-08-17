@@ -54,6 +54,15 @@ class ConsoleParser {
     return line;
   }
 
+  static bool isGameruleReply(
+    String line, {
+    MinecraftEdition edition = MinecraftEdition.bedrock,
+  }) {
+    final normalized = stripPrefix(line).trim();
+    return (edition == MinecraftEdition.java ? _javaGamerule : _gamerule)
+        .hasMatch(normalized);
+  }
+
   /// Applies everything [chunk] says about the world to [state].
   static WorldState apply(
     WorldState state,

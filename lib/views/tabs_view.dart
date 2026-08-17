@@ -4,6 +4,7 @@ import 'package:admincraft/controllers/connection_controller.dart';
 import 'package:admincraft/controllers/google_drive_sync_controller.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/services/browser_unload_guard.dart';
 import 'package:admincraft/utils/build_info.dart';
 import 'package:admincraft/utils/url_utils.dart';
 import 'package:admincraft/views/control_tab_view.dart';
@@ -78,6 +79,15 @@ extension on _WorkspaceDestination {
     _WorkspaceDestination.preferences => Icons.palette_outlined,
     _WorkspaceDestination.more => Icons.settings_outlined,
   };
+
+  /// Nested pages restore to their Settings parent after a full reload. This
+  /// remembers the base navigation without reopening an editor or dialog.
+  _WorkspaceDestination get baseDestination => switch (this) {
+    _WorkspaceDestination.overview ||
+    _WorkspaceDestination.console ||
+    _WorkspaceDestination.controls => this,
+    _ => _WorkspaceDestination.more,
+  };
 }
 
 class Tabs extends StatefulWidget {
@@ -90,7 +100,7 @@ class Tabs extends StatefulWidget {
 class _TabsState extends State<Tabs> {
   static const double _desktopBreakpoint = 820;
   late Future<void> _initializationFuture;
-  late final PageController _pageController;
+  late PageController _pageController;
   final ServerEditorController _serverEditorController =
       ServerEditorController();
   final _pageViewKey = GlobalKey();
@@ -102,14 +112,34 @@ class _TabsState extends State<Tabs> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    final savedDestination = context.read<Model>().workspaceDestination;
+    _destination = _WorkspaceDestination.values.firstWhere(
+      (destination) => destination.name == savedDestination,
+      orElse: () => _WorkspaceDestination.overview,
+    );
+    _pageController = PageController(initialPage: _destination.index);
     _initializationFuture = _initialize();
   }
 
   @override
   void dispose() {
+    setBrowserUnloadGuard(false);
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _setServerEditorDirty(bool dirty) {
+    if (_serverEditorDirty == dirty) return;
+    _serverEditorDirty = dirty;
+    setBrowserUnloadGuard(dirty);
+  }
+
+  void _rememberDestination(_WorkspaceDestination destination) {
+    unawaited(
+      context.read<Model>().setWorkspaceDestination(
+        destination.baseDestination.name,
+      ),
+    );
   }
 
   Future<void> _initialize() async {
@@ -173,20 +203,33 @@ class _TabsState extends State<Tabs> {
           return false;
         case _UnsavedChangesAction.discard:
           _serverEditorController.discard();
-          _serverEditorDirty = false;
+          _setServerEditorDirty(false);
           return true;
         case _UnsavedChangesAction.save:
-          return await _serverEditorController.save();
+          final saved = await _serverEditorController.save();
+          if (saved) _setServerEditorDirty(false);
+          return saved;
       }
     } finally {
       _unsavedDialogOpen = false;
     }
   }
 
-  Future<void> _go(_WorkspaceDestination destination) async {
-    if (_destination == destination) return;
-    if (!await _confirmCanLeaveEditor()) return;
-    if (!mounted) return;
+  Future<void> _go(_WorkspaceDestination destination) {
+    if (_destination == destination) return Future.value();
+    // Most navigation has nothing to confirm. Keep that path synchronous so a
+    // tap changes the visible page in the same frame instead of crossing an
+    // unnecessary async boundary.
+    if (_destination != _WorkspaceDestination.serverEditor ||
+        !_serverEditorDirty) {
+      _performGo(destination);
+      return Future.value();
+    }
+    return _confirmAndGo(destination);
+  }
+
+  Future<void> _confirmAndGo(_WorkspaceDestination destination) async {
+    if (!await _confirmCanLeaveEditor() || !mounted) return;
     _performGo(destination);
   }
 
@@ -196,13 +239,34 @@ class _TabsState extends State<Tabs> {
       _navigationHistory.add(_destination);
       _destination = destination;
     });
-    _syncPage();
+    // Update the active destination before asking PageView to build the target
+    // page. Hidden pages deliberately ignore pointer events and semantics, so
+    // building the target against the previous destination would leave it
+    // inert in the PageView cache.
+    _positionPage(destination);
+    _rememberDestination(destination);
   }
 
   void _goWithoutHistory(_WorkspaceDestination destination) {
     FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _destination = destination);
-    _syncPage();
+    _positionPage(destination);
+    _rememberDestination(destination);
+  }
+
+  /// Positions the page before a destination can expose the workspace.
+  ///
+  /// During onboarding the PageView is not mounted. Reusing its original
+  /// Overview controller caused one frame of Overview before Preferences or
+  /// Data & Sync appeared. A fresh controller with the correct initial page
+  /// makes the first workspace frame the requested destination.
+  void _positionPage(_WorkspaceDestination destination) {
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(destination.index);
+      return;
+    }
+    _pageController.dispose();
+    _pageController = PageController(initialPage: destination.index);
   }
 
   Future<void> _back() async {
@@ -282,7 +346,7 @@ class _TabsState extends State<Tabs> {
     await connection.disconnect(model);
     await model.selectServer(id);
     if (!mounted) return;
-    _serverEditorDirty = false;
+    _setServerEditorDirty(false);
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
     }
@@ -301,7 +365,7 @@ class _TabsState extends State<Tabs> {
     await connection.disconnect(model);
     await model.addServer();
     if (!mounted) return;
-    _serverEditorDirty = false;
+    _setServerEditorDirty(false);
     if (_destination == _WorkspaceDestination.serverEditor) {
       setState(() {});
       _syncPage();
@@ -324,6 +388,11 @@ class _TabsState extends State<Tabs> {
     final connection = context.read<ConnectionController>();
     await connection.disconnect(model);
     if (!mounted) return;
+    if (!model.onboardingCompleted) {
+      _navigationHistory.clear();
+      _goWithoutHistory(_WorkspaceDestination.overview);
+      return;
+    }
     await _go(_WorkspaceDestination.servers);
     if (model.selectedServer.isComplete) {
       await connection.attemptConnection(model);
@@ -364,7 +433,7 @@ class _TabsState extends State<Tabs> {
         onSaved: _serverSaved,
         onDeleted: _serverDeleted,
         onBack: () => _go(_WorkspaceDestination.servers),
-        onDirtyChanged: (dirty) => _serverEditorDirty = dirty,
+        onDirtyChanged: _setServerEditorDirty,
       ),
       _WorkspaceDestination.dataSync => DataSyncView(
         onServersChanged: _serversImported,
@@ -388,16 +457,41 @@ class _TabsState extends State<Tabs> {
       key: _pageViewKey,
       controller: _pageController,
       physics: const NeverScrollableScrollPhysics(),
+      // Prebuild the adjacent primary tab during idle time so the first tap is
+      // as fast as subsequent visits, without eagerly building every settings
+      // page at startup.
+      allowImplicitScrolling: true,
       itemCount: _WorkspaceDestination.values.length,
-      itemBuilder: (context, index) =>
-          _KeepAlivePage(child: _pageAt(index, model, connection)),
+      itemBuilder: (context, index) {
+        final active = index == _destination.index;
+        return IgnorePointer(
+          ignoring: !active,
+          child: ExcludeSemantics(
+            excluding: !active,
+            child: _KeepAlivePage(child: _pageAt(index, model, connection)),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final model = context.watch<Model>();
-    final connection = context.watch<ConnectionController>();
+    final model = context.read<Model>();
+    // Console lines and world observations update Model frequently, but none
+    // of them change the workspace shell. Rebuild it only for server-list and
+    // onboarding changes so tab changes stay lightweight.
+    context.select<Model, (bool, String, int)>(
+      (value) => (
+        value.onboardingCompleted,
+        value.selectedServerId,
+        value.serverRevision,
+      ),
+    );
+    final connection = context.read<ConnectionController>();
+    context.select<ConnectionController, ConnectionStatus>(
+      (value) => value.status,
+    );
 
     return FutureBuilder<void>(
       future: _initializationFuture,
@@ -494,6 +588,8 @@ class _TabsState extends State<Tabs> {
       _WorkspaceDestination.dataSync,
       _WorkspaceDestination.preferences,
     }.contains(_destination);
+    final showConnectionLabel =
+        !secondary && MediaQuery.sizeOf(context).width >= 480;
 
     return Scaffold(
       appBar: AppBar(
@@ -521,7 +617,11 @@ class _TabsState extends State<Tabs> {
           Padding(
             key: const ValueKey('mobile-connection-action'),
             padding: const EdgeInsets.only(right: 8),
-            child: _ConnectionAction(model: model, connection: connection),
+            child: _ConnectionAction(
+              model: model,
+              connection: connection,
+              showStatusLabel: showConnectionLabel,
+            ),
           ),
         ],
       ),
@@ -609,7 +709,7 @@ class _WorkspaceSidebar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _AppTitle(
-                onTap: () => onDestination(_WorkspaceDestination.preferences),
+                onTap: () => onDestination(_WorkspaceDestination.overview),
               ),
               ServerSwitcher(
                 model: model,
@@ -721,11 +821,13 @@ class _WorkspaceHeader extends StatelessWidget {
                 ],
               ),
             ),
-            _StatusLabel(status: connection.status),
-            const SizedBox(width: 8),
             const NotificationInboxButton(),
             const SizedBox(width: 4),
-            _ConnectionAction(model: model, connection: connection),
+            _ConnectionAction(
+              model: model,
+              connection: connection,
+              showStatusLabel: true,
+            ),
           ],
         ),
       ),
@@ -751,6 +853,7 @@ class _NavigationTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: ListTile(
+          key: ValueKey('sidebar-${destination.name}'),
           dense: true,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -766,7 +869,7 @@ class _NavigationTile extends StatelessWidget {
   }
 }
 
-/// The logo, app name and faint version form one target that opens Preferences.
+/// The logo, app name and faint version form one target that returns home.
 /// Only the version reveals the full build stamp when hovered.
 class _AppTitle extends StatefulWidget {
   final VoidCallback onTap;
@@ -904,49 +1007,21 @@ class _ActionTile extends StatelessWidget {
   }
 }
 
-class _StatusLabel extends StatelessWidget {
-  final ConnectionStatus status;
-
-  const _StatusLabel({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      ConnectionStatus.connected => ('Connected', Colors.green),
-      ConnectionStatus.connecting => ('Connecting', Colors.orange),
-      ConnectionStatus.disconnected => ('Disconnected', Colors.red),
-    };
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: Theme.of(context).textTheme.labelLarge),
-      ],
-    );
-  }
-}
-
 class _ConnectionAction extends StatelessWidget {
   final Model model;
   final ConnectionController connection;
+  final bool showStatusLabel;
 
-  const _ConnectionAction({required this.model, required this.connection});
-
-  /// Material has no success role, so the green is supplied here. Red comes
-  /// from the scheme's error role, which every theme already defines.
-  static const Color _connectedDark = Color(0xFF7BDC97);
-  static const Color _connectedLight = Color(0xFF1B5E20);
+  const _ConnectionAction({
+    required this.model,
+    required this.connection,
+    this.showStatusLabel = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final dark = theme.brightness == Brightness.dark;
     final connected = connection.status == ConnectionStatus.connected;
     final connecting = connection.status == ConnectionStatus.connecting;
     // An incomplete profile cannot connect, so the control is disabled and says
@@ -955,56 +1030,103 @@ class _ConnectionAction extends StatelessWidget {
     final ready =
         model.selectedServer.isComplete && compatibilityFailure == null;
 
-    // Colour says what the connection is; the icon says what pressing will do.
-    // Neither alone was enough before: a single tonal button looked the same
-    // whether the server was live or not.
-    final (Color background, Color foreground) = switch ((
-      ready,
-      connecting,
-      connected,
-    )) {
-      (false, _, false) => (scheme.surfaceContainerHighest, scheme.outline),
-      (_, true, _) => (scheme.surfaceContainerHighest, scheme.onSurfaceVariant),
-      (_, _, true) => (
-        (dark ? _connectedDark : _connectedLight).withValues(alpha: 0.20),
-        dark ? _connectedDark : _connectedLight,
-      ),
-      _ => (scheme.errorContainer, scheme.onErrorContainer),
+    final (label, statusColor) = switch (connection.status) {
+      ConnectionStatus.connected => ('Connected', Colors.green),
+      ConnectionStatus.connecting => ('Connecting', Colors.orange),
+      ConnectionStatus.disconnected => ('Disconnected', Colors.red),
     };
+    final onPressed = connecting || (!ready && !connected)
+        ? null
+        : () => connection.toggleConnection(model);
+    final actionIcon = connected ? Icons.link_rounded : Icons.link_off_rounded;
+    final tooltip = !ready
+        ? compatibilityFailure?.message ?? 'Finish setting up this server first'
+        : switch (connection.status) {
+            ConnectionStatus.connected => 'Disconnect from server',
+            ConnectionStatus.connecting => 'Connecting…',
+            ConnectionStatus.disconnected => 'Connect to server',
+          };
 
     return Tooltip(
-      message: !ready
-          ? compatibilityFailure?.message ??
-                'Finish setting up this server first'
-          : switch (connection.status) {
-              ConnectionStatus.connected => 'Connected. Press to disconnect.',
-              ConnectionStatus.connecting => 'Connecting…',
-              ConnectionStatus.disconnected =>
-                'Disconnected. Press to connect.',
-            },
-      child: IconButton(
-        onPressed: connecting || (!ready && !connected)
-            ? null
-            : () => connection.toggleConnection(model),
-        style: IconButton.styleFrom(
-          backgroundColor: background,
-          foregroundColor: foreground,
-          disabledBackgroundColor: background,
-          disabledForegroundColor: foreground,
-        ),
-        icon: connecting
-            ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: foreground,
-                ),
-              )
-            : Icon(connected ? Icons.stop_rounded : Icons.play_arrow_rounded),
-      ),
+      message: tooltip,
+      child: showStatusLabel
+          ? OutlinedButton(
+              key: const ValueKey('connection-status-label'),
+              onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                foregroundColor: scheme.onSurface,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ConnectionDot(color: statusColor),
+                  const SizedBox(width: 6),
+                  Text(label),
+                  const SizedBox(width: 6),
+                  if (connecting)
+                    const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Icon(actionIcon, size: 18),
+                ],
+              ),
+            )
+          : IconButton(
+              key: const ValueKey('connection-status-dot'),
+              onPressed: onPressed,
+              style: IconButton.styleFrom(
+                backgroundColor: scheme.surfaceContainerHighest,
+                foregroundColor: scheme.onSurfaceVariant,
+                disabledBackgroundColor: scheme.surfaceContainerHighest,
+                disabledForegroundColor: scheme.outline,
+              ),
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  if (connecting)
+                    const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Icon(actionIcon),
+                  Positioned(
+                    right: -3,
+                    bottom: -3,
+                    child: _ConnectionDot(
+                      color: statusColor,
+                      borderColor: scheme.surfaceContainerHighest,
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
+}
+
+class _ConnectionDot extends StatelessWidget {
+  final Color color;
+  final Color? borderColor;
+
+  const _ConnectionDot({required this.color, this.borderColor});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 9,
+    height: 9,
+    decoration: BoxDecoration(
+      color: color,
+      shape: BoxShape.circle,
+      border: borderColor == null
+          ? null
+          : Border.all(color: borderColor!, width: 1.5),
+    ),
+  );
 }
 
 class _KeepAlivePage extends StatefulWidget {

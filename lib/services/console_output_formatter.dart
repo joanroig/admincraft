@@ -3,6 +3,18 @@ import 'package:admincraft/services/console_parser.dart';
 /// Applies the user's console presentation settings consistently everywhere
 /// server output is shown.
 class ConsoleOutputFormatter {
+  /// Stored before locally echoed commands so identical text returned by the
+  /// server is not mistaken for something the user typed. A private-use
+  /// character survives persistence but is removed before anything renders.
+  static const String userCommandMarker = '\uE000';
+
+  static String markUserCommand(String line) => '$userCommandMarker$line';
+
+  static bool isUserCommand(String line) => line.startsWith(userCommandMarker);
+
+  static String stripUserCommandMarker(String line) =>
+      isUserCommand(line) ? line.substring(userCommandMarker.length) : line;
+
   /// Removes terminal decoration emitted by container supervisors and shell
   /// wrappers before text reaches Flutter. Minecraft's output is plain text,
   /// so rendering raw ANSI escape bytes only exposes fragments such as
@@ -28,9 +40,10 @@ class ConsoleOutputFormatter {
 
   static bool isCommonNoise(String line) {
     final message = ConsoleParser.stripPrefix(
-      sanitize(line),
+      stripUserCommandMarker(sanitize(line)),
     ).trim().toLowerCase();
     return commonNoiseFragments.any(message.contains) ||
+        ConsoleParser.isGameruleReply(message) ||
         RegExp(r'^daytime is \d+$').hasMatch(message) ||
         RegExp(r'^the time is \d+$').hasMatch(message) ||
         RegExp(
@@ -52,7 +65,7 @@ class ConsoleOutputFormatter {
   }
 
   static String formatLine(String line, String timestampMode) {
-    line = sanitize(line);
+    line = stripUserCommandMarker(sanitize(line));
     if (timestampMode == 'hidden') return ConsoleParser.stripPrefix(line);
     if (timestampMode != 'short') return line;
 

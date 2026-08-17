@@ -73,6 +73,15 @@ void main() {
     expect(find.text('Data & Sync'), findsOneWidget);
     expect(find.text('Configuration'), findsOneWidget);
     expect(find.text('Docs'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('connection-status-label')),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.link_off_rounded), findsOneWidget);
+    expect(
+      tester.getCenter(find.byIcon(Icons.unfold_more)).dx,
+      greaterThan(185),
+    );
     expect(find.text('Google Drive sync'), findsNothing);
     expect(tester.widget<Image>(find.byType(Image).first).width, 32);
     expect(
@@ -111,6 +120,30 @@ void main() {
       tester.getSize(driveSyncCard).width,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('hidden pages cannot intercept desktop sidebar navigation', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pumpApp(
+      tester,
+      const Size(1280, 720),
+      extraPrefs: {'workspaceDestination': 'console'},
+      connectionService: _NoopConnectionService(),
+    );
+
+    expect(find.byKey(const ValueKey('console-surface')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Diagnostics running')), findsNothing);
+
+    final controlsTile = find.byKey(const ValueKey('sidebar-controls'));
+    await tester.tap(controlsTile);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<ListTile>(controlsTile).selected, isTrue);
+    expect(find.text('Connect to enable the Control Panel'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    semantics.dispose();
   });
 
   testWidgets('color theme changes the palette and pixel-art logo', (
@@ -225,7 +258,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Connect to enable the Terminal.'), findsOneWidget);
+    expect(
+      find.text('Disconnected — saved console output remains available.'),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('console-surface')), findsOneWidget);
     final prefs = await SharedPreferences.getInstance();
     final stored = (prefs.getStringList('servers') ?? const [])
         .map((server) => ServerProfile.fromJson(jsonDecode(server)))
@@ -292,7 +329,11 @@ void main() {
     await tester.tap(find.text('Discard changes'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Connect to enable the Terminal.'), findsOneWidget);
+    expect(
+      find.text('Disconnected — saved console output remains available.'),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('console-surface')), findsOneWidget);
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Servers'));
@@ -369,16 +410,21 @@ void main() {
     expect(appLogos, findsNothing);
     expect(find.textContaining('The current state of'), findsNothing);
     expect(find.byTooltip('Notification history'), findsOneWidget);
+    expect(find.byKey(const ValueKey('connection-status-dot')), findsOneWidget);
+    expect(find.byKey(const ValueKey('connection-status-label')), findsNothing);
+    expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+    expect(find.byIcon(Icons.stop_rounded), findsNothing);
+    final notificationButton = find.byWidgetPredicate(
+      (widget) =>
+          widget is IconButton && widget.tooltip == 'Notification history',
+    );
     expect(
-      tester
-          .getTopRight(
-            find.descendant(
-              of: find.byKey(const ValueKey('mobile-connection-action')),
-              matching: find.byType(IconButton),
-            ),
-          )
-          .dx,
-      382,
+      tester.getTopRight(notificationButton).dx,
+      lessThanOrEqualTo(
+        tester
+            .getTopLeft(find.byKey(const ValueKey('mobile-connection-action')))
+            .dx,
+      ),
     );
     final navigation = tester.widget<DecoratedBox>(
       find.byKey(const ValueKey('mobile-bottom-navigation')),
@@ -388,6 +434,41 @@ void main() {
       tester.element(find.byKey(const ValueKey('mobile-bottom-navigation'))),
     ).scaffoldBackgroundColor;
     expect(navigationColor, isNot(pageColor));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile connection status shows its label when space permits', (
+    tester,
+  ) async {
+    await pumpApp(tester, const Size(600, 844));
+
+    expect(
+      find.byKey(const ValueKey('connection-status-label')),
+      findsOneWidget,
+    );
+    expect(find.text('Disconnected'), findsOneWidget);
+    expect(find.byIcon(Icons.link_off_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.play_arrow_rounded), findsNothing);
+    expect(find.byIcon(Icons.stop_rounded), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('base navigation is restored after an app reload', (
+    tester,
+  ) async {
+    await pumpApp(
+      tester,
+      const Size(390, 844),
+      extraPrefs: {'workspaceDestination': 'console'},
+      connectionService: _NoopConnectionService(),
+    );
+
+    expect(find.text('Search output'), findsOneWidget);
+    expect(
+      find.text('Disconnected — saved console output remains available.'),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('console-surface')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -454,10 +535,27 @@ void main() {
     // Appearance settings have nothing to do with owning a server, so the
     // welcome screen must not be a dead end for them.
     await tester.tap(find.text('Preferences'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.byType(WelcomeView), findsNothing);
     expect(find.text('Preferences'), findsWidgets);
+    expect(find.text('Players'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('onboarding import opens Data & Sync without an Overview frame', (
+    tester,
+  ) async {
+    await pumpApp(tester, const Size(390, 844), withServer: false);
+
+    await tester.tap(find.text('Import from another device'));
+    await tester.pump();
+
+    expect(
+      find.text('Move or protect every saved server profile.'),
+      findsOneWidget,
+    );
+    expect(find.text('Players'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -669,7 +767,48 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the app title opens preferences', (tester) async {
+  testWidgets('the only configured server can be deleted', (tester) async {
+    const server = ServerProfile(
+      id: 'only-server',
+      alias: 'Only server',
+      ip: 'server.example.com',
+      port: 8080,
+      secretKey: 'secret',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+    );
+    await pumpApp(
+      tester,
+      const Size(1280, 720),
+      extraPrefs: {
+        'servers': [jsonEncode(server.toJson())],
+        'selectedServer': server.id,
+      },
+      connectionService: _NoopConnectionService(),
+    );
+
+    await tester.tap(find.text('Configuration'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete server'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Delete server'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete server'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(TextButton, 'Delete'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome to Admincraft'), findsOneWidget);
+    expect(find.text('Only server'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the app title returns to Overview', (tester) async {
     PackageInfo.setMockInitialValues(
       appName: 'Admincraft',
       packageName: 'com.joanroig.admincraft',
@@ -686,17 +825,14 @@ void main() {
     expect(versionTooltipRect.width, lessThan(titleRect.width / 2));
     expect(versionTooltipRect.left, greaterThan(titleRect.left));
 
-    await tester.tap(find.byKey(const ValueKey('app-title')));
+    await tester.tap(find.text('Preferences'));
     await tester.pumpAndSettle();
-
     expect(
       find.text(
         'These settings apply to Admincraft on this device, not to one server.',
       ),
       findsOneWidget,
     );
-    // Mojang's usage guidelines ask for this wording, so it should not be able
-    // to disappear in a refactor of the About card.
     expect(
       find.text(
         'NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR '
@@ -704,6 +840,26 @@ void main() {
       ),
       findsOneWidget,
     );
+
+    await tester.tap(find.byKey(const ValueKey('app-title')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Players'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the app title returns to onboarding without a server', (
+    tester,
+  ) async {
+    await pumpApp(tester, const Size(1280, 720), withServer: false);
+    await tester.tap(find.text('Preferences'));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('app-title')));
+    await tester.pump();
+
+    expect(find.text('Welcome to Admincraft'), findsOneWidget);
+    expect(find.text('Players'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

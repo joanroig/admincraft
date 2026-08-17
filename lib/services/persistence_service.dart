@@ -34,6 +34,7 @@ class PersistenceService {
   static const _consoleTimestampModeKey = 'consoleTimestampMode';
   static const _consoleFilterPatternKey = 'consoleFilterPattern';
   static const _hideCommonConsoleNoiseKey = 'hideCommonConsoleNoise';
+  static const _workspaceDestinationKey = 'workspaceDestination';
   static const _consoleOutputKeyPrefix = 'consoleOutput.';
   static const _consoleEventIdsKeyPrefix = 'consoleEventIds.';
   static const _commandAuditKeyPrefix = 'commandAudit.';
@@ -284,6 +285,10 @@ class PersistenceService {
     await _set(_onboardedKey, true);
   }
 
+  Future<void> resetOnboarding() async {
+    await _set(_onboardedKey, false);
+  }
+
   String? get selectedServerId => _prefs.getString(_selectedServerKey);
 
   Future<void> saveSelectedServerId(String id) async {
@@ -312,6 +317,8 @@ class PersistenceService {
       _prefs.getString(_consoleFilterPatternKey) ?? '';
   bool get hideCommonConsoleNoise =>
       _prefs.getBool(_hideCommonConsoleNoiseKey) ?? true;
+  String get workspaceDestination =>
+      _prefs.getString(_workspaceDestinationKey) ?? 'overview';
 
   Future<void> saveTerminalFont(String value) => _set(_terminalFontKey, value);
   Future<void> saveTerminalFontSize(double value) =>
@@ -324,6 +331,8 @@ class PersistenceService {
       _set(_consoleFilterPatternKey, value);
   Future<void> saveHideCommonConsoleNoise(bool value) =>
       _set(_hideCommonConsoleNoiseKey, value);
+  Future<void> saveWorkspaceDestination(String value) =>
+      _set(_workspaceDestinationKey, value);
 
   List<String> get commandHistory =>
       _prefs.getStringList(_commandHistoryKey) ?? [];
