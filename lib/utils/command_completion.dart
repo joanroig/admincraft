@@ -31,6 +31,9 @@ class CommandCompletion {
     Set<String> onlinePlayers = const {},
     Map<String, int> usage = const {},
     MinecraftEdition edition = MinecraftEdition.bedrock,
+    bool includeMinecraftCommands = true,
+    bool includeBridgeManagement = false,
+    Set<String>? bridgeCapabilities,
   }) {
     // A trailing space means the current word is empty: the user has finished
     // the previous argument and is starting the next one.
@@ -42,17 +45,34 @@ class CommandCompletion {
         .toList();
 
     if (words.isEmpty || (words.length == 1 && !atNewWord)) {
-      return _commands(words.isEmpty ? '' : words.first, usage, edition);
+      return _commands(
+        words.isEmpty ? '' : words.first,
+        usage,
+        edition,
+        includeMinecraftCommands,
+        includeBridgeManagement,
+        bridgeCapabilities,
+      );
     }
 
     final command = MinecraftCommands.byName(
       edition,
+      includeMinecraftCommands: includeMinecraftCommands,
+      includeBridgeManagement: includeBridgeManagement,
+      bridgeCapabilities: bridgeCapabilities,
     )[words.first.toLowerCase()];
     if (command == null) return const [];
 
     // Index of the argument being typed, counting from after the command name.
     final argIndex = atNewWord ? words.length - 1 : words.length - 2;
     final prefix = atNewWord ? '' : words.last;
+
+    if (command.name == 'admincraft' &&
+        argIndex == 1 &&
+        words.length > 1 &&
+        words[1].toLowerCase() != 'logs') {
+      return const [];
+    }
 
     final arg = command.argAt(argIndex);
     if (arg == null) return const [];
@@ -64,6 +84,9 @@ class CommandCompletion {
   static BedrockCommand? commandFor(
     String input, {
     MinecraftEdition edition = MinecraftEdition.bedrock,
+    bool includeMinecraftCommands = true,
+    bool includeBridgeManagement = false,
+    Set<String>? bridgeCapabilities,
   }) {
     final words = input
         .trimLeft()
@@ -71,7 +94,43 @@ class CommandCompletion {
         .where((w) => w.isNotEmpty)
         .toList();
     if (words.isEmpty) return null;
-    return MinecraftCommands.byName(edition)[words.first.toLowerCase()];
+    return MinecraftCommands.byName(
+      edition,
+      includeMinecraftCommands: includeMinecraftCommands,
+      includeBridgeManagement: includeBridgeManagement,
+      bridgeCapabilities: bridgeCapabilities,
+    )[words.first.toLowerCase()];
+  }
+
+  /// Returns the first required argument that has not been entered. Unknown
+  /// commands remain allowed because servers and plugins can add commands not
+  /// present in Admincraft's built-in catalogue.
+  static CommandArg? missingRequiredArgument(
+    String input, {
+    MinecraftEdition edition = MinecraftEdition.bedrock,
+    bool includeMinecraftCommands = true,
+    bool includeBridgeManagement = false,
+    Set<String>? bridgeCapabilities,
+  }) {
+    final words = input
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return null;
+    final command = MinecraftCommands.byName(
+      edition,
+      includeMinecraftCommands: includeMinecraftCommands,
+      includeBridgeManagement: includeBridgeManagement,
+      bridgeCapabilities: bridgeCapabilities,
+    )[words.first.toLowerCase()];
+    if (command == null) return null;
+
+    final supplied = words.length - 1;
+    for (var index = supplied; index < command.args.length; index++) {
+      if (command.args[index].required) return command.args[index];
+    }
+    return null;
   }
 
   /// Which argument index [input] is currently on, for highlighting the hint.
@@ -101,10 +160,16 @@ class CommandCompletion {
     String prefix,
     Map<String, int> usage,
     MinecraftEdition edition,
+    bool includeMinecraftCommands,
+    bool includeBridgeManagement,
+    Set<String>? bridgeCapabilities,
   ) {
     return _rank(
       MinecraftCommands.all(
         edition,
+        includeMinecraftCommands: includeMinecraftCommands,
+        includeBridgeManagement: includeBridgeManagement,
+        bridgeCapabilities: bridgeCapabilities,
       ).map((c) => Completion(c.name, c.description)).toList(),
       prefix,
       usage: usage,
@@ -173,7 +238,8 @@ class CommandCompletion {
           prefix,
         );
       case ArgType.number:
-        const amounts = ['1', '5', '10', '20', '64', '128'];
+        const commonAmounts = ['1', '5', '10', '20', '64', '128'];
+        final amounts = arg.options.isEmpty ? commonAmounts : arg.options;
         return amounts
             .where((value) => value.startsWith(prefix))
             .map((value) => Completion(value, 'amount', ArgType.number))

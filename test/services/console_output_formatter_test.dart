@@ -6,6 +6,8 @@ void main() {
     const output = '''
 [2026-08-16 17:00:00:000 INFO] Running AutoCompaction...
 [2026-08-16 17:00:01:000 INFO] There are 0/10 players online:
+[2026-08-16 17:00:01:100 INFO] Daytime is 7000
+Admincraft connected to bedrock bridge (commands, logs, restart)
 [2026-08-16 17:00:02:000 WARN] Keepalive timeout
 ''';
 
@@ -14,9 +16,11 @@ void main() {
       hideCommonNoise: true,
     );
 
-    expect(lines, hasLength(2));
+    expect(lines, hasLength(1));
     expect(lines.join('\n'), isNot(contains('AutoCompaction')));
-    expect(lines.join('\n'), contains('players online'));
+    expect(lines.join('\n'), isNot(contains('players online')));
+    expect(lines.join('\n'), isNot(contains('Daytime')));
+    expect(lines.join('\n'), isNot(contains('connected to bedrock bridge')));
     expect(lines.join('\n'), contains('Keepalive timeout'));
   });
 

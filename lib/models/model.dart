@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/app_theme.dart';
+import 'package:admincraft/models/command_audit_entry.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/models/world_state.dart';
@@ -13,12 +14,143 @@ import 'package:flutter/material.dart';
 class Model with ChangeNotifier {
   final PersistenceService _persistenceService;
   String _output = '';
+  final Set<String> _seenConsoleEventIds = {};
+  bool _consoleHistoryLoading = false;
+  List<CommandAuditEntry> _commandAudit = [];
+  final Set<String> _bridgeCapabilities = {};
+  int? _bridgeProtocol;
+  String? _bridgeVersion;
+  String? _bridgePermission;
+  String? _serverRuntimeState;
+  String? _bridgeLastError;
+  DateTime? _bridgeConnectedAt;
+  DateTime? _lastHeartbeatAt;
+  DateTime? _lastLogAt;
+  DateTime? _lastServerStateAt;
 
   List<ServerProfile> _servers = [];
   int _serverRevision = 0;
   late String _selectedServerId;
 
   String get output => _output;
+  bool get consoleHistoryLoading => _consoleHistoryLoading;
+  List<CommandAuditEntry> get commandAudit => List.unmodifiable(_commandAudit);
+  Set<String> get bridgeCapabilities => Set.unmodifiable(_bridgeCapabilities);
+  int? get bridgeProtocol => _bridgeProtocol;
+  String? get bridgeVersion => _bridgeVersion;
+  String? get bridgePermission => _bridgePermission;
+  String? get serverRuntimeState => _serverRuntimeState;
+  String? get bridgeLastError => _bridgeLastError;
+  DateTime? get bridgeConnectedAt => _bridgeConnectedAt;
+  DateTime? get lastHeartbeatAt => _lastHeartbeatAt;
+  DateTime? get lastLogAt => _lastLogAt;
+  DateTime? get lastServerStateAt => _lastServerStateAt;
+
+  bool supportsBridgeCapability(String capability) {
+    if (connectionSecurity.isDirectRcon) return capability == 'commands';
+    if (_bridgeProtocol == null) return true;
+    return _bridgeCapabilities.contains(capability);
+  }
+
+  Set<String>? get advertisedBridgeCapabilities =>
+      _bridgeProtocol == null ? null : bridgeCapabilities;
+
+  void beginBridgeConnection() {
+    _bridgeCapabilities.clear();
+    _bridgeProtocol = null;
+    _bridgeVersion = null;
+    _bridgePermission = null;
+    _serverRuntimeState = null;
+    _bridgeLastError = null;
+    _bridgeConnectedAt = DateTime.now();
+    _lastHeartbeatAt = null;
+    _lastLogAt = null;
+    _lastServerStateAt = null;
+    notifyListeners();
+  }
+
+  void updateBridgeHello({
+    required int protocol,
+    required Iterable<String> capabilities,
+    String? version,
+    String? permission,
+    DateTime? connectedAt,
+  }) {
+    _bridgeProtocol = protocol;
+    _bridgeCapabilities
+      ..clear()
+      ..addAll(capabilities);
+    _bridgeVersion = version;
+    _bridgePermission = permission;
+    _bridgeConnectedAt = connectedAt ?? _bridgeConnectedAt ?? DateTime.now();
+    _bridgeLastError = null;
+    notifyListeners();
+  }
+
+  void markLegacyBridgeConnected() {
+    if (_bridgeProtocol != null) return;
+    _bridgeProtocol = 1;
+    _bridgeCapabilities
+      ..clear()
+      ..addAll(const ['commands', 'logs', 'restart']);
+    _bridgePermission = 'admin';
+    notifyListeners();
+  }
+
+  void markBridgeHeartbeat() {
+    _lastHeartbeatAt = DateTime.now();
+    notifyListeners();
+  }
+
+  void markBridgeLogReceived() {
+    _lastLogAt = DateTime.now();
+  }
+
+  void updateServerRuntimeState(
+    String state, {
+    DateTime? observedAt,
+    int? daytime,
+    int? playersOnline,
+    int? playerLimit,
+    Iterable<String>? onlinePlayers,
+  }) {
+    _serverRuntimeState = state;
+    _lastServerStateAt = observedAt ?? DateTime.now();
+    _world = _world.copyWith(
+      daytime: daytime,
+      playersOnline: playersOnline,
+      playerLimit: playerLimit,
+    );
+    if (onlinePlayers != null) {
+      _onlinePlayers
+        ..clear()
+        ..addAll(onlinePlayers);
+    }
+    unawaited(AndroidWidgetService.update(selectedServer, _world));
+    notifyListeners();
+  }
+
+  void recordBridgeError(String error) {
+    _bridgeLastError = error;
+    notifyListeners();
+  }
+
+  void endBridgeConnection([String? error]) {
+    _bridgeLastError = error;
+    notifyListeners();
+  }
+
+  void beginConsoleHistoryLoad() {
+    if (_consoleHistoryLoading) return;
+    _consoleHistoryLoading = true;
+    notifyListeners();
+  }
+
+  void completeConsoleHistoryLoad() {
+    if (!_consoleHistoryLoading) return;
+    _consoleHistoryLoading = false;
+    notifyListeners();
+  }
 
   List<ServerProfile> get servers => List.unmodifiable(_servers);
   DateTime? get serversUpdatedAt => _persistenceService.serversUpdatedAt;
@@ -87,6 +219,10 @@ class Model with ChangeNotifier {
 
     _commandUsage = _persistenceService.commandUsage;
     _output = _persistenceService.consoleOutput(_selectedServerId);
+    _seenConsoleEventIds.addAll(
+      _persistenceService.consoleEventIds(_selectedServerId),
+    );
+    _commandAudit = _persistenceService.commandAudit(_selectedServerId);
   }
 
   static String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
@@ -305,17 +441,63 @@ class Model with ChangeNotifier {
   /// app launches or server switches.
   void _resetSession() {
     _output = _persistenceService.consoleOutput(_selectedServerId);
+    _commandAudit = _persistenceService.commandAudit(_selectedServerId);
+    _consoleHistoryLoading = false;
+    _seenConsoleEventIds
+      ..clear()
+      ..addAll(_persistenceService.consoleEventIds(_selectedServerId));
     _onlinePlayers.clear();
     _world = const WorldState();
+    beginBridgeConnection();
     unawaited(AndroidWidgetService.update(selectedServer, _world));
+  }
+
+  Future<void> recordCommandAudit(
+    String command, {
+    required String source,
+    required String outcome,
+  }) async {
+    _commandAudit = [
+      ..._commandAudit,
+      CommandAuditEntry(
+        occurredAt: DateTime.now(),
+        command: command,
+        source: source,
+        outcome: outcome,
+      ),
+    ];
+    if (_commandAudit.length > 500) {
+      _commandAudit = _commandAudit.sublist(_commandAudit.length - 500);
+    }
+    await _persistenceService.saveCommandAudit(
+      _selectedServerId,
+      _commandAudit,
+    );
+    notifyListeners();
+  }
+
+  Future<void> clearCommandAudit() async {
+    _commandAudit = [];
+    await _persistenceService.saveCommandAudit(
+      _selectedServerId,
+      _commandAudit,
+    );
+    notifyListeners();
   }
 
   void clearOutput() {
     _output = '';
+    _seenConsoleEventIds.clear();
     _onlinePlayers.clear();
     _world = const WorldState();
     unawaited(
       _persistenceService.saveConsoleOutput(_selectedServerId, _output),
+    );
+    unawaited(
+      _persistenceService.saveConsoleEventIds(
+        _selectedServerId,
+        _seenConsoleEventIds,
+      ),
     );
     notifyListeners();
   }
@@ -357,7 +539,15 @@ class Model with ChangeNotifier {
     }
   }
 
-  void appendOutputCommand(String command, {bool visible = true}) {
+  void appendOutputCommand(
+    String command, {
+    bool visible = true,
+    String? eventId,
+  }) {
+    if (eventId != null && !_seenConsoleEventIds.add(eventId)) return;
+    while (_seenConsoleEventIds.length > 2000) {
+      _seenConsoleEventIds.remove(_seenConsoleEventIds.first);
+    }
     final previousPlayers = _world.playersOnline;
     final previousLimit = _world.playerLimit;
     _trackPlayers(command);
@@ -376,6 +566,14 @@ class Model with ChangeNotifier {
       }
       unawaited(
         _persistenceService.saveConsoleOutput(_selectedServerId, _output),
+      );
+    }
+    if (eventId != null) {
+      unawaited(
+        _persistenceService.saveConsoleEventIds(
+          _selectedServerId,
+          _seenConsoleEventIds,
+        ),
       );
     }
     notifyListeners();

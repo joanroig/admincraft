@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/app_theme.dart';
+import 'package:admincraft/models/command_audit_entry.dart';
 import 'package:admincraft/models/server_profile.dart';
 import 'package:admincraft/services/server_secrets.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,8 @@ class PersistenceService {
   static const _consoleFilterPatternKey = 'consoleFilterPattern';
   static const _hideCommonConsoleNoiseKey = 'hideCommonConsoleNoise';
   static const _consoleOutputKeyPrefix = 'consoleOutput.';
+  static const _consoleEventIdsKeyPrefix = 'consoleEventIds.';
+  static const _commandAuditKeyPrefix = 'commandAudit.';
 
   final SharedPreferences _prefs;
 
@@ -214,8 +217,42 @@ class PersistenceService {
     }
   }
 
-  Future<void> forgetConsoleOutput(String serverId) =>
-      _prefs.remove('$_consoleOutputKeyPrefix$serverId');
+  Future<void> forgetConsoleOutput(String serverId) async {
+    await Future.wait([
+      _prefs.remove('$_consoleOutputKeyPrefix$serverId'),
+      _prefs.remove('$_consoleEventIdsKeyPrefix$serverId'),
+      _prefs.remove('$_commandAuditKeyPrefix$serverId'),
+    ]);
+  }
+
+  List<String> consoleEventIds(String serverId) =>
+      _prefs.getStringList('$_consoleEventIdsKeyPrefix$serverId') ?? const [];
+
+  Future<void> saveConsoleEventIds(String serverId, Iterable<String> ids) =>
+      _prefs.setStringList('$_consoleEventIdsKeyPrefix$serverId', ids.toList());
+
+  List<CommandAuditEntry> commandAudit(String serverId) {
+    final stored =
+        _prefs.getStringList('$_commandAuditKeyPrefix$serverId') ?? const [];
+    return stored
+        .map((entry) {
+          try {
+            return CommandAuditEntry.decode(entry);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<CommandAuditEntry>()
+        .toList();
+  }
+
+  Future<void> saveCommandAudit(
+    String serverId,
+    Iterable<CommandAuditEntry> entries,
+  ) => _prefs.setStringList(
+    '$_commandAuditKeyPrefix$serverId',
+    entries.map((entry) => entry.encode()).toList(),
+  );
 
   DateTime? get serversUpdatedAt {
     final value = _prefs.getInt(_serversUpdatedAtKey);
@@ -253,7 +290,7 @@ class PersistenceService {
     await _set(_selectedServerKey, id);
   }
 
-  int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 100;
+  int get maxOutLines => _prefs.getInt(_maxOutLinesKey) ?? 1000;
   ThemeMode get themeMode =>
       ThemeMode.values[_prefs.getInt(_themeModeKey) ?? 0];
   AppTheme get appTheme {

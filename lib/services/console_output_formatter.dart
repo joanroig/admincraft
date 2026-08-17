@@ -13,11 +13,18 @@ class ConsoleOutputFormatter {
     'autocompaction completed',
     'autocompaction complete',
     'autocompaction finished',
+    'connected to bedrock bridge (',
+    'connected to java bridge (',
   ];
 
   static bool isCommonNoise(String line) {
     final message = ConsoleParser.stripPrefix(line).trim().toLowerCase();
-    return commonNoiseFragments.any(message.contains);
+    return commonNoiseFragments.any(message.contains) ||
+        RegExp(r'^daytime is \d+$').hasMatch(message) ||
+        RegExp(r'^the time is \d+$').hasMatch(message) ||
+        RegExp(
+          r'^there are \d+(?:/| of a max of )\d+ players online:',
+        ).hasMatch(message);
   }
 
   static List<String> visibleLines(

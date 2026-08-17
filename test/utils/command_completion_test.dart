@@ -37,4 +37,73 @@ void main() {
       contains('playersSleepingPercentage'),
     );
   });
+
+  test('bridge profiles complete container management commands', () {
+    final command = CommandCompletion.suggest(
+      'admin',
+      includeBridgeManagement: true,
+    );
+    final actions = CommandCompletion.suggest(
+      'admincraft ',
+      includeBridgeManagement: true,
+    );
+
+    expect(command.map((entry) => entry.value), contains('admincraft'));
+    expect(actions.map((entry) => entry.value), [
+      'health',
+      'help',
+      'info',
+      'logs',
+      'restart-server',
+      'start-server',
+      'status',
+      'stop-server',
+      'uptime',
+      'version',
+    ]);
+  });
+
+  test('read-only bridge capabilities hide Minecraft and admin commands', () {
+    final commands = CommandCompletion.suggest(
+      '',
+      includeMinecraftCommands: false,
+      includeBridgeManagement: true,
+      bridgeCapabilities: {'help', 'status', 'version'},
+    );
+    final actions = CommandCompletion.suggest(
+      'admincraft ',
+      includeMinecraftCommands: false,
+      includeBridgeManagement: true,
+      bridgeCapabilities: {'help', 'status', 'version'},
+    );
+
+    expect(commands.map((entry) => entry.value), ['admincraft']);
+    expect(actions.map((entry) => entry.value), ['help', 'status', 'version']);
+  });
+
+  test('bridge log replay offers useful history sizes', () {
+    final values = CommandCompletion.suggest(
+      'admincraft logs ',
+      includeBridgeManagement: true,
+    ).map((completion) => completion.value);
+
+    expect(values, ['50', '100', '250', '500', '1000']);
+    expect(
+      CommandCompletion.suggest(
+        'admincraft status ',
+        includeBridgeManagement: true,
+      ),
+      isEmpty,
+    );
+  });
+
+  test('known commands report missing required arguments', () {
+    expect(CommandCompletion.missingRequiredArgument('time')?.name, 'action');
+    expect(
+      CommandCompletion.missingRequiredArgument('time set')?.name,
+      'value',
+    );
+    expect(CommandCompletion.missingRequiredArgument('time set day'), isNull);
+    expect(CommandCompletion.missingRequiredArgument('plugin-command'), isNull);
+  });
 }

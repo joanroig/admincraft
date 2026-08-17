@@ -9,6 +9,7 @@ import 'package:admincraft/services/connection_service.dart';
 import 'package:admincraft/services/connection_failure.dart';
 import 'package:admincraft/services/connection_platform_capabilities.dart';
 import 'package:admincraft/services/persistence_service.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -80,6 +81,107 @@ void main() {
     expect(model.certificate, 'self-signed certificate');
     controller.dispose();
   });
+
+  testWidgets('structured bridge state replaces client-side status queries', (
+    tester,
+  ) async {
+    const server = ServerProfile(
+      id: 'structured-state',
+      alias: 'Structured state',
+      ip: 'server.test',
+      port: 8080,
+      secretKey: 'secret',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+    );
+    SharedPreferences.setMockInitialValues({
+      'servers': [jsonEncode(server.toJson())],
+      'selectedServer': server.id,
+      'onboardingCompleted': true,
+    });
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    final service = _RecordingConnectionService();
+    final controller = ConnectionController(connectionService: service);
+
+    await controller.attemptConnection(model);
+    model.updateBridgeHello(
+      protocol: 2,
+      capabilities: const ['logs', 'commands', 'state'],
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(service.quietCommands, isEmpty);
+    controller.dispose();
+  });
+
+  testWidgets('resuming keeps a healthy bridge socket without reconnecting', (
+    tester,
+  ) async {
+    const server = ServerProfile(
+      id: 'resume-test',
+      alias: 'Resume test',
+      ip: 'server.test',
+      port: 8080,
+      secretKey: 'secret',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+    );
+    SharedPreferences.setMockInitialValues({
+      'servers': [jsonEncode(server.toJson())],
+      'selectedServer': server.id,
+      'onboardingCompleted': true,
+    });
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    final service = _RecordingConnectionService();
+    final controller = ConnectionController(connectionService: service);
+
+    await controller.attemptConnection(model, announce: false);
+    controller.didChangeAppLifecycleState(AppLifecycleState.hidden);
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(service.connectCalls, 1);
+    expect(service.aliveChecks, 1);
+    expect(service.disconnectCalls, 0);
+    await tester.pump(const Duration(milliseconds: 400));
+    controller.dispose();
+  });
+
+  testWidgets('resuming replaces only a bridge socket that fails its probe', (
+    tester,
+  ) async {
+    const server = ServerProfile(
+      id: 'stale-resume-test',
+      alias: 'Stale resume test',
+      ip: 'server.test',
+      port: 8080,
+      secretKey: 'secret',
+      certificate: '',
+      security: ConnectionSecurity.privateNetwork,
+    );
+    SharedPreferences.setMockInitialValues({
+      'servers': [jsonEncode(server.toJson())],
+      'selectedServer': server.id,
+      'onboardingCompleted': true,
+    });
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    final service = _RecordingConnectionService()..alive = false;
+    final controller = ConnectionController(connectionService: service);
+
+    await controller.attemptConnection(model, announce: false);
+    controller.didChangeAppLifecycleState(AppLifecycleState.hidden);
+    controller.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(service.aliveChecks, 1);
+    expect(service.disconnectCalls, 1);
+    expect(service.connectCalls, 2);
+    await tester.pump(const Duration(milliseconds: 400));
+    controller.dispose();
+  });
 }
 
 class _RecordingConnectionService extends ConnectionService {
@@ -87,6 +189,9 @@ class _RecordingConnectionService extends ConnectionService {
   final List<String> quietCommands = [];
   final List<String> regularCommands = [];
   int connectCalls = 0;
+  int aliveChecks = 0;
+  int disconnectCalls = 0;
+  bool alive = true;
 
   @override
   ConnectionStatus get status => _fakeStatus;
@@ -110,7 +215,16 @@ class _RecordingConnectionService extends ConnectionService {
   }
 
   @override
+  Future<bool> checkAlive({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    aliveChecks++;
+    return alive;
+  }
+
+  @override
   void disconnect(Model model) {
+    disconnectCalls++;
     _fakeStatus = ConnectionStatus.disconnected;
   }
 }

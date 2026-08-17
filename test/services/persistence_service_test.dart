@@ -1,4 +1,5 @@
 import 'package:admincraft/models/app_theme.dart';
+import 'package:admincraft/models/command_audit_entry.dart';
 import 'package:admincraft/services/persistence_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,8 +33,27 @@ void main() {
       final persistence = PersistenceService(preferences);
 
       expect(persistence.terminalFont, 'Consolas');
+      expect(persistence.maxOutLines, 1000);
       expect(persistence.consoleTimestampMode, 'hidden');
       expect(persistence.hideCommonConsoleNoise, isTrue);
     },
   );
+
+  test('command audit is stored separately for each server', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final persistence = PersistenceService(preferences);
+    final entry = CommandAuditEntry(
+      occurredAt: DateTime.utc(2026, 8, 17, 12),
+      command: 'admincraft status',
+      source: 'terminal',
+      outcome: 'sent',
+    );
+
+    await persistence.saveCommandAudit('server-a', [entry]);
+
+    expect(persistence.commandAudit('server-a').single.command, entry.command);
+    expect(persistence.commandAudit('server-b'), isEmpty);
+    expect(persistence.consoleOutput('server-a'), isEmpty);
+  });
 }

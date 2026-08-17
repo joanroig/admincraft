@@ -119,14 +119,15 @@ extension ConnectionSecurityInfo on ConnectionSecurity {
   /// bridge key that no longer existed.
   String get portLabel => isDirectRcon ? 'RCON port' : 'Bridge port';
 
-  String get secretLabel => isDirectRcon ? 'RCON password' : 'Bridge secret key';
+  String get secretLabel =>
+      isDirectRcon ? 'RCON password' : 'Bridge access key';
 
   String get secretHint => isDirectRcon
       ? 'rcon.password from server.properties.'
-      : 'SECRET_KEY from the bridge, not the RCON password.';
+      : 'An admin, command, or read-only key from the bridge; not the RCON password.';
 
   String get secretMissingMessage =>
-      isDirectRcon ? 'Enter the RCON password.' : 'Enter the bridge secret key.';
+      isDirectRcon ? 'Enter the RCON password.' : 'Enter a bridge access key.';
 
   /// For prose about the field, such as the reveal button's tooltip.
   String get secretNoun => isDirectRcon ? 'password' : 'key';
@@ -164,12 +165,14 @@ extension ConnectionSecurityInfo on ConnectionSecurity {
   /// asked, so anything that depends on watching for events has to be polled.
   bool get streamsServerLog => !isDirectRcon;
 
-  /// Whether the server can be restarted from the app.
+  /// Whether the bridge can control the Minecraft container lifecycle.
   ///
-  /// Restarting is a container operation performed by the bridge. Direct RCON
-  /// does not go through Docker, so the command has nowhere to land and the
-  /// control is hidden rather than left to fail.
-  bool get supportsServerRestart => !isDirectRcon;
+  /// Starting, stopping and restarting are Docker operations performed by the
+  /// bridge. Direct RCON does not go through Docker, so these controls are
+  /// hidden rather than left to fail.
+  bool get supportsServerManagement => !isDirectRcon;
+
+  bool get supportsServerRestart => supportsServerManagement;
 
   /// Whether the user has to supply a certificate for this mode to work.
   bool get requiresCertificate => this == ConnectionSecurity.customCertificate;

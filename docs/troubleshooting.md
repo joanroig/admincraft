@@ -7,7 +7,9 @@ Check that **IP / Hostname** and **Secret Key** are filled in, then save the pro
 ## The connection never reaches Connected
 
 1. Confirm the server address and WebSocket port.
-2. Confirm the `SECRET_KEY` exactly matches the WebSocket configuration.
+2. Confirm the profile's access key exactly matches one of `ADMIN_SECRET_KEY`,
+   `COMMAND_SECRET_KEY`, `READ_ONLY_SECRET_KEY`, or legacy `SECRET_KEY` in the
+   WebSocket configuration.
 3. Check that the WebSocket container is running:
 
     ```bash

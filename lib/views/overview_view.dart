@@ -3,6 +3,7 @@ import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 class OverviewView extends StatelessWidget {
@@ -89,6 +90,8 @@ class OverviewView extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
+          _DiagnosticsCard(model: model, connection: connection),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
@@ -139,20 +142,14 @@ class OverviewView extends StatelessWidget {
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                strutStyle: StrutStyle(
-                                  fontFamily: model.terminalFont,
-                                  fontFamilyFallback: const ['monospace'],
-                                  fontSize: model.terminalFontSize,
-                                  height: 1.08,
-                                  forceStrutHeight: true,
-                                ),
                                 style: TextStyle(
                                   fontFamily: model.terminalFont,
-                                  fontFamilyFallback: const ['monospace'],
+                                  fontFamilyFallback: const [
+                                    'Miracode',
+                                    'monospace',
+                                  ],
                                   fontSize: model.terminalFontSize,
-                                  height: 1.08,
-                                  leadingDistribution:
-                                      TextLeadingDistribution.even,
+                                  height: 1.25,
                                 ),
                               ),
                             ),
@@ -163,6 +160,195 @@ class OverviewView extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiagnosticsCard extends StatelessWidget {
+  final Model model;
+  final ConnectionController connection;
+
+  const _DiagnosticsCard({required this.model, required this.connection});
+
+  String _time(DateTime? value) =>
+      value == null ? 'Not observed' : value.toLocal().toIso8601String();
+
+  String _diagnosticText() => [
+    'Server: ${model.alias}',
+    'Endpoint: ${model.ip}:${model.port}',
+    'Connection: ${connection.status.name}',
+    'Security: ${model.connectionSecurity.name}',
+    'Edition: ${model.minecraftEdition.name}',
+    'Bridge version: ${model.bridgeVersion ?? 'Unknown'}',
+    'Protocol: ${model.bridgeProtocol?.toString() ?? 'Unknown'}',
+    'Permission: ${model.bridgePermission ?? 'Unknown'}',
+    'Server state: ${model.serverRuntimeState ?? 'Unknown'}',
+    'Connected at: ${_time(model.bridgeConnectedAt)}',
+    'Last heartbeat: ${_time(model.lastHeartbeatAt)}',
+    'Last log: ${_time(model.lastLogAt)}',
+    'Last state event: ${_time(model.lastServerStateAt)}',
+    'Capabilities: ${model.bridgeCapabilities.join(', ')}',
+    if (model.bridgeLastError != null) 'Last error: ${model.bridgeLastError}',
+  ].join('\n');
+
+  Future<void> _show(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.72,
+          maxChildSize: 0.92,
+          builder: (context, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Connection diagnostics',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: _diagnosticText()),
+                      );
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Diagnostics copied.')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_all_outlined),
+                    label: const Text('Copy'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _DiagnosticRow(
+                label: 'Connection',
+                value: connection.status.name,
+              ),
+              _DiagnosticRow(
+                label: 'Server state',
+                value: model.serverRuntimeState ?? 'Unknown',
+              ),
+              _DiagnosticRow(
+                label: 'Bridge version',
+                value: model.bridgeVersion ?? 'Unknown or legacy bridge',
+              ),
+              _DiagnosticRow(
+                label: 'Protocol',
+                value: model.bridgeProtocol?.toString() ?? 'Unknown',
+              ),
+              _DiagnosticRow(
+                label: 'Permission',
+                value: model.bridgePermission ?? 'Unknown',
+              ),
+              _DiagnosticRow(
+                label: 'Connected',
+                value: _time(model.bridgeConnectedAt),
+              ),
+              _DiagnosticRow(
+                label: 'Last heartbeat',
+                value: _time(model.lastHeartbeatAt),
+              ),
+              _DiagnosticRow(label: 'Last log', value: _time(model.lastLogAt)),
+              _DiagnosticRow(
+                label: 'Last state event',
+                value: _time(model.lastServerStateAt),
+              ),
+              if (model.bridgeLastError != null)
+                _DiagnosticRow(
+                  label: 'Last error',
+                  value: model.bridgeLastError!,
+                ),
+              const SizedBox(height: 14),
+              Text(
+                'Capabilities',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              if (model.bridgeCapabilities.isEmpty)
+                const Text('No capabilities advertised.')
+              else
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: model.bridgeCapabilities
+                      .map((capability) => Chip(label: Text(capability)))
+                      .toList(),
+                ),
+              const SizedBox(height: 18),
+              Text(
+                'Command audit',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              if (model.commandAudit.isEmpty)
+                const Text('No user-issued commands recorded for this server.')
+              else
+                for (final entry in model.commandAudit.reversed.take(20))
+                  ListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.terminal, size: 20),
+                    title: Text(entry.command),
+                    subtitle: Text(
+                      '${entry.source} · ${entry.outcome} · ${_time(entry.occurredAt)}',
+                    ),
+                  ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.monitor_heart_outlined),
+        title: const Text('Diagnostics'),
+        subtitle: Text(
+          [
+            model.serverRuntimeState ?? connection.status.name,
+            if (model.bridgeVersion != null) 'bridge v${model.bridgeVersion}',
+            if (model.bridgePermission != null) model.bridgePermission!,
+          ].join(' · '),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => _show(context),
+      ),
+    );
+  }
+}
+
+class _DiagnosticRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DiagnosticRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ),
+          Expanded(child: SelectableText(value)),
         ],
       ),
     );

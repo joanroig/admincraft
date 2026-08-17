@@ -198,7 +198,7 @@ void main() {
       '127.0.0.1',
     );
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Bridge secret key'),
+      find.widgetWithText(TextFormField, 'Bridge access key'),
       'test-key',
     );
 
@@ -279,7 +279,7 @@ void main() {
     expect(find.text('Edit server'), findsWidgets);
     expect(find.text('Enter a name for this server.'), findsOneWidget);
     expect(find.text('Enter the server host.'), findsOneWidget);
-    expect(find.text('Enter the bridge secret key.'), findsOneWidget);
+    expect(find.text('Enter a bridge access key.'), findsOneWidget);
     expect(
       find.text('Complete the highlighted server fields before saving.'),
       findsOneWidget,

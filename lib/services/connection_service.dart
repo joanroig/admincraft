@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/connection_status.dart';
@@ -24,6 +25,9 @@ class ConnectionService {
   RconConnection? _rcon;
   StreamSubscription? _subscription;
   final QuietCommandFilter _quietReplies = QuietCommandFilter();
+  Completer<bool>? _heartbeat;
+  Timer? _historyFallback;
+  bool _supportsProtocol2 = false;
 
   /// Called when an established connection ends, with the reason if there is
   /// one. The controller decides from that whether trying again makes sense.
@@ -39,6 +43,10 @@ class ConnectionService {
   /// happened to send something, so a quiet or unreachable server was
   /// indistinguishable from a working one.
   Future<void> connect(Model model, {bool reconnect = false}) async {
+    _completeConsoleHistoryLoad(model);
+    // A delayed retry or rapid lifecycle transition must never leave two live
+    // sockets feeding the same transcript.
+    _teardown();
     _status = ConnectionStatus.connecting;
 
     if (model.connectionSecurity.isDirectRcon) {
@@ -46,10 +54,13 @@ class ConnectionService {
       return;
     }
 
+    model.beginBridgeConnection();
+
     String jwtToken = createJwt(
       'Admincraft',
       model.secretKey,
       edition: model.minecraftEdition.name,
+      logTail: model.maxOutLines.clamp(0, 1000).toInt(),
     );
 
     final security = model.connectionSecurity;
@@ -59,10 +70,12 @@ class ConnectionService {
     );
 
     final channel = _openChannel(model, uri, security);
+    _beginConsoleHistoryLoad(model);
 
     try {
       await channel.ready.timeout(connectTimeout);
     } catch (error) {
+      _completeConsoleHistoryLoad(model);
       unawaited(channel.sink.close());
       _channel = null;
       _status = ConnectionStatus.disconnected;
@@ -123,14 +136,23 @@ class ConnectionService {
   }
 
   void _endConnection(Model model, ConnectionFailure failure) {
+    _completeConsoleHistoryLoad(model);
+    model.endBridgeConnection(failure.message);
     _teardown();
     onConnectionLost?.call(model, failure);
   }
 
-  String createJwt(String userId, String secretKey, {required String edition}) {
+  String createJwt(
+    String userId,
+    String secretKey, {
+    required String edition,
+    int logTail = 250,
+  }) {
     final jwt = JWT({
       'userId': userId,
       'edition': edition,
+      'protocol': 2,
+      'logTail': logTail,
       'exp':
           DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
           1000,
@@ -164,9 +186,116 @@ class ConnectionService {
   }
 
   void _receive(Model model, String message) {
+    try {
+      final decoded = jsonDecode(message);
+      if (decoded is Map<String, dynamic>) {
+        switch (decoded['type']) {
+          case 'admincraft.hello':
+            _supportsProtocol2 = true;
+            final rawCapabilities = decoded['capabilities'];
+            model.updateBridgeHello(
+              protocol: (decoded['protocol'] as num?)?.toInt() ?? 2,
+              capabilities: rawCapabilities is List
+                  ? rawCapabilities.map((value) => value.toString())
+                  : const <String>[],
+              version: decoded['version']?.toString(),
+              permission: decoded['scope']?.toString(),
+              connectedAt: DateTime.tryParse(
+                decoded['connectedAt']?.toString() ?? '',
+              )?.toLocal(),
+            );
+            return;
+          case 'admincraft.pong':
+            model.markBridgeHeartbeat();
+            final heartbeat = _heartbeat;
+            if (heartbeat != null && !heartbeat.isCompleted) {
+              heartbeat.complete(true);
+            }
+            return;
+          case 'admincraft.history-complete':
+            _completeConsoleHistoryLoad(model);
+            return;
+          case 'admincraft.history-error':
+            final detail = decoded['message'];
+            if (detail is String && detail.trim().isNotEmpty) {
+              model.recordBridgeError(detail);
+              model.appendOutputCommand(detail);
+            }
+            return;
+          case 'admincraft.server-state':
+            final state = decoded['state'];
+            if (state is String && state.trim().isNotEmpty) {
+              model.updateServerRuntimeState(
+                state,
+                observedAt: DateTime.tryParse(
+                  decoded['observedAt']?.toString() ?? '',
+                )?.toLocal(),
+                daytime: (decoded['daytime'] as num?)?.toInt(),
+                playersOnline: (decoded['playersOnline'] as num?)?.toInt(),
+                playerLimit: (decoded['playerLimit'] as num?)?.toInt(),
+                onlinePlayers: decoded['onlinePlayers'] is List
+                    ? (decoded['onlinePlayers'] as List).map(
+                        (player) => player.toString(),
+                      )
+                    : null,
+              );
+            }
+            return;
+          case 'admincraft.log':
+            final line = decoded['message'];
+            if (line is String && line.trim().isNotEmpty) {
+              model.markBridgeLogReceived();
+              model.appendOutputCommand(
+                line,
+                visible: !_quietReplies.shouldHide(line),
+                eventId: decoded['id']?.toString(),
+              );
+            }
+            return;
+        }
+      }
+    } on FormatException {
+      // Legacy bridges send plain text. Keep accepting it during rollout.
+    }
+
+    // A legacy bridge has no explicit history boundary. Its greeting or first
+    // output proves that the initial connection wait is over.
+    model.markLegacyBridgeConnected();
+    _completeConsoleHistoryLoad(model);
+
     for (final line in message.split('\n')) {
       if (line.trim().isEmpty) continue;
+      if (RegExp(
+        r'^Admincraft connected to (?:bedrock|java) bridge \([^)]*\)$',
+        caseSensitive: false,
+      ).hasMatch(line.trim())) {
+        continue;
+      }
       model.appendOutputCommand(line, visible: !_quietReplies.shouldHide(line));
+    }
+  }
+
+  /// Verifies a protocol-v2 bridge without destroying a socket that survived
+  /// backgrounding. Legacy bridges have no heartbeat command, so their stream
+  /// state remains the best available signal until they are upgraded.
+  Future<bool> checkAlive({
+    Duration timeout = const Duration(seconds: 3),
+  }) async {
+    if (!isConnected()) return false;
+    if (_rcon != null || !_supportsProtocol2) return true;
+
+    final existing = _heartbeat;
+    if (existing != null && !existing.isCompleted) return existing.future;
+
+    final heartbeat = Completer<bool>();
+    _heartbeat = heartbeat;
+    _channel?.sink.add('admincraft ping');
+    try {
+      return await heartbeat.future.timeout(timeout);
+    } on TimeoutException {
+      return false;
+    } finally {
+      if (identical(_heartbeat, heartbeat)) _heartbeat = null;
     }
   }
 
@@ -175,6 +304,7 @@ class ConnectionService {
   /// RCON answers commands but never pushes anything, so there is no log to
   /// stream: the output shown is only what commands reply with.
   Future<void> _connectRcon(Model model, {bool reconnect = false}) async {
+    _completeConsoleHistoryLoad(model);
     final RconConnection rcon;
     try {
       rcon = await connectRcon(
@@ -234,7 +364,28 @@ class ConnectionService {
   }
 
   /// Closes the connection on purpose. Nothing is reported: the user did it.
-  void disconnect(Model model) => _teardown();
+  void disconnect(Model model) {
+    _completeConsoleHistoryLoad(model);
+    model.endBridgeConnection();
+    _teardown();
+  }
+
+  void _beginConsoleHistoryLoad(Model model) {
+    model.beginConsoleHistoryLoad();
+    _historyFallback?.cancel();
+    // Protocol 2 originally shipped without an explicit completion event.
+    // Keep those bridges from leaving a quiet console spinning forever.
+    _historyFallback = Timer(
+      const Duration(seconds: 3),
+      () => model.completeConsoleHistoryLoad(),
+    );
+  }
+
+  void _completeConsoleHistoryLoad(Model model) {
+    _historyFallback?.cancel();
+    _historyFallback = null;
+    model.completeConsoleHistoryLoad();
+  }
 
   void _teardown() {
     _status = ConnectionStatus.disconnected;
@@ -244,6 +395,12 @@ class ConnectionService {
     _subscription = null;
     _channel = null;
     _rcon = null;
+    _supportsProtocol2 = false;
+    final heartbeat = _heartbeat;
+    if (heartbeat != null && !heartbeat.isCompleted) heartbeat.complete(false);
+    _heartbeat = null;
+    _historyFallback?.cancel();
+    _historyFallback = null;
     _quietReplies.clear();
   }
 

@@ -185,6 +185,36 @@ void main() {
 
     expect(find.byKey(const ValueKey('control-response-panel')), findsNothing);
   });
+
+  testWidgets('read-only bridge capability hides mutation controls', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final model = Model(PersistenceService(preferences));
+    model.updateBridgeHello(
+      protocol: 2,
+      capabilities: const ['logs', 'status', 'health', 'version'],
+      permission: 'readonly',
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: model),
+          ChangeNotifierProvider(create: (_) => ConnectionController()),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: ControlTab(isEnabled: true)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('credential is read-only'), findsOneWidget);
+    expect(find.text('Restart Server'), findsNothing);
+    expect(find.text('Normal'), findsNothing);
+  });
 }
 
 class _RecordingConnectionController extends ConnectionController {

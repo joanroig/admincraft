@@ -122,6 +122,7 @@ class _TabsState extends State<Tabs> {
         context.read<ConnectionController>().attemptConnection(
           model,
           reconnect: false,
+          announce: false,
         );
       }
     });
@@ -708,11 +709,14 @@ class _WorkspaceHeader extends StatelessWidget {
                     destination.label,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  Text(
-                    _subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Tooltip(
+                    message: _subtitle,
+                    child: Text(
+                      _subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ),
                 ],
               ),

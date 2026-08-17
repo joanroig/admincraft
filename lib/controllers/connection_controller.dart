@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/connection_status.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/connection_failure.dart';
@@ -24,8 +25,11 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
 
   int _retries = 0;
   Timer? _retryTimer;
+  Timer? _initialStatusTimer;
   Timer? _statusTimer;
   bool _statusRefreshInFlight = false;
+  Future<void>? _connectionAttempt;
+  bool _resumeCheckInFlight = false;
   Model? _model;
   bool _keepConnected = false;
   bool _wasBackgrounded = false;
@@ -42,7 +46,30 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  Future<void> attemptConnection(Model model, {bool reconnect = false}) async {
+  Future<void> attemptConnection(
+    Model model, {
+    bool reconnect = false,
+    bool announce = true,
+  }) {
+    final active = _connectionAttempt;
+    if (active != null) return active;
+
+    final attempt = _attemptConnection(
+      model,
+      reconnect: reconnect,
+      announce: announce,
+    );
+    _connectionAttempt = attempt;
+    return attempt.whenComplete(() {
+      if (identical(_connectionAttempt, attempt)) _connectionAttempt = null;
+    });
+  }
+
+  Future<void> _attemptConnection(
+    Model model, {
+    required bool reconnect,
+    required bool announce,
+  }) async {
     _model = model;
     _keepConnected = true;
     _retryTimer?.cancel();
@@ -67,7 +94,9 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
     }
 
     if (status == ConnectionStatus.connected) {
-      ToastUtils.showToastError('Already connected.');
+      if (announce && !reconnect) {
+        ToastUtils.showToastError('Already connected.');
+      }
       return;
     }
 
@@ -79,17 +108,20 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
       await connectionService.connect(model, reconnect: reconnect);
       _retries = 0;
       lastFailure = null;
-      ToastUtils.showInfo(
-        reconnect ? 'Reconnected' : 'Connected',
-        '${model.alias} is connected.',
-      );
+      if (announce) {
+        ToastUtils.showInfo(
+          reconnect ? 'Reconnected' : 'Connected',
+          '${model.alias} is connected.',
+        );
+      }
       _startStatusMonitoring();
     } on ConnectionFailure catch (failure) {
-      _reportAndMaybeRetry(model, failure);
+      _reportAndMaybeRetry(model, failure, quiet: !announce);
     } catch (error) {
       _reportAndMaybeRetry(
         model,
         ConnectionFailure(ConnectionFailureKind.unknown, error.toString()),
+        quiet: !announce,
       );
     } finally {
       notifyListeners();
@@ -101,13 +133,14 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
 
   /// Reports the failure, and schedules another attempt when [decideRetry]
   /// says one is worth making.
-  void _reportAndMaybeRetry(Model model, ConnectionFailure failure) {
+  void _reportAndMaybeRetry(
+    Model model,
+    ConnectionFailure failure, {
+    bool quiet = false,
+  }) {
     lastFailure = failure;
 
     if (_wasBackgrounded) {
-      ToastUtils.showToastError(
-        '${failure.message} Admincraft will reconnect when you return.',
-      );
       return;
     }
 
@@ -116,7 +149,12 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
       attemptsMade: _retries,
       maxRetries: maxRetries,
     );
-    ToastUtils.showToastError(decision.message);
+    // Automatic startup/resume recovery stays quiet while it is making
+    // progress. A final failure is still surfaced because user action is then
+    // required; all attempts remain available through controller state.
+    if (!quiet || !decision.willRetry) {
+      ToastUtils.showToastError(decision.message);
+    }
 
     if (!decision.willRetry) {
       _retries = 0;
@@ -125,7 +163,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
 
     _retries++;
     _retryTimer = Timer(decision.delay!, () {
-      attemptConnection(model, reconnect: true);
+      attemptConnection(model, reconnect: true, announce: !quiet);
     });
   }
 
@@ -150,6 +188,11 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
     _statusTimer?.cancel();
     notifyListeners();
     if (failure == null) return;
+    if (_wasBackgrounded) {
+      lastFailure = failure;
+      notifyListeners();
+      return;
+    }
     _reportAndMaybeRetry(model, failure);
     notifyListeners();
   }
@@ -181,33 +224,120 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
       return;
     }
 
-    // Mobile operating systems may suspend sockets while an app is hidden.
-    // Replace the possibly stale transport immediately on resume instead of
-    // waiting for the next command to discover it died.
-    connectionService.disconnect(model);
-    notifyListeners();
-    unawaited(attemptConnection(model, reconnect: true));
+    unawaited(_resumeConnection(model));
   }
 
-  Future<void> restartServer(Model model) async {
+  Future<void> _resumeConnection(Model model) async {
+    if (_resumeCheckInFlight) return;
+    _resumeCheckInFlight = true;
     try {
-      connectionService.executeCommand('admincraft restart-server');
-      ToastUtils.showToastSuccess(
-        'Server restart initiated, reconnecting in 5 seconds...',
-      );
-      await disconnect(model);
-      await Future.delayed(const Duration(seconds: 5));
-      await attemptConnection(model, reconnect: true);
-    } catch (e) {
-      ToastUtils.showToastError(e.toString());
+      // Browsers commonly throttle a hidden tab without actually losing its
+      // socket. Probe it first; reconnect only when the bridge does not answer.
+      if (status == ConnectionStatus.connected &&
+          await connectionService.checkAlive()) {
+        lastFailure = null;
+        _startStatusMonitoring();
+        notifyListeners();
+        return;
+      }
+
+      connectionService.disconnect(model);
+      notifyListeners();
+      await attemptConnection(model, reconnect: true, announce: false);
+    } finally {
+      _resumeCheckInFlight = false;
     }
   }
 
-  Future<void> executeMinecraftCommand(Model model, String command) async {
+  Future<void> restartServer(Model model) async {
+    await _manageServer(
+      model,
+      'restart',
+      'Server restart initiated.',
+      resumeMonitoringAfter: const Duration(seconds: 5),
+    );
+  }
+
+  Future<void> startServer(Model model) async {
+    await _manageServer(
+      model,
+      'start',
+      'Server start initiated.',
+      resumeMonitoringAfter: const Duration(seconds: 4),
+    );
+  }
+
+  Future<void> stopServer(Model model) async {
+    await _manageServer(model, 'stop', 'Server stop initiated.');
+  }
+
+  Future<void> _manageServer(
+    Model model,
+    String action,
+    String successMessage, {
+    Duration? resumeMonitoringAfter,
+  }) async {
+    _statusTimer?.cancel();
+    final command = 'admincraft $action-server';
+    if (!model.supportsBridgeCapability(action)) {
+      ToastUtils.showToastError(
+        'This bridge credential cannot $action the server.',
+      );
+      await model.recordCommandAudit(
+        command,
+        source: 'control',
+        outcome: 'permission denied',
+      );
+      return;
+    }
+    if (!connectionService.executeCommand(command)) {
+      ToastUtils.showToastError('The bridge is not connected.');
+      await model.recordCommandAudit(
+        command,
+        source: 'control',
+        outcome: 'not sent',
+      );
+      return;
+    }
+    await model.recordCommandAudit(command, source: 'control', outcome: 'sent');
+    ToastUtils.showToastSuccess(successMessage);
+    if (resumeMonitoringAfter != null) {
+      await Future.delayed(resumeMonitoringAfter);
+      if (_keepConnected && status == ConnectionStatus.connected) {
+        _startStatusMonitoring();
+      }
+    }
+  }
+
+  Future<void> executeMinecraftCommand(
+    Model model,
+    String command, {
+    String source = 'terminal',
+  }) async {
+    final bridgeDiagnostic = command.toLowerCase().startsWith('admincraft ');
+    if (!bridgeDiagnostic &&
+        !model.connectionSecurity.isDirectRcon &&
+        !model.supportsBridgeCapability('commands')) {
+      model.appendOutputCommand(
+        'Permission denied: this bridge credential is read-only.',
+      );
+      await model.recordCommandAudit(
+        command,
+        source: source,
+        outcome: 'permission denied',
+      );
+      return;
+    }
     await model.addUserCommand(command);
     await model.recordCommandUsage(command);
     model.appendOutputCommand(command);
-    if (!connectionService.executeCommand(command)) {
+    final sent = connectionService.executeCommand(command);
+    await model.recordCommandAudit(
+      command,
+      source: source,
+      outcome: sent ? 'sent' : 'not sent',
+    );
+    if (!sent) {
       // In the terminal rather than a toast: that is where the user is
       // looking, and silence there reads as a command that ran and said
       // nothing.
@@ -226,8 +356,14 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   }
 
   void _startStatusMonitoring() {
+    _initialStatusTimer?.cancel();
     _statusTimer?.cancel();
-    unawaited(_refreshServerStatus());
+    // Give a protocol-v2 bridge time to advertise a read-only credential
+    // before issuing Minecraft status commands that scope cannot run.
+    _initialStatusTimer = Timer(
+      const Duration(milliseconds: 250),
+      () => unawaited(_refreshServerStatus()),
+    );
     _statusTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => unawaited(_refreshServerStatus()),
@@ -236,10 +372,20 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
 
   Future<void> _refreshServerStatus() async {
     if (_statusRefreshInFlight || status != ConnectionStatus.connected) return;
+    final model = _model;
+    if (model != null &&
+        model.bridgeProtocol != null &&
+        model.supportsBridgeCapability('state')) {
+      return;
+    }
+    if (model != null &&
+        !model.connectionSecurity.isDirectRcon &&
+        !model.supportsBridgeCapability('commands')) {
+      return;
+    }
     _statusRefreshInFlight = true;
     try {
       await sendQuietly('time query daytime');
-      await Future.delayed(const Duration(milliseconds: 300));
       if (status == ConnectionStatus.connected) await sendQuietly('list');
     } finally {
       _statusRefreshInFlight = false;
@@ -250,6 +396,7 @@ class ConnectionController with ChangeNotifier, WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _retryTimer?.cancel();
+    _initialStatusTimer?.cancel();
     _statusTimer?.cancel();
     super.dispose();
   }

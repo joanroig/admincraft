@@ -1,6 +1,7 @@
 import 'package:admincraft/controllers/terminal_controller.dart';
 import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/services/console_output_formatter.dart';
 import 'package:admincraft/utils/command_completion.dart';
@@ -45,6 +46,12 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
         onlinePlayers: _model.onlinePlayers,
         usage: _model.commandUsage,
         edition: _model.minecraftEdition,
+        includeMinecraftCommands:
+            _model.connectionSecurity.isDirectRcon ||
+            _model.supportsBridgeCapability('commands'),
+        includeBridgeManagement:
+            _model.connectionSecurity.supportsServerManagement,
+        bridgeCapabilities: _model.advertisedBridgeCapabilities,
       );
     });
   }
@@ -94,6 +101,12 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
       onlinePlayers: _model.onlinePlayers,
       usage: _model.commandUsage,
       edition: _model.minecraftEdition,
+      includeMinecraftCommands:
+          _model.connectionSecurity.isDirectRcon ||
+          _model.supportsBridgeCapability('commands'),
+      includeBridgeManagement:
+          _model.connectionSecurity.supportsServerManagement,
+      bridgeCapabilities: _model.advertisedBridgeCapabilities,
     );
   }
 
@@ -105,6 +118,9 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // The terminal must react directly to streamed logs and to the explicit
+    // history-loading boundary instead of relying on an ancestor to rebuild.
+    context.watch<Model>();
     if (!widget.isEnabled) {
       return _buildDisabledState();
     }
@@ -130,16 +146,38 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
             children: [
               _buildOutputTools(),
               Expanded(
-                child: _model.output.isEmpty
-                    ? _buildLoadingAnimation()
-                    : ListView(
-                        key: const ValueKey('console-output-list'),
-                        controller: _scrollController,
-                        children: _formatOutput(
-                          _model.output,
-                          _model.userCommands,
+                child: Container(
+                  key: const ValueKey('console-surface'),
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerLowest
+                        .withValues(alpha: 0.94),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outlineVariant.withValues(alpha: 0.7),
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _model.output.isEmpty
+                      ? (_model.consoleHistoryLoading
+                            ? _buildLoadingAnimation()
+                            : _buildEmptyState())
+                      : SelectionArea(
+                          child: ListView(
+                            key: const ValueKey('console-output-list'),
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            children: _formatOutput(
+                              _model.output,
+                              _model.userCommands,
+                            ),
+                          ),
                         ),
-                      ),
+                ),
               ),
               const SizedBox(height: 10),
               _buildCommandControls(),
@@ -162,7 +200,28 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   }
 
   Widget _buildLoadingAnimation() {
-    return const Center(child: CircularProgressIndicator());
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 12),
+          Text('Loading recent server logs…'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'No recent server logs. New output will appear here.',
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
   }
 
   List<Widget> _formatOutput(String output, Set<String> userCommands) {
@@ -181,49 +240,105 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
         line,
         _model.consoleTimestampMode,
       );
-      widgets.add(
-        MouseRegion(
-          cursor: isUserCommand
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
-          child: GestureDetector(
-            onTap: isUserCommand
-                ? () {
-                    _setText(line);
-                  }
+      final normalized = shown.toLowerCase();
+      final isError =
+          normalized.contains('error') ||
+          normalized.contains('failed') ||
+          normalized.contains('exception') ||
+          normalized.contains('unexpected');
+      final foreground = isUserCommand
+          ? Theme.of(context).colorScheme.primary
+          : isError
+          ? Theme.of(context).colorScheme.error
+          : Theme.of(context).colorScheme.onSurface;
+      final outputRow = MouseRegion(
+        cursor: isUserCommand
+            ? SystemMouseCursors.click
+            : SystemMouseCursors.basic,
+        child: GestureDetector(
+          onTap: isUserCommand
+              ? () {
+                  _setText(line);
+                }
+              : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            decoration: isUserCommand
+                ? BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(4),
+                  )
                 : null,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 0.0),
-              child: Text(
-                shown,
-                strutStyle: StrutStyle(
-                  fontFamily: _model.terminalFont,
-                  fontFamilyFallback: const ['monospace'],
-                  fontSize: _model.terminalFontSize,
-                  height: 1.08,
-                  forceStrutHeight: true,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 22,
+                  child: MouseRegion(
+                    cursor: isUserCommand
+                        ? SystemMouseCursors.click
+                        : MouseCursor.defer,
+                    child: Text(
+                      isUserCommand ? r'$' : (isError ? '!' : '›'),
+                      style: TextStyle(
+                        fontFamily: _model.terminalFont,
+                        fontFamilyFallback: const ['Miracode', 'monospace'],
+                        fontSize: _model.terminalFontSize,
+                        height: 1.25,
+                        fontWeight: FontWeight.bold,
+                        color: foreground.withValues(alpha: 0.78),
+                      ),
+                    ),
+                  ),
                 ),
-                style: TextStyle(
-                  fontFamily: _model.terminalFont,
-                  fontFamilyFallback: const ['monospace'],
-                  fontSize: _model.terminalFontSize,
-                  height: 1.08,
-                  leadingDistribution: TextLeadingDistribution.even,
-                  fontWeight: isUserCommand
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                  color: isUserCommand
-                      ? Colors.blue
-                      : Theme.of(context).textTheme.bodyMedium?.color,
-                  decoration: isUserCommand
-                      ? TextDecoration.underline
-                      : TextDecoration.none,
+                Expanded(
+                  child: MouseRegion(
+                    cursor: isUserCommand
+                        ? SystemMouseCursors.click
+                        : MouseCursor.defer,
+                    child: Text(
+                      shown,
+                      softWrap: true,
+                      style: TextStyle(
+                        fontFamily: _model.terminalFont,
+                        fontFamilyFallback: const ['Miracode', 'monospace'],
+                        fontSize: _model.terminalFontSize,
+                        height: 1.25,
+                        fontWeight: isUserCommand
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: foreground,
+                        decoration: isUserCommand
+                            ? TextDecoration.underline
+                            : TextDecoration.none,
+                        decorationColor: isUserCommand
+                            ? foreground.withValues(alpha: 0.8)
+                            : null,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       );
+      if (isUserCommand) {
+        // SelectionArea installs its own text cursor over selectable glyphs,
+        // which otherwise wins over the row MouseRegion on Flutter web.
+        // Commands are actions (click to reuse), so exclude just those rows
+        // from selection and let their click cursor apply over the glyphs too.
+        widgets.add(
+          Tooltip(
+            message: 'Click to reuse this command',
+            child: SelectionContainer.disabled(child: outputRow),
+          ),
+        );
+      } else {
+        widgets.add(outputRow);
+      }
     }
     return widgets;
   }
@@ -239,7 +354,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
                 controller: _searchController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  labelText: 'Search console output',
+                  hintText: 'Search console output',
                   isDense: true,
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: IconButton(
@@ -421,6 +536,12 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
     final command = CommandCompletion.commandFor(
       text,
       edition: _model.minecraftEdition,
+      includeMinecraftCommands:
+          _model.connectionSecurity.isDirectRcon ||
+          _model.supportsBridgeCapability('commands'),
+      includeBridgeManagement:
+          _model.connectionSecurity.supportsServerManagement,
+      bridgeCapabilities: _model.advertisedBridgeCapabilities,
     );
     final rejected =
         text.trim().isNotEmpty && !CommandUtils.isAccepted(text.trim());
@@ -478,49 +599,40 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   }
 
   Widget _buildCommandInput() {
-    return Row(
-      children: [
-        Expanded(
-          // Tab is the conventional completion key in a console, and Flutter
-          // would otherwise consume it to move focus out of the field.
-          child: Shortcuts(
-            shortcuts: const {
-              SingleActivator(LogicalKeyboardKey.tab):
-                  _AcceptCompletionIntent(),
+    // Tab is the conventional completion key in a console, and Flutter would
+    // otherwise consume it to move focus out of the field.
+    return Shortcuts(
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.tab): _AcceptCompletionIntent(),
+      },
+      child: Actions(
+        actions: {
+          _AcceptCompletionIntent: CallbackAction<_AcceptCompletionIntent>(
+            onInvoke: (_) {
+              if (_suggestions.isNotEmpty) {
+                _applySuggestion(_suggestions.first.value);
+              }
+              return null;
             },
-            child: Actions(
-              actions: {
-                _AcceptCompletionIntent:
-                    CallbackAction<_AcceptCompletionIntent>(
-                      onInvoke: (_) {
-                        if (_suggestions.isNotEmpty) {
-                          _applySuggestion(_suggestions.first.value);
-                        }
-                        return null;
-                      },
-                    ),
-              },
-              child: TextField(
-                controller: _commandController,
-                focusNode: _focusNode,
-                decoration: const InputDecoration(
-                  labelText: 'Enter command',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (_) => _refreshSuggestions(),
-                onSubmitted: _submitCommand,
-              ),
+          ),
+        },
+        child: TextField(
+          controller: _commandController,
+          focusNode: _focusNode,
+          decoration: InputDecoration(
+            hintText: 'Enter command',
+            prefixText: r'> ',
+            border: const OutlineInputBorder(),
+            suffixIcon: IconButton(
+              tooltip: 'Send command',
+              icon: const Icon(Icons.send_rounded),
+              onPressed: () => _submitCommand(_commandController.text),
             ),
           ),
+          onChanged: (_) => _refreshSuggestions(),
+          onSubmitted: _submitCommand,
         ),
-        const SizedBox(width: 10),
-        IconButton(
-          tooltip: 'Send command',
-          icon: const Icon(Icons.send_rounded, color: Colors.white),
-          onPressed: () => _submitCommand(_commandController.text),
-          style: IconButton.styleFrom(backgroundColor: Colors.green),
-        ),
-      ],
+      ),
     );
   }
 
@@ -612,7 +724,11 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
   }
 
   Future<void> _submitCommand(String command) async {
-    await _terminalController.executeCommand(command, _commandController);
+    final sent = await _terminalController.executeCommand(
+      command,
+      _commandController,
+    );
+    if (!sent) return;
     if (!mounted) return;
     _resetHistoryIndex();
     // Clearing a TextEditingController does not fire onChanged. Route through

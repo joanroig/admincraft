@@ -4,7 +4,9 @@ Have these ready before you start:
 
 - Whether the server runs **Bedrock or Java**.
 - The address Admincraft should reach, and the port.
-- The bridge's `SECRET_KEY`, or the `rcon.password` if you are connecting straight to a Java server.
+- A bridge access key (`ADMIN_SECRET_KEY`, `COMMAND_SECRET_KEY`,
+  `READ_ONLY_SECRET_KEY`, or legacy `SECRET_KEY`), or the `rcon.password` if you
+  are connecting straight to a Java server.
 - For a self-signed endpoint, the server's `.crt` file.
 
 If any of that is unfamiliar, [what each connection field means](../guides/connection-fields.md) explains where the values come from.
@@ -17,7 +19,7 @@ On a fresh install Admincraft opens on a welcome screen: choose **Add your first
 2. Choose the **Minecraft edition**. It must match the bridge's `SERVER_TYPE`.
 3. Choose the **Connection type**. Do this before the fields below, because the address and port labels change to match it.
 4. Fill in the address and port. What they refer to depends on the connection type: the bridge for every type except direct RCON, where it is the Minecraft server itself.
-5. Enter the **Bridge secret key**, or the RCON password for a direct connection.
+5. Enter the **Bridge access key**, or the RCON password for a direct connection.
 6. For a self-signed endpoint, load the certificate.
 7. Select **Save changes**.
 

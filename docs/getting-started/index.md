@@ -4,7 +4,7 @@ This section is for the person running the Minecraft server or its Admincraft
 bridge. If that infrastructure already exists and you only need to use the
 app, start with [Install Admincraft](install.md) instead.
 
-Admincraft is built around [itzg's Minecraft containers](https://github.com/itzg/docker-minecraft-bedrock-server), which is where it does the most: a live console, world controls and a restart button, on Bedrock and Java alike. It also speaks plain RCON, so an existing Java server can be managed without changing anything about how it runs.
+Admincraft is built around [itzg's Minecraft containers](https://github.com/itzg/docker-minecraft-bedrock-server), which is where it does the most: a live console, world controls and start, stop, and restart buttons, on Bedrock and Java alike. It also speaks plain RCON, so an existing Java server can be managed without changing anything about how it runs.
 
 Two arrangements are therefore possible, and the difference matters enough to choose deliberately.
 
@@ -20,7 +20,7 @@ Two arrangements are therefore possible, and the difference matters enough to ch
 | Live server console | ✅ | ✅ | ❌ RCON cannot stream it |
 | Time, weather, game rules | ✅ | ✅ | ✅ on refresh |
 | Player list | ✅ live | ✅ live | ✅ on refresh |
-| Restart the server | ✅ | ✅ | ❌ no container control |
+| Start, stop, or restart the server | ✅ | ✅ | ❌ no container control |
 | Works in the browser | ✅ | ✅ | ❌ no raw sockets |
 | Can be encrypted without a VPN | ✅ TLS | ✅ TLS | ❌ never |
 | Extra container needed | yes | yes | no |

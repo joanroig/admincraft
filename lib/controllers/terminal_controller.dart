@@ -1,6 +1,9 @@
 import 'package:admincraft/controllers/connection_controller.dart';
+import 'package:admincraft/models/connection_security.dart';
 import 'package:admincraft/models/model.dart';
+import 'package:admincraft/utils/command_completion.dart';
 import 'package:admincraft/utils/dialog_utils.dart';
+import 'package:admincraft/utils/toast_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,7 +12,7 @@ class TerminalController {
 
   TerminalController(this.context);
 
-  Future<void> executeCommand(
+  Future<bool> executeCommand(
     String command,
     TextEditingController commandController,
   ) async {
@@ -20,11 +23,27 @@ class TerminalController {
     );
 
     command = command.trim();
-    if (command.isNotEmpty) {
-      await model.addCommandToHistory(command);
-      await connectionController.executeMinecraftCommand(model, command);
-      commandController.clear();
+    if (command.isEmpty) return false;
+
+    final missing = CommandCompletion.missingRequiredArgument(
+      command,
+      edition: model.minecraftEdition,
+      includeMinecraftCommands:
+          model.connectionSecurity.isDirectRcon ||
+          model.supportsBridgeCapability('commands'),
+      includeBridgeManagement:
+          model.connectionSecurity.supportsServerManagement,
+      bridgeCapabilities: model.advertisedBridgeCapabilities,
+    );
+    if (missing != null) {
+      ToastUtils.showToastError('Complete ${missing.hint} before sending.');
+      return false;
     }
+
+    await model.addCommandToHistory(command);
+    await connectionController.executeMinecraftCommand(model, command);
+    commandController.clear();
+    return true;
   }
 
   Future<void> handleCommandInput(

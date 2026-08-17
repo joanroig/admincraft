@@ -21,10 +21,16 @@ void main() {
   });
 
   test('the bridge modes label the fields after the bridge', () {
-    for (final security in ConnectionSecurity.values.where((s) => !s.isDirectRcon)) {
+    for (final security in ConnectionSecurity.values.where(
+      (s) => !s.isDirectRcon,
+    )) {
       expect(security.portLabel, 'Bridge port', reason: security.name);
-      expect(security.secretLabel, 'Bridge secret key', reason: security.name);
-      expect(security.fieldsDescribe, contains('bridge'), reason: security.name);
+      expect(security.secretLabel, 'Bridge access key', reason: security.name);
+      expect(
+        security.fieldsDescribe,
+        contains('bridge'),
+        reason: security.name,
+      );
     }
   });
 

@@ -101,7 +101,11 @@ class _ControlTabState extends State<ControlTab> {
       ToastUtils.showToastError(CommandUtils.rejectionMessage);
       return;
     }
-    await _connection.executeMinecraftCommand(_model, command);
+    await _connection.executeMinecraftCommand(
+      _model,
+      command,
+      source: 'control',
+    );
     if (!mounted) return;
     setState(() => _lastCommand = command);
   }
@@ -193,6 +197,21 @@ class _ControlTabState extends State<ControlTab> {
     );
     if (!confirmed || !mounted) return;
     await _connection.restartServer(_model);
+  }
+
+  Future<void> _startServer() => _connection.startServer(_model);
+
+  Future<void> _stopServer() async {
+    final confirmed = await DialogUtils.confirmAction(
+      context,
+      title: 'Stop Server',
+      message:
+          'This stops the Minecraft container. Players will be disconnected, '
+          'but the Admincraft bridge stays available so you can start it again. Continue?',
+      confirmLabel: 'Stop',
+    );
+    if (!confirmed || !mounted) return;
+    await _connection.stopServer(_model);
   }
 
   // ---------------------------------------------------------------------------
@@ -481,7 +500,7 @@ class _ControlTabState extends State<ControlTab> {
     final scheme = Theme.of(context).colorScheme;
     final consoleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
       fontFamily: model.terminalFont,
-      fontFamilyFallback: const ['monospace'],
+      fontFamilyFallback: const ['Miracode', 'monospace'],
       fontSize: model.terminalFontSize,
       height: 1.25,
     );
@@ -582,6 +601,18 @@ class _ControlTabState extends State<ControlTab> {
 
     // Watched, not read: the cards follow the server log as it arrives.
     final model = Provider.of<Model>(context);
+    if (!model.connectionSecurity.isDirectRcon &&
+        !model.supportsBridgeCapability('commands')) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'This bridge credential is read-only. Use Overview diagnostics or the admincraft terminal commands to inspect the server.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
     final world = model.world;
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
@@ -645,23 +676,44 @@ class _ControlTabState extends State<ControlTab> {
           _playersCard(model),
           _favoritesCard(model),
           _gamerulesCard(world),
-          // Restarting is the bridge's job, so the control is absent rather
-          // than present and broken when connected straight to RCON.
-          if (model.connectionSecurity.supportsServerRestart)
+          if (model.connectionSecurity.supportsServerManagement &&
+              (model.supportsBridgeCapability('start') ||
+                  model.supportsBridgeCapability('restart') ||
+                  model.supportsBridgeCapability('stop')))
             _card(
               title: 'Server',
-              child: ElevatedButton.icon(
-                onPressed: _restartServer,
-                icon: const Icon(Icons.restart_alt),
-                label: const Text('Restart Server'),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (model.supportsBridgeCapability('start'))
+                    FilledButton.tonalIcon(
+                      onPressed: _startServer,
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: const Text('Start Server'),
+                    ),
+                  if (model.supportsBridgeCapability('restart'))
+                    OutlinedButton.icon(
+                      onPressed: _restartServer,
+                      icon: const Icon(Icons.restart_alt),
+                      label: const Text('Restart Server'),
+                    ),
+                  if (model.supportsBridgeCapability('stop'))
+                    OutlinedButton.icon(
+                      onPressed: _stopServer,
+                      icon: const Icon(Icons.stop_rounded),
+                      label: const Text('Stop Server'),
+                    ),
+                ],
               ),
             )
           else
             _card(
               title: 'Server',
               child: Text(
-                'Restarting needs the Admincraft bridge. A direct RCON '
-                'connection cannot control the container.',
+                model.connectionSecurity.isDirectRcon
+                    ? 'Starting, stopping and restarting need the Admincraft bridge. A direct RCON connection cannot control the container.'
+                    : 'This bridge credential does not grant container lifecycle control.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),

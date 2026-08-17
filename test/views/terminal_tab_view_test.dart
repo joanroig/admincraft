@@ -47,8 +47,8 @@ void main() {
 
     expect(find.text('Server ready'), findsOneWidget);
     final serverReady = tester.widget<Text>(find.text('Server ready'));
-    expect(serverReady.style?.height, 1.08);
-    expect(serverReady.strutStyle?.forceStrutHeight, isTrue);
+    expect(serverReady.style?.height, 1.25);
+    expect(serverReady.strutStyle, isNull);
     expect(find.textContaining('AutoCompaction'), findsNothing);
     expect(find.textContaining('2026-08-16'), findsNothing);
 
@@ -63,6 +63,56 @@ void main() {
     expect(tester.widget<TextField>(input).controller?.text, isEmpty);
     expect(find.text('64'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('empty console stops loading after history snapshot completes', (
+    tester,
+  ) async {
+    final model = await pumpTerminal(tester);
+
+    expect(
+      find.text('No recent server logs. New output will appear here.'),
+      findsOneWidget,
+    );
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    model.beginConsoleHistoryLoad();
+    await tester.pump();
+    expect(find.text('Loading recent server logs…'), findsOneWidget);
+
+    model.completeConsoleHistoryLoad();
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(
+      find.text('No recent server logs. New output will appear here.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('saved command text uses a clickable mouse cursor', (
+    tester,
+  ) async {
+    final model = await pumpTerminal(tester);
+    await model.addUserCommand('say reusable command');
+    model.appendOutputCommand('say reusable command');
+    await tester.pump();
+
+    final textElement = find.text('say reusable command').evaluate().single;
+    MouseRegion? nearestMouseRegion;
+    SelectionContainer? nearestSelectionContainer;
+    textElement.visitAncestorElements((element) {
+      final widget = element.widget;
+      if (widget is MouseRegion) {
+        nearestMouseRegion = widget;
+      }
+      if (widget is SelectionContainer) {
+        nearestSelectionContainer = widget;
+        return false;
+      }
+      return true;
+    });
+    expect(nearestMouseRegion?.cursor, SystemMouseCursors.click);
+    expect(nearestSelectionContainer?.delegate, isNull);
   });
 
   testWidgets('scroll-to-bottom action appears only away from the tail', (
@@ -92,6 +142,44 @@ void main() {
     expect(
       scrollable.position.pixels,
       moreOrLessEquals(scrollable.position.maxScrollExtent, epsilon: 1),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('known incomplete commands remain editable instead of running', (
+    tester,
+  ) async {
+    final model = await pumpTerminal(tester, output: const ['Server ready']);
+    final input = find.byType(TextField).last;
+
+    await tester.enterText(input, 'time');
+    await tester.tap(find.byTooltip('Send command'));
+    await tester.pump();
+
+    expect(tester.widget<TextField>(input).controller?.text, 'time');
+    expect(model.output, isNot(contains('\ntime\n')));
+  });
+
+  testWidgets('console tools and long lines fit a narrow viewport', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 720);
+    addTearDown(tester.view.reset);
+
+    await pumpTerminal(
+      tester,
+      output: const [
+        'A deliberately long server line that should wrap cleanly instead of clipping beyond the terminal surface.',
+      ],
+    );
+    await tester.tap(find.text('Search output'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('console-surface')), findsOneWidget);
+    expect(
+      find.widgetWithText(TextField, 'Search console output'),
+      findsOneWidget,
     );
     expect(tester.takeException(), isNull);
   });
@@ -138,4 +226,22 @@ void main() {
     expect(reopened.commandHistory, contains('say persisted command'));
     expect(reopened.userCommands, contains('say persisted command'));
   });
+
+  test(
+    'timestamped bridge backlog is deduplicated across app launches',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final first = Model(PersistenceService(preferences));
+      first.appendOutputCommand('Server ready', eventId: 'event-1');
+      first.appendOutputCommand('Server ready', eventId: 'event-1');
+      await Future<void>.delayed(Duration.zero);
+
+      expect('Server ready'.allMatches(first.output), hasLength(1));
+
+      final reopened = Model(PersistenceService(preferences));
+      reopened.appendOutputCommand('Server ready', eventId: 'event-1');
+      expect('Server ready'.allMatches(reopened.output), hasLength(1));
+    },
+  );
 }

@@ -73,7 +73,7 @@ sudo netfilter-persistent save
 
 3. Edit the [docker-compose.yml](docker-compose.yml) file:
 
-   - Change the `services.websocket.environment.SECRET_KEY` variable for a strong password you will use to control the server with Admincraft. Generate one with `openssl rand -hex 32` and keep it out of any public repository: anyone holding it can run commands on your server.
+   - Change the `services.websocket.environment.SECRET_KEY` variable for a strong full-access key you will use to control the server with Admincraft. Generate one with `openssl rand -hex 32` and keep it out of any public repository: anyone holding it can run commands and manage the container. Current bridges can instead use `ADMIN_SECRET_KEY`, `COMMAND_SECRET_KEY`, and `READ_ONLY_SECRET_KEY` to issue least-privilege keys; see [Connection security](../guides/connection-security.md#choose-the-least-powerful-access-key).
    - Change any other variables you like in `services.minecraft`, like the `LEVEL_NAME` or `LEVEL_SEED`, you can see a full list [here](https://github.com/itzg/docker-minecraft-bedrock-server?tab=readme-ov-file#server-properties).
 
 4. Make sure to edit the [backups-config/config.yml](backups-config/config.yml) file, the `worlds` setting should match the one you have introduced in the setting `LEVEL_NAME` in the [docker-compose.yml](docker-compose.yml). You can also change the backups frequency as you like.

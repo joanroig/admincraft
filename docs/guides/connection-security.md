@@ -1,6 +1,27 @@
 # Connection security
 
-The Admincraft WebSocket can execute commands and restart the server. Its traffic must therefore be protected either by the network or by TLS.
+The Admincraft WebSocket can execute commands and start, stop, or restart the server container. Its traffic must therefore be protected either by the network or by TLS.
+
+## Choose the least-powerful access key
+
+A current bridge can expose separate keys for different jobs. Put the chosen
+key in the profile's **Bridge access key** field.
+
+| Bridge variable | Logs and diagnostics | Minecraft commands | Container lifecycle |
+| --- | --- | --- | --- |
+| `READ_ONLY_SECRET_KEY` | Yes | No | No |
+| `COMMAND_SECRET_KEY` | Yes | Yes | No |
+| `ADMIN_SECRET_KEY` | Yes | Yes | Yes |
+| `SECRET_KEY` | Yes | Yes | Yes; retained for compatibility |
+
+Use different random values for enabled scopes. For a wall display or status
+dashboard, use a read-only key. For daily server administration that must not
+restart the host container, use a command key. Reserve the admin key for
+trusted devices that need lifecycle controls.
+
+The bridge advertises the capabilities granted to the connected key.
+Admincraft then removes unavailable command suggestions and controls. Older
+bridges that only define `SECRET_KEY` continue to work with full access.
 
 ## Which mode should I choose?
 
