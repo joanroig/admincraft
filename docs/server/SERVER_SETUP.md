@@ -210,9 +210,39 @@ There are **two** separate things that need updating, and confusing them will le
 | What | How it updates |
 | --- | --- |
 | **Bedrock server binary** | Re-checked against Mojang's API on every container start, so a restart is enough. |
-| **Container images** (`itzg/minecraft-bedrock-server`, etc.) | Only ever update when you explicitly run `docker compose pull`. |
+| **Admincraft bridge image** | The supplied Compose file checks daily and replaces only the bridge by default. |
+| **Minecraft and backup images** | Update when you explicitly run `docker compose pull`, or through the optional nightly job below. |
 
-Restarting alone handles the first but **never** the second. That matters because the version lookup lives inside the image: when Mojang changed their download page, older images failed with `Unable to find an element with attribute matcher data-platform=serverBedrockLinux` and silently kept running the last version they had. Newer images query a JSON API instead. If you only ever restart, you never receive that fix.
+Restarting Minecraft alone handles the first but does not pull any image. That
+matters because the version lookup lives inside the Minecraft image: when
+Mojang changed their download page, older images failed with `Unable to find an
+element with attribute matcher data-platform=serverBedrockLinux` and silently
+kept running the last version they had. Newer images query a JSON API instead.
+
+### Automatic bridge update (on by default)
+
+The `admincraft-updater` service checks every 24 hours and recreates only the
+`websocket` container when `joanroig/admincraft-websocket:latest` changes. Its
+label filter and explicit container name prevent it from updating Minecraft,
+backups, databases, or unrelated containers. Superseded bridge images are
+removed automatically.
+
+Check it with:
+
+```bash
+sudo docker logs admincraft-updater
+```
+
+To opt out, create a `.env` file beside `docker-compose.yml`, then recreate the
+updater and bridge:
+
+```dotenv
+ADMINCRAFT_AUTO_UPDATE=false
+```
+
+```bash
+sudo docker compose up -d --force-recreate websocket admincraft-updater
+```
 
 ### Manual update
 

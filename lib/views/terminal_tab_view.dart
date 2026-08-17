@@ -51,7 +51,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
             _model.supportsBridgeCapability('commands'),
         includeBridgeManagement:
             _model.connectionSecurity.supportsServerManagement,
-        bridgeCapabilities: _model.advertisedBridgeCapabilities,
+        bridgeCapabilities: _model.advertisedBridgeCommandCapabilities,
       );
     });
   }
@@ -106,7 +106,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
           _model.supportsBridgeCapability('commands'),
       includeBridgeManagement:
           _model.connectionSecurity.supportsServerManagement,
-      bridgeCapabilities: _model.advertisedBridgeCapabilities,
+      bridgeCapabilities: _model.advertisedBridgeCommandCapabilities,
     );
   }
 
@@ -495,6 +495,13 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
           final command = suggestion.type == null
               ? MinecraftCommands.byName(
                   _model.minecraftEdition,
+                  includeMinecraftCommands:
+                      _model.connectionSecurity.isDirectRcon ||
+                      _model.supportsBridgeCapability('commands'),
+                  includeBridgeManagement:
+                      _model.connectionSecurity.supportsServerManagement,
+                  bridgeCapabilities:
+                      _model.advertisedBridgeCommandCapabilities,
                 )[suggestion.value]
               : null;
 
@@ -541,7 +548,7 @@ class _TerminalTabState extends State<TerminalTab> with WidgetsBindingObserver {
           _model.supportsBridgeCapability('commands'),
       includeBridgeManagement:
           _model.connectionSecurity.supportsServerManagement,
-      bridgeCapabilities: _model.advertisedBridgeCapabilities,
+      bridgeCapabilities: _model.advertisedBridgeCommandCapabilities,
     );
     final rejected =
         text.trim().isNotEmpty && !CommandUtils.isAccepted(text.trim());

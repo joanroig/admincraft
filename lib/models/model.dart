@@ -55,6 +55,23 @@ class Model with ChangeNotifier {
   Set<String>? get advertisedBridgeCapabilities =>
       _bridgeProtocol == null ? null : bridgeCapabilities;
 
+  /// Capabilities that map to commands in the `admincraft` namespace.
+  ///
+  /// Protocol v1 advertised `logs` because it streamed the server log, but it
+  /// did not implement `admincraft logs`; only the restart command existed.
+  /// Keeping that compatibility detail here prevents current clients from
+  /// suggesting bridge commands an older deployed bridge will pass through to
+  /// Minecraft as unknown commands.
+  Set<String>? get advertisedBridgeCommandCapabilities {
+    if (_bridgeProtocol == null) return null;
+    if (_bridgeProtocol == 1) {
+      return _bridgeCapabilities.contains('restart')
+          ? const {'restart'}
+          : const <String>{};
+    }
+    return bridgeCapabilities;
+  }
+
   void beginBridgeConnection() {
     _bridgeCapabilities.clear();
     _bridgeProtocol = null;

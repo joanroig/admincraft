@@ -91,6 +91,8 @@ services:
     container_name: websocket
     image: joanroig/admincraft-websocket:latest
     restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "\${ADMINCRAFT_AUTO_UPDATE:-true}"
     depends_on:
       minecraft:
         condition: service_healthy
@@ -105,6 +107,16 @@ services:
       USE_SSL: "false"
       SERVER_TYPE: bedrock
       MC_NAME: minecraft
+
+  admincraft-updater:
+    container_name: admincraft-updater
+    image: nickfedor/watchtower:1.16.1
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --cleanup --interval 86400 websocket
+    environment:
+      WATCHTOWER_NO_STARTUP_MESSAGE: "true"
 COMPOSE
 else
   cat > docker-compose.yml <<COMPOSE
@@ -132,6 +144,8 @@ services:
     container_name: websocket
     image: joanroig/admincraft-websocket:latest
     restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "\${ADMINCRAFT_AUTO_UPDATE:-true}"
     depends_on:
       - minecraft
     ports:
@@ -146,6 +160,16 @@ services:
       RCON_HOST: minecraft
       RCON_PORT: "25575"
       RCON_PASSWORD: ${RCON_PASSWORD}
+
+  admincraft-updater:
+    container_name: admincraft-updater
+    image: nickfedor/watchtower:1.16.1
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --cleanup --interval 86400 websocket
+    environment:
+      WATCHTOWER_NO_STARTUP_MESSAGE: "true"
 COMPOSE
 fi
 

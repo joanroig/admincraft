@@ -160,6 +160,34 @@ void main() {
     expect(model.output, isNot(contains('\ntime\n')));
   });
 
+  testWidgets('command browser includes bridge management commands', (
+    tester,
+  ) async {
+    await pumpTerminal(tester);
+
+    await tester.tap(find.byTooltip('Show default commands'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Search commands'),
+      'admincraft',
+    );
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byType(InkWell),
+        matching: find.text('admincraft'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Inspect and manage the Admincraft bridge and Minecraft server',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('console tools and long lines fit a narrow viewport', (
     tester,
   ) async {

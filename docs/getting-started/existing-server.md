@@ -26,6 +26,8 @@ The bridge reads the server console through the Docker socket, so it needs the c
     container_name: websocket
     image: joanroig/admincraft-websocket:latest
     restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "${ADMINCRAFT_AUTO_UPDATE:-true}"
     depends_on:
       minecraft:
         condition: service_healthy
@@ -40,6 +42,16 @@ The bridge reads the server console through the Docker socket, so it needs the c
       USE_SSL: "false"
       # Only needed if your Minecraft service is not called "minecraft".
       MC_NAME: minecraft
+
+  admincraft-updater:
+    container_name: admincraft-updater
+    image: nickfedor/watchtower:1.16.1
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --cleanup --interval 86400 websocket
+    environment:
+      WATCHTOWER_NO_STARTUP_MESSAGE: "true"
 ```
 
 Then `docker compose up -d`. Only the new container starts; Minecraft keeps running.
@@ -55,6 +67,8 @@ Java goes through RCON on the private Docker network, so the bridge needs the RC
     container_name: websocket
     image: joanroig/admincraft-websocket:latest
     restart: always
+    labels:
+      com.centurylinklabs.watchtower.enable: "${ADMINCRAFT_AUTO_UPDATE:-true}"
     ports:
       - 8080:8080
     volumes:
@@ -69,9 +83,40 @@ Java goes through RCON on the private Docker network, so the bridge needs the RC
       RCON_HOST: minecraft
       RCON_PORT: "25575"
       RCON_PASSWORD: YOUR_RCON_PASSWORD
+
+  admincraft-updater:
+    container_name: admincraft-updater
+    image: nickfedor/watchtower:1.16.1
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --label-enable --cleanup --interval 86400 websocket
+    environment:
+      WATCHTOWER_NO_STARTUP_MESSAGE: "true"
 ```
 
 Your Minecraft service needs RCON enabled (`ENABLE_RCON: "true"` and a matching `RCON_PASSWORD`) and should expose `25575` to the Docker network with `expose:`, never publish it with `ports:`.
+
+### Bridge updates
+
+The supplied Compose setup checks once a day for a newer Admincraft bridge,
+recreates only the `websocket` container, and removes its superseded image. It
+never updates Minecraft or any unrelated service. Existing app connections may
+briefly reconnect while the bridge is replaced.
+
+Automatic bridge updates are on by default. To opt out, create a `.env` file
+beside the Compose file before starting the stack:
+
+```dotenv
+ADMINCRAFT_AUTO_UPDATE=false
+```
+
+You can still update manually at any time with:
+
+```bash
+docker compose pull websocket
+docker compose up -d --force-recreate websocket
+```
 
 ### Then secure the hop and connect
 

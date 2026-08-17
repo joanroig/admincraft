@@ -17,6 +17,9 @@ services:
     container_name: websocket
     image: joanroig/admincraft-websocket:latest
     restart: always
+    labels:
+      # Enabled unless ADMINCRAFT_AUTO_UPDATE=false is set in .env.
+      com.centurylinklabs.watchtower.enable: "${ADMINCRAFT_AUTO_UPDATE:-true}"
     ports:
       # Keep this closed to the internet: it can run commands on your server.
       - 8080:8080
@@ -37,3 +40,15 @@ services:
       # RCON_HOST: minecraft
       # RCON_PORT: "25575"
       # RCON_PASSWORD: YOUR_RCON_PASSWORD
+
+  admincraft-updater:
+    container_name: admincraft-updater
+    image: nickfedor/watchtower:1.16.1
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Labels plus the explicit container name ensure this never updates
+    # Minecraft, backups, databases, or any unrelated container on the host.
+    command: --label-enable --cleanup --interval 86400 websocket
+    environment:
+      WATCHTOWER_NO_STARTUP_MESSAGE: "true"

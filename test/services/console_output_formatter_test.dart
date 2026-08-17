@@ -47,4 +47,20 @@ Admincraft connected to bedrock bridge (commands, logs, restart)
     );
     expect(ConsoleOutputFormatter.formatLine(line, 'full'), line);
   });
+
+  test('ANSI colors and terminal control bytes are never rendered', () {
+    const decorated = '\x1B[37mDEBUG\x1B[0m[7944] Forwarding signal\x00\x07';
+
+    expect(
+      ConsoleOutputFormatter.formatLine(decorated, 'full'),
+      'DEBUG[7944] Forwarding signal',
+    );
+    expect(
+      ConsoleOutputFormatter.visibleLines(
+        '$decorated\n',
+        hideCommonNoise: false,
+      ),
+      ['DEBUG[7944] Forwarding signal'],
+    );
+  });
 }

@@ -33,7 +33,7 @@ class TerminalController {
           model.supportsBridgeCapability('commands'),
       includeBridgeManagement:
           model.connectionSecurity.supportsServerManagement,
-      bridgeCapabilities: model.advertisedBridgeCapabilities,
+      bridgeCapabilities: model.advertisedBridgeCommandCapabilities,
     );
     if (missing != null) {
       ToastUtils.showToastError('Complete ${missing.hint} before sending.');

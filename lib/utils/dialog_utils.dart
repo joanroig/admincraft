@@ -1,6 +1,7 @@
 import 'package:admincraft/models/model.dart';
 import 'package:admincraft/data/minecraft_commands.dart';
 import 'package:admincraft/models/bedrock_command.dart';
+import 'package:admincraft/models/connection_security.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -51,11 +52,16 @@ class DialogUtils {
       context: context,
       builder: (BuildContext context) {
         final theme = Theme.of(context);
-        final edition = Provider.of<Model>(
-          context,
-          listen: false,
-        ).minecraftEdition;
-        final commands = MinecraftCommands.all(edition);
+        final model = Provider.of<Model>(context, listen: false);
+        final commands = MinecraftCommands.all(
+          model.minecraftEdition,
+          includeMinecraftCommands:
+              model.connectionSecurity.isDirectRcon ||
+              model.supportsBridgeCapability('commands'),
+          includeBridgeManagement:
+              model.connectionSecurity.supportsServerManagement,
+          bridgeCapabilities: model.advertisedBridgeCommandCapabilities,
+        );
         var query = '';
 
         return StatefulBuilder(
@@ -78,7 +84,7 @@ class DialogUtils {
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Commands'),
+                  Text('Commands (${matches.length})'),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(),
@@ -109,67 +115,70 @@ class DialogUtils {
                                 style: theme.textTheme.bodySmall,
                               ),
                             )
-                          : ListView(
-                              shrinkWrap: true,
-                              children: [
-                                for (final category in categories) ...[
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      4,
-                                      10,
-                                      4,
-                                      6,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          _categoryIcon(category),
-                                          size: 16,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          category.toUpperCase(),
-                                          style: theme.textTheme.labelSmall
-                                              ?.copyWith(
-                                                color:
-                                                    theme.colorScheme.primary,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  for (final command in matches.where(
-                                    (c) => c.category == category,
-                                  ))
-                                    InkWell(
-                                      onTap: () {
-                                        Navigator.of(context).pop();
-                                        // Only the name: the arguments are
-                                        // what completion is for.
-                                        onCommandSelected(command.name);
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 8,
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            _syntax(command, theme),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              command.description,
-                                              style: theme.textTheme.bodySmall,
-                                            ),
-                                          ],
-                                        ),
+                          : Scrollbar(
+                              child: ListView(
+                                shrinkWrap: true,
+                                children: [
+                                  for (final category in categories) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        4,
+                                        10,
+                                        4,
+                                        6,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            _categoryIcon(category),
+                                            size: 16,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            category.toUpperCase(),
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                ),
+                                          ),
+                                        ],
                                       ),
                                     ),
+                                    for (final command in matches.where(
+                                      (c) => c.category == category,
+                                    ))
+                                      InkWell(
+                                        onTap: () {
+                                          Navigator.of(context).pop();
+                                          // Only the name: the arguments are
+                                          // what completion is for.
+                                          onCommandSelected(command.name);
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 8,
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              _syntax(command, theme),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                command.description,
+                                                style:
+                                                    theme.textTheme.bodySmall,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                     ),
                   ],

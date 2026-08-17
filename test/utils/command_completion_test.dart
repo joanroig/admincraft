@@ -1,8 +1,28 @@
+import 'package:admincraft/data/bedrock_commands.dart';
 import 'package:admincraft/models/minecraft_edition.dart';
 import 'package:admincraft/utils/command_completion.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('Bedrock browser covers the stable server command catalogue', () {
+    final names = BedrockCommands.all.map((command) => command.name).toSet();
+
+    expect(BedrockCommands.all.length, greaterThan(70));
+    expect(
+      names,
+      containsAll({
+        'camera',
+        'clone',
+        'execute',
+        'function',
+        'permission',
+        'scoreboard',
+        'structure',
+        'transfer',
+      }),
+    );
+  });
+
   test('numeric arguments offer common stack amounts', () {
     final values = CommandCompletion.suggest(
       'give Steve diamond ',
