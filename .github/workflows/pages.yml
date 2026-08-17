@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  actions: write
   contents: read
   pages: write
   id-token: write
@@ -18,6 +19,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      artifact_id: ${{ steps.pages-artifact.outputs.artifact_id }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -69,10 +72,11 @@ jobs:
         run: touch build/web/.nojekyll
 
       - name: Upload GitHub Pages artifact
+        id: pages-artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: build/web
-          include-hidden-files: true
+          retention-days: 1
 
   deploy:
     environment:
@@ -84,3 +88,12 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Delete deployed Pages artifact
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact_id }}
+        run: >-
+          gh api --method DELETE
+          "repos/${{ github.repository }}/actions/artifacts/$ARTIFACT_ID"

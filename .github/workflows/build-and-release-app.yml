@@ -221,6 +221,7 @@ jobs:
           name: admincraft-${{ needs.get-version.outputs.version }}-${{ matrix.artifact }}
           path: dist/*
           if-no-files-found: error
+          retention-days: 1
 
   release:
     needs: [get-version, build]
