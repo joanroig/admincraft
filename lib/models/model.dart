@@ -31,7 +31,9 @@ class Model with ChangeNotifier {
   ///
   /// A blank profile always exists so the connection getters have something to
   /// read, so this cannot be answered by counting servers.
-  bool get onboardingCompleted => _persistenceService.onboardingCompleted;
+  bool get onboardingCompleted =>
+      _persistenceService.onboardingCompleted ||
+      _servers.any((server) => server.isComplete);
 
   ServerProfile get selectedServer => _servers.firstWhere(
     (server) => server.id == _selectedServerId,
@@ -68,6 +70,15 @@ class Model with ChangeNotifier {
   Model(this._persistenceService) {
     _servers = _persistenceService.servers;
     if (_servers.isEmpty) _servers = [ServerProfile.empty(_newId())];
+
+    // A profile restored by an older Drive/import path may predate the
+    // separate onboarding flag. Treat the configured profile as the source of
+    // truth immediately, then persist the one-time flag so later edits cannot
+    // send the user back to onboarding.
+    if (!_persistenceService.onboardingCompleted &&
+        _servers.any((server) => server.isComplete)) {
+      unawaited(_persistenceService.markOnboardingCompleted());
+    }
 
     final stored = _persistenceService.selectedServerId;
     _selectedServerId = _servers.any((server) => server.id == stored)
@@ -158,6 +169,9 @@ class Model with ChangeNotifier {
   Future<void> replaceServers(List<ServerProfile> incoming) async {
     if (incoming.isEmpty) return;
     _servers = [...incoming];
+    if (_servers.any((server) => server.isComplete)) {
+      await _persistenceService.markOnboardingCompleted();
+    }
     if (!_servers.any((server) => server.id == _selectedServerId)) {
       _selectedServerId = _servers.first.id;
       await _persistenceService.saveSelectedServerId(_selectedServerId);

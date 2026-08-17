@@ -45,24 +45,47 @@ void main() {
     });
   });
 
-  test('updates matching ids, appends new ids, and persists the merge',
-      () async {
+  test(
+    'updates matching ids, appends new ids, and persists the merge',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final model = Model(PersistenceService(preferences));
+
+      final result = await model.importServers([updated, added]);
+
+      expect(result.added, 1);
+      expect(result.updated, 1);
+      expect(model.servers.map((server) => server.toJson()), [
+        updated.toJson(),
+        added.toJson(),
+      ]);
+
+      final reloaded = Model(PersistenceService(preferences));
+      expect(reloaded.servers.map((server) => server.toJson()), [
+        updated.toJson(),
+        added.toJson(),
+      ]);
+    },
+  );
+
+  test(
+    'a configured persisted server completes onboarding without a flag',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final model = Model(PersistenceService(preferences));
+
+      expect(model.onboardingCompleted, isTrue);
+    },
+  );
+
+  test('replacing servers from sync persists completed onboarding', () async {
+    SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final model = Model(PersistenceService(preferences));
 
-    final result = await model.importServers([updated, added]);
+    await model.replaceServers([added]);
 
-    expect(result.added, 1);
-    expect(result.updated, 1);
-    expect(model.servers.map((server) => server.toJson()), [
-      updated.toJson(),
-      added.toJson(),
-    ]);
-
-    final reloaded = Model(PersistenceService(preferences));
-    expect(reloaded.servers.map((server) => server.toJson()), [
-      updated.toJson(),
-      added.toJson(),
-    ]);
+    expect(model.onboardingCompleted, isTrue);
+    expect(preferences.getBool('onboardingCompleted'), isTrue);
   });
 }

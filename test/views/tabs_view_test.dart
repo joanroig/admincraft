@@ -413,6 +413,39 @@ void main() {
     },
   );
 
+  testWidgets('a configured profile bypasses onboarding without the old flag', (
+    tester,
+  ) async {
+    const restored = ServerProfile(
+      id: 'restored',
+      alias: 'Restored server',
+      ip: 'restored.example.com',
+      port: 8080,
+      secretKey: 'restored-secret',
+      certificate: 'native certificate',
+      security: ConnectionSecurity.customCertificate,
+    );
+    await pumpApp(
+      tester,
+      const Size(390, 844),
+      withServer: false,
+      extraPrefs: {
+        'servers': [jsonEncode(restored.toJson())],
+        'selectedServer': restored.id,
+      },
+      connectionService: _NoopConnectionService(),
+      capabilities: const ConnectionPlatformCapabilities(
+        supportsCustomCertificates: false,
+        supportsDirectRcon: false,
+      ),
+    );
+
+    expect(find.byType(WelcomeView), findsNothing);
+    expect(find.text('Overview'), findsWidgets);
+    expect(find.text('Restored server'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('onboarding still allows reaching preferences', (tester) async {
     await pumpApp(tester, const Size(390, 844), withServer: false);
 
