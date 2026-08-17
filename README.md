@@ -115,7 +115,10 @@ Fonts
 
 ## ![Admincraft logo](docs/logo/variants/cow.png) License
 
-Admincraft version 2.0.0 and later is licensed under the [PolyForm Shield License 1.0.0](LICENSE.md). See [LICENSING.md](LICENSING.md) for version details.
+Admincraft version 2.0.0 and later is source-available under the
+[PolyForm Shield License 1.0.0](https://github.com/joanroig/admincraft/blob/main/LICENSE).
+See [LICENSING.md](https://github.com/joanroig/admincraft/blob/main/LICENSING.md)
+for the version boundary and third-party components.
 
 ## ![Admincraft logo](docs/logo/variants/zombie.png) Disclaimer
 
